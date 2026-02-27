@@ -225,40 +225,36 @@ function FeatureCard({ title, text }) {
             onMouseEnter={() => setHover(true)}
             onMouseLeave={() => setHover(false)}
             style={{
-                width: "320px",
-                height: "380px",
+    width: "320px",
+    height: "380px",
 
-                /* SHOW SAME HERO BACKGROUND INSIDE CARD */
-                backgroundImage: "url('/images/hall.jpeg')",
-                backgroundSize: "cover",
-                backgroundPosition: "center",
+    /* REMOVE background image from card */
+    background: "rgba(255,255,255,0.03)",
 
-                /* dark glass overlay */
-                backgroundColor: "rgba(0,0,0,0.55)",
-                backgroundBlendMode: "darken",
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
 
-                backdropFilter: "blur(12px)",
-                WebkitBackdropFilter: "blur(12px)",
+    borderRadius: "24px",
+    border: hover
+        ? "1px solid rgba(255,255,255,0.25)"
+        : "1px solid rgba(255,255,255,0.08)",
 
-                borderRadius: "24px",
-                border: "1px solid rgba(255,255,255,0.15)",
+    padding: "30px",
+    color: "white",
 
-                padding: "30px",
-                color: "white",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "space-between",
 
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
+    transform: hover ? "scale(1.05)" : "scale(1)",
+    transition: "all 0.35s ease",
 
-                transform: hover ? "scale(1.08)" : "scale(1)",
-                transition: "all 0.3s ease",
+    boxShadow: hover
+        ? "0 10px 40px rgba(255,255,255,0.12)"
+        : "0 10px 30px rgba(0,0,0,0.6)",
 
-                boxShadow: hover
-                    ? "0 0 35px rgba(255,255,255,0.9)"
-                    : "0 0 10px rgba(0,0,0,0.5)",
-
-                cursor: "pointer",
-            }}
+    cursor: "pointer",
+}}
         >
 
             {/* Top Content */}
