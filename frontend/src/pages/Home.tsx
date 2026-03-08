@@ -7,16 +7,14 @@ export default function Home() {
     const contactRef = useRef(null);
 
     const [page, setPage] = useState("home");
-    const [selectedRole, setSelectedRole] = useState(null); // role chosen from the card
+    const [selectedRole, setSelectedRole] = useState(null);
 
-    // Sync page state with browser history
     const navigateTo = (newPage, role = null) => {
         window.history.pushState({ page: newPage, role }, "", `#${newPage}`);
         setPage(newPage);
         if (role) setSelectedRole(role);
     };
 
-    // Handle browser back/forward
     useEffect(() => {
         const onPop = (e) => {
             const state = e.state;
@@ -29,7 +27,6 @@ export default function Home() {
             }
         };
         window.addEventListener("popstate", onPop);
-        // Set initial history entry
         window.history.replaceState({ page: "home", role: null }, "", "#home");
         return () => window.removeEventListener("popstate", onPop);
     }, []);
@@ -38,12 +35,14 @@ export default function Home() {
         <SignInPage
             role={selectedRole}
             onRegister={() => navigateTo("register", selectedRole)}
+            onBack={() => navigateTo("home")}
         />
     );
     if (page === "register") return (
         <RegisterPage
             role={selectedRole}
             onSignIn={() => navigateTo("signin", selectedRole)}
+            onBack={() => navigateTo("home")}
         />
     );
 
@@ -83,7 +82,7 @@ export default function Home() {
                         borderRadius: "20px",
                     }}
                 >
-                    <h1 style={{ fontSize: "24px", fontWeight: "bold", margin: "10px 1000px 10px 10px"}}>
+                    <h1 style={{ fontSize: "24px", fontWeight: "bold", margin: "10px 1000px 10px 10px" }}>
                         LegalMind
                     </h1>
                     <div style={{ display: "flex", gap: "30px" }}>
@@ -190,37 +189,59 @@ function UnifiedRoleCard({ onSignIn, onRegister }) {
 
     const roles = {
         Citizens: {
-            text: "File cases online, upload legal documents securely, select specialized lawyers, and track your case progress in real-time. JusticeLink ensures transparency and keeps you informed at every step.",
+            text: "File cases online, upload legal documents securely, select specialized lawyers, and track your case progress in real-time. LegalMind ensures transparency and keeps you informed at every step.",
+            badge: null,
+            badgeColor: null,
             icon: (
                 <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
-                    <circle cx="32" cy="20" r="10" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5"/>
-                    <path d="M12 54c0-11 9-20 20-20s20 9 20 20" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" strokeLinecap="round"/>
+                    <circle cx="32" cy="20" r="10" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" />
+                    <path d="M12 54c0-11 9-20 20-20s20 9 20 20" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" strokeLinecap="round" />
                 </svg>
             ),
+            showRegister: true,
+            registerLabel: "Sign Up",
+            loginLabel: "Login",
+            note: null,
         },
         Lawyer: {
-            text: "Manage assigned cases, communicate with clients, upload documents, and stay updated with hearing schedules. Improve efficiency with organized digital workflows.",
+            text: "Register with your Bar Council enrollment number, specialization, and license. Your account will be reviewed by court staff before activation. Once verified, you'll appear in the Find Lawyers directory for citizens.",
+            badge: "Verification Required",
+            badgeColor: "rgba(255,190,50,0.15)",
+            badgeBorder: "rgba(255,190,50,0.4)",
+            badgeText: "#FFD166",
             icon: (
                 <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
-                    <path d="M20 12h24M20 24h24M20 36h14" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" strokeLinecap="round"/>
-                    <rect x="10" y="6" width="44" height="52" rx="4" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5"/>
-                    <circle cx="46" cy="46" r="8" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5"/>
-                    <path d="M52 52l5 5" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" strokeLinecap="round"/>
+                    <path d="M20 12h24M20 24h24M20 36h14" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" strokeLinecap="round" />
+                    <rect x="10" y="6" width="44" height="52" rx="4" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" />
+                    <circle cx="46" cy="46" r="8" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" />
+                    <path d="M52 52l5 5" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" strokeLinecap="round" />
                 </svg>
             ),
+            showRegister: true,
+            registerLabel: "Apply as Lawyer",
+            loginLabel: "Lawyer Login",
+            note: "New accounts require admin approval before activation.",
         },
         "Court Staff": {
-            text: "Verify filings, assign case numbers, schedule hearings, assign judges, and upload official orders securely. JusticeLink simplifies court administration with role-based access control.",
+            text: "Court staff accounts are created exclusively by the administrator to protect sensitive court operations. Staff members manage lawyer verifications, case assignments, and administrative actions.",
+            badge: "Admin Access Only",
+            badgeColor: "rgba(255,80,80,0.12)",
+            badgeBorder: "rgba(255,100,100,0.4)",
+            badgeText: "#FF6B6B",
             icon: (
                 <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
-                    <path d="M32 8L10 22v4h44v-4L32 8z" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" strokeLinejoin="round"/>
-                    <rect x="16" y="26" width="6" height="22" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5"/>
-                    <rect x="29" y="26" width="6" height="22" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5"/>
-                    <rect x="42" y="26" width="6" height="22" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5"/>
-                    <path d="M8 48h48" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" strokeLinecap="round"/>
-                    <path d="M4 56h56" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round"/>
+                    <path d="M32 8L10 22v4h44v-4L32 8z" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" strokeLinejoin="round" />
+                    <rect x="16" y="26" width="6" height="22" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" />
+                    <rect x="29" y="26" width="6" height="22" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" />
+                    <rect x="42" y="26" width="6" height="22" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" />
+                    <path d="M8 48h48" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" strokeLinecap="round" />
+                    <path d="M4 56h56" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round" />
                 </svg>
             ),
+            showRegister: false,
+            registerLabel: null,
+            loginLabel: "Staff Login",
+            note: "Account creation is restricted to administrators only.",
         },
     };
 
@@ -239,19 +260,16 @@ function UnifiedRoleCard({ onSignIn, onRegister }) {
             boxShadow: "0 30px 80px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.08)",
             position: "relative",
         }}>
-
             {/* Decorative corner glow */}
             <div style={{
                 position: "absolute", top: "-60px", right: "-60px",
-                width: "200px", height: "200px",
-                borderRadius: "50%",
+                width: "200px", height: "200px", borderRadius: "50%",
                 background: "radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%)",
                 pointerEvents: "none",
             }} />
             <div style={{
                 position: "absolute", bottom: "-80px", left: "-40px",
-                width: "250px", height: "250px",
-                borderRadius: "50%",
+                width: "250px", height: "250px", borderRadius: "50%",
                 background: "radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 70%)",
                 pointerEvents: "none",
             }} />
@@ -263,17 +281,14 @@ function UnifiedRoleCard({ onSignIn, onRegister }) {
                         key={role}
                         onClick={() => setActiveTab(role)}
                         style={{
-                            flex: 1,
-                            padding: "20px 12px",
+                            flex: 1, padding: "20px 12px",
                             backgroundColor: activeTab === role ? "rgba(255,255,255,0.07)" : "transparent",
                             border: "none",
                             borderBottom: activeTab === role ? "2px solid white" : "2px solid transparent",
                             color: activeTab === role ? "white" : "rgba(255,255,255,0.35)",
                             fontWeight: activeTab === role ? "700" : "400",
-                            fontSize: "15px",
-                            cursor: "pointer",
-                            transition: "all 0.3s ease",
-                            letterSpacing: "0.5px",
+                            fontSize: "15px", cursor: "pointer",
+                            transition: "all 0.3s ease", letterSpacing: "0.5px",
                         }}
                     >
                         {role}
@@ -281,19 +296,15 @@ function UnifiedRoleCard({ onSignIn, onRegister }) {
                 ))}
             </div>
 
-            {/* Body — two columns */}
-            <div style={{ display: "flex", minHeight: "300px", position: "relative", zIndex: 1 }}>
+            {/* Body */}
+            <div style={{ display: "flex", minHeight: "320px", position: "relative", zIndex: 1 }}>
 
                 {/* Left: icon + description */}
                 <div style={{
-                    flex: 1,
-                    padding: "44px 40px",
+                    flex: 1, padding: "36px 40px",
                     borderRight: "1px solid rgba(255,255,255,0.06)",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "28px",
+                    display: "flex", flexDirection: "column", gap: "20px",
                 }}>
-                    {/* Large decorative icon */}
                     <div style={{
                         width: "88px", height: "88px",
                         backgroundColor: "rgba(255,255,255,0.05)",
@@ -305,34 +316,77 @@ function UnifiedRoleCard({ onSignIn, onRegister }) {
                         {active.icon}
                     </div>
 
-                    <p style={{
-                        color: "rgba(255,255,255,0.65)",
-                        lineHeight: "1.85",
-                        fontSize: "14.5px",
-                        margin: 0,
-                    }}>
+                    {/* Status badge */}
+                    {active.badge && (
+                        <div style={{
+                            display: "inline-flex", alignItems: "center", gap: "6px",
+                            padding: "5px 12px",
+                            backgroundColor: active.badgeColor,
+                            border: `1px solid ${active.badgeBorder}`,
+                            borderRadius: "20px",
+                            width: "fit-content",
+                        }}>
+                            <div style={{
+                                width: "6px", height: "6px", borderRadius: "50%",
+                                backgroundColor: active.badgeText,
+                            }} />
+                            <span style={{ color: active.badgeText, fontSize: "12px", fontWeight: "600", letterSpacing: "0.4px" }}>
+                                {active.badge}
+                            </span>
+                        </div>
+                    )}
+
+                    <p style={{ color: "rgba(255,255,255,0.65)", lineHeight: "1.85", fontSize: "14.5px", margin: 0 }}>
                         {active.text}
                     </p>
+
+                    {active.note && (
+                        <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "12.5px", margin: 0, fontStyle: "italic" }}>
+                            ⓘ {active.note}
+                        </p>
+                    )}
                 </div>
 
                 {/* Right: flowing dots + buttons */}
                 <div style={{
-                    width: "240px",
-                    padding: "44px 32px",
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "space-between",
-                    alignItems: "center",
+                    width: "240px", padding: "36px 32px",
+                    display: "flex", flexDirection: "column",
+                    justifyContent: "space-between", alignItems: "center",
                 }}>
                     <FlowingDots />
 
-                    {/* Buttons */}
                     <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "24px", width: "100%" }}>
-                        <button style={cardPrimaryButton} onClick={() => onRegister(activeTab)}>Sign Up</button>
-                        <button style={cardSecondaryButton} onClick={() => onSignIn(activeTab)}>Login</button>
+                        {active.showRegister ? (
+                            <>
+                                <button style={cardPrimaryButton} onClick={() => onRegister(activeTab)}>
+                                    {active.registerLabel}
+                                </button>
+                                <button style={cardSecondaryButton} onClick={() => onSignIn(activeTab)}>
+                                    {active.loginLabel}
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                {/* Court Staff: login only, no sign up */}
+                                <button style={cardPrimaryButton} onClick={() => onSignIn(activeTab)}>
+                                    {active.loginLabel}
+                                </button>
+                                <div style={{
+                                    padding: "10px 12px",
+                                    backgroundColor: "rgba(255,100,100,0.08)",
+                                    border: "1px solid rgba(255,100,100,0.2)",
+                                    borderRadius: "8px",
+                                    color: "rgba(255,150,150,0.8)",
+                                    fontSize: "12px",
+                                    textAlign: "center",
+                                    lineHeight: "1.5",
+                                }}>
+                                    🔒 Sign-up not available.<br />Contact your administrator.
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
-
             </div>
         </div>
     );
@@ -340,21 +394,37 @@ function UnifiedRoleCard({ onSignIn, onRegister }) {
 
 
 /* ─── SIGN IN PAGE ─── */
-function SignInPage({ role, onRegister }) {
+function SignInPage({ role, onRegister, onBack }) {
+    const isCourtStaff = role === "Court Staff";
+    const isLawyer = role === "Lawyer";
+
     return (
         <div style={authPageWrapper}>
-            <div style={authCard}>
+            <div style={{ ...authCard, maxWidth: "440px" }}>
+                <button onClick={onBack} style={backButton}>← Back</button>
+
                 <div style={authLogo}>
                     <span style={{ fontSize: "28px" }}>⚖️</span>
                     <span style={{ fontSize: "22px", fontWeight: "bold", color: "white" }}>LegalMind</span>
                 </div>
 
                 <h2 style={authTitle}>Welcome Back</h2>
-                <p style={authSubtitle}>Login to access your dashboard</p>
+                <p style={authSubtitle}>
+                    {isCourtStaff ? "Staff portal — restricted access" : "Login to access your dashboard"}
+                </p>
 
-                {/* Show selected role as a read-only badge */}
-                {role && (
-                    <div style={roleBadge}>{role}</div>
+                {role && <RoleBadge role={role} />}
+
+                {isCourtStaff && (
+                    <div style={infoBox("#FF6B6B", "rgba(255,80,80,0.1)", "rgba(255,100,100,0.25)")}>
+                        🔒 This portal is for authorized court staff only. Access is granted by administrators.
+                    </div>
+                )}
+
+                {isLawyer && (
+                    <div style={infoBox("#FFD166", "rgba(255,190,50,0.08)", "rgba(255,190,50,0.25)")}>
+                        ⚠️ Pending verification accounts cannot log in until approved by court staff.
+                    </div>
                 )}
 
                 <div style={fieldLabel}>EMAIL</div>
@@ -365,10 +435,14 @@ function SignInPage({ role, onRegister }) {
 
                 <button style={authPrimaryButton}>Login</button>
 
-                <p style={authFooterText}>
-                    Don't have an account?{" "}
-                    <span style={authLink} onClick={onRegister}>Register</span>
-                </p>
+                {!isCourtStaff && (
+                    <p style={authFooterText}>
+                        {isLawyer ? "Want to apply? " : "Don't have an account? "}
+                        <span style={authLink} onClick={onRegister}>
+                            {isLawyer ? "Apply as Lawyer" : "Register"}
+                        </span>
+                    </p>
+                )}
             </div>
         </div>
     );
@@ -376,23 +450,71 @@ function SignInPage({ role, onRegister }) {
 
 
 /* ─── REGISTER PAGE ─── */
-function RegisterPage({ role, onSignIn }) {
+function RegisterPage({ role, onSignIn, onBack }) {
+    const isCitizen = role === "Citizens";
+    const isLawyer = role === "Lawyer";
+    const [fileName, setFileName] = useState(null);
+
+    const handleFile = (e) => {
+        const f = e.target.files[0];
+        setFileName(f ? f.name : null);
+    };
+
+    if (!isCitizen && !isLawyer) {
+        // Court Staff — no public registration
+        return (
+            <div style={authPageWrapper}>
+                <div style={authCard}>
+                    <button onClick={onBack} style={backButton}>← Back</button>
+                    <div style={authLogo}>
+                        <span style={{ fontSize: "28px" }}>⚖️</span>
+                        <span style={{ fontSize: "22px", fontWeight: "bold", color: "white" }}>LegalMind</span>
+                    </div>
+                    <div style={{ textAlign: "center", padding: "20px 0" }}>
+                        <div style={{ fontSize: "48px", marginBottom: "16px" }}>🔒</div>
+                        <h2 style={{ ...authTitle, marginBottom: "12px" }}>Access Restricted</h2>
+                        <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "14px", lineHeight: "1.7", marginBottom: "28px" }}>
+                            Court Staff accounts are created exclusively by the platform administrator.
+                            Public registration is not available for this role to protect sensitive court operations.
+                        </p>
+                        <div style={infoBox("#FF6B6B", "rgba(255,80,80,0.1)", "rgba(255,100,100,0.25)")}>
+                            Please contact your court administrator to request account access.
+                        </div>
+                        <button style={{ ...authPrimaryButton, marginTop: "24px" }} onClick={onSignIn}>
+                            Go to Staff Login
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div style={authPageWrapper}>
-            <div style={authCard}>
+            <div style={{ ...authCard, maxWidth: isLawyer ? "500px" : "440px" }}>
+                <button onClick={onBack} style={backButton}>← Back</button>
+
                 <div style={authLogo}>
                     <span style={{ fontSize: "28px" }}>⚖️</span>
                     <span style={{ fontSize: "22px", fontWeight: "bold", color: "white" }}>LegalMind</span>
                 </div>
 
-                <h2 style={authTitle}>Create Account</h2>
-                <p style={authSubtitle}>Join the digital legal platform</p>
+                <h2 style={authTitle}>
+                    {isCitizen ? "Create Account" : "Apply as Lawyer"}
+                </h2>
+                <p style={authSubtitle}>
+                    {isCitizen ? "Join the digital legal platform" : "Submit your credentials for verification"}
+                </p>
 
-                {/* Show selected role as a read-only badge */}
-                {role && (
-                    <div style={roleBadge}>{role}</div>
+                {role && <RoleBadge role={role} />}
+
+                {isLawyer && (
+                    <div style={infoBox("#FFD166", "rgba(255,190,50,0.08)", "rgba(255,190,50,0.25)")}>
+                        ⏳ Your account will be <strong style={{ color: "#FFD166" }}>pending verification</strong> after submission. Court staff will review your documents and activate your account if approved.
+                    </div>
                 )}
 
+                {/* Common fields */}
                 <div style={fieldLabel}>FULL NAME</div>
                 <input type="text" placeholder="Your full name" style={authInput} />
 
@@ -402,15 +524,107 @@ function RegisterPage({ role, onSignIn }) {
                 <div style={fieldLabel}>PASSWORD</div>
                 <input type="password" placeholder="••••••••" style={authInput} />
 
-                <button style={authPrimaryButton}>Create Account</button>
+                {/* Lawyer-only fields */}
+                {isLawyer && (
+                    <>
+                        <div style={sectionDivider}>Professional Details</div>
 
-                <p style={authFooterText}>
+                        <div style={fieldLabel}>BAR COUNCIL ENROLLMENT NUMBER</div>
+                        <input type="text" placeholder="e.g. AP/1234/2018" style={authInput} />
+
+                        <div style={fieldLabel}>SPECIALIZATION</div>
+                        <select style={{ ...authInput, cursor: "pointer" }}>
+                            <option value="" style={{ backgroundColor: "#1a1a2e" }}>Select specialization…</option>
+                            <option value="criminal" style={{ backgroundColor: "#1a1a2e" }}>Criminal Law</option>
+                            <option value="civil" style={{ backgroundColor: "#1a1a2e" }}>Civil Law</option>
+                            <option value="corporate" style={{ backgroundColor: "#1a1a2e" }}>Corporate Law</option>
+                            <option value="family" style={{ backgroundColor: "#1a1a2e" }}>Family Law</option>
+                            <option value="property" style={{ backgroundColor: "#1a1a2e" }}>Property Law</option>
+                            <option value="intellectual" style={{ backgroundColor: "#1a1a2e" }}>Intellectual Property</option>
+                            <option value="tax" style={{ backgroundColor: "#1a1a2e" }}>Tax Law</option>
+                            <option value="other" style={{ backgroundColor: "#1a1a2e" }}>Other</option>
+                        </select>
+
+                        <div style={fieldLabel}>YEARS OF EXPERIENCE</div>
+                        <input type="number" placeholder="e.g. 5" min="0" max="60" style={authInput} />
+
+                        <div style={sectionDivider}>License Document</div>
+
+                        <div style={fieldLabel}>UPLOAD BAR COUNCIL CERTIFICATE</div>
+                        <label style={fileUploadLabel}>
+                            <input
+                                type="file"
+                                accept=".pdf,.jpg,.jpeg,.png"
+                                style={{ display: "none" }}
+                                onChange={handleFile}
+                            />
+                            <div style={fileUploadInner}>
+                                <span style={{ fontSize: "24px" }}>📄</span>
+                                <span style={{ color: fileName ? "white" : "rgba(255,255,255,0.4)", fontSize: "13px" }}>
+                                    {fileName || "Click to upload PDF, JPG, or PNG"}
+                                </span>
+                            </div>
+                        </label>
+                        <p style={{ color: "rgba(255,255,255,0.3)", fontSize: "11px", marginTop: "6px" }}>
+                            Max file size: 5MB. Accepted formats: PDF, JPG, PNG.
+                        </p>
+                    </>
+                )}
+
+                <button style={authPrimaryButton}>
+                    {isCitizen ? "Create Account" : "Submit Application"}
+                </button>
+
+                {isLawyer && (
+                    <p style={{ ...authFooterText, color: "rgba(255,255,255,0.35)", fontSize: "12px", marginTop: "8px" }}>
+                        You'll receive an email once your account has been reviewed.
+                    </p>
+                )}
+
+                <p style={{ ...authFooterText, marginTop: "12px" }}>
                     Already have an account?{" "}
                     <span style={authLink} onClick={onSignIn}>Login</span>
                 </p>
             </div>
         </div>
     );
+}
+
+
+/* ─── ROLE BADGE ─── */
+function RoleBadge({ role }) {
+    const colors = {
+        Citizens: { bg: "rgba(100,200,255,0.1)", border: "rgba(100,200,255,0.3)", text: "#90D5FF" },
+        Lawyer: { bg: "rgba(255,190,50,0.1)", border: "rgba(255,190,50,0.3)", text: "#FFD166" },
+        "Court Staff": { bg: "rgba(255,100,100,0.1)", border: "rgba(255,100,100,0.3)", text: "#FF8A8A" },
+    };
+    const c = colors[role] || colors.Citizens;
+    return (
+        <div style={{
+            alignSelf: "center", padding: "6px 20px",
+            backgroundColor: c.bg, border: `1px solid ${c.border}`,
+            borderRadius: "20px", color: c.text,
+            fontSize: "13px", fontWeight: "600",
+            letterSpacing: "0.5px", marginBottom: "16px",
+        }}>
+            {role}
+        </div>
+    );
+}
+
+
+/* ─── INFO BOX ─── */
+function infoBox(textColor, bg, border) {
+    return {
+        padding: "12px 14px",
+        backgroundColor: bg,
+        border: `1px solid ${border}`,
+        borderRadius: "10px",
+        color: textColor,
+        fontSize: "13px",
+        lineHeight: "1.65",
+        marginBottom: "16px",
+    };
 }
 
 
@@ -421,40 +635,29 @@ function FlowingDots() {
     useEffect(() => {
         const canvas = canvasRef.current;
         const ctx = canvas.getContext("2d");
-        const W = 176;
-        const H = 80;
-        canvas.width = W;
-        canvas.height = H;
+        const W = 176; const H = 80;
+        canvas.width = W; canvas.height = H;
 
-        const COLS = 6;
-        const ROWS = 4;
-        const gapX = W / (COLS + 1);
-        const gapY = H / (ROWS + 1);
-
-        let t = 0;
-        let raf;
+        const COLS = 6; const ROWS = 4;
+        const gapX = W / (COLS + 1); const gapY = H / (ROWS + 1);
+        let t = 0; let raf;
 
         const draw = () => {
             ctx.clearRect(0, 0, W, H);
             for (let row = 0; row < ROWS; row++) {
                 for (let col = 0; col < COLS; col++) {
-                    const x = (col + 1) * gapX;
-                    const y = (row + 1) * gapY;
-                    // Flow downward: subtract row so wave travels top→bottom
+                    const x = (col + 1) * gapX; const y = (row + 1) * gapY;
                     const wave = Math.sin(t - row * 0.55 + col * 0.25);
                     const alpha = 0.1 + 0.65 * ((wave + 1) / 2);
                     const radius = 1.5 + 1.8 * ((wave + 1) / 2);
-
                     ctx.beginPath();
                     ctx.arc(x, y, radius, 0, Math.PI * 2);
                     ctx.fillStyle = `rgba(255,255,255,${alpha.toFixed(2)})`;
                     ctx.fill();
                 }
             }
-            t += 0.05;
-            raf = requestAnimationFrame(draw);
+            t += 0.05; raf = requestAnimationFrame(draw);
         };
-
         draw();
         return () => cancelAnimationFrame(raf);
     }, []);
@@ -545,14 +748,17 @@ const contactOverlay = {
 
 const authPageWrapper = {
     minHeight: "100vh", backgroundColor: "#0d1117",
-    display: "flex", justifyContent: "center", alignItems: "center", padding: "40px 20px",
+    display: "flex", justifyContent: "center", alignItems: "flex-start",
+    padding: "40px 20px", overflowY: "auto",
 };
 
 const authCard = {
     width: "100%", maxWidth: "420px",
     backgroundColor: "rgba(255,255,255,0.04)",
     border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: "16px", padding: "40px", display: "flex", flexDirection: "column",
+    borderRadius: "16px", padding: "40px",
+    display: "flex", flexDirection: "column",
+    marginTop: "20px", marginBottom: "40px",
 };
 
 const authLogo = {
@@ -568,19 +774,6 @@ const authTitle = {
 const authSubtitle = {
     color: "rgba(255,255,255,0.5)", textAlign: "center",
     fontSize: "14px", margin: "0 0 24px 0",
-};
-
-const roleBadge = {
-    alignSelf: "center",
-    padding: "6px 20px",
-    backgroundColor: "rgba(255,255,255,0.08)",
-    border: "1px solid rgba(255,255,255,0.2)",
-    borderRadius: "20px",
-    color: "white",
-    fontSize: "13px",
-    fontWeight: "600",
-    letterSpacing: "0.5px",
-    marginBottom: "20px",
 };
 
 const fieldLabel = {
@@ -610,4 +803,29 @@ const authFooterText = {
 
 const authLink = {
     color: "#ffffff", cursor: "pointer", fontWeight: "600", textDecoration: "underline",
+};
+
+const backButton = {
+    background: "none", border: "none", color: "rgba(255,255,255,0.45)",
+    cursor: "pointer", fontSize: "14px", padding: "0", marginBottom: "20px",
+    alignSelf: "flex-start",
+};
+
+const sectionDivider = {
+    color: "rgba(255,255,255,0.35)", fontSize: "11px", fontWeight: "700",
+    letterSpacing: "1.5px", textTransform: "uppercase",
+    borderTop: "1px solid rgba(255,255,255,0.08)",
+    paddingTop: "20px", marginTop: "20px",
+};
+
+const fileUploadLabel = {
+    cursor: "pointer", display: "block",
+};
+
+const fileUploadInner = {
+    display: "flex", flexDirection: "column", alignItems: "center",
+    gap: "10px", padding: "20px",
+    backgroundColor: "rgba(255,255,255,0.03)",
+    border: "1px dashed rgba(255,255,255,0.2)",
+    borderRadius: "8px", transition: "border-color 0.2s",
 };
