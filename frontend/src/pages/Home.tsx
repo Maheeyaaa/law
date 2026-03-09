@@ -397,6 +397,40 @@ function UnifiedRoleCard({ onSignIn, onRegister }) {
 function SignInPage({ role, onRegister, onBack }) {
     const isCourtStaff = role === "Court Staff";
     const isLawyer = role === "Lawyer";
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+
+    const handleLogin = async () => {
+        try {
+
+            const res = await fetch("http://localhost:5000/api/users/login", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                email,
+                password
+            })
+            });
+
+            const data = await res.json();
+
+            if (data.token) {
+
+            localStorage.setItem("token", data.token);
+
+            alert("Login successful");
+            window.location.href = "/";
+
+            } else {
+            alert(data.message);
+            }
+
+        } catch (error) {
+            console.error(error);
+        }
+        };
 
     return (
         <div style={authPageWrapper}>
@@ -428,12 +462,31 @@ function SignInPage({ role, onRegister, onBack }) {
                 )}
 
                 <div style={fieldLabel}>EMAIL</div>
-                <input type="email" placeholder="you@example.com" style={authInput} />
+                <input
+                    type="email"
+                    placeholder="you@example.com"
+                    style={authInput}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                />
+
+
 
                 <div style={fieldLabel}>PASSWORD</div>
-                <input type="password" placeholder="••••••••" style={authInput} />
+                <input
+                    type="password"
+                    placeholder="••••••••"
+                    style={authInput}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                />
 
-                <button style={authPrimaryButton}>Login</button>
+                <button
+                    style={authPrimaryButton}
+                    onClick={handleLogin}
+                    >
+                    Login
+                </button>
 
                 {!isCourtStaff && (
                     <p style={authFooterText}>
@@ -454,6 +507,55 @@ function RegisterPage({ role, onSignIn, onBack }) {
     const isCitizen = role === "Citizens";
     const isLawyer = role === "Lawyer";
     const [fileName, setFileName] = useState(null);
+    const [name, setName] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+
+    const [barCouncilNumber, setBarCouncilNumber] = useState("");
+    const [specialization, setSpecialization] = useState("");
+    const [experience, setExperience] = useState("");
+
+    const handleRegister = async () => {
+        try {
+            const backendRole =
+                role === "Citizens"
+                    ? "citizen"
+                    : role === "Lawyer"
+                    ? "lawyer"
+                    : "Court Staff";
+
+            const data = {
+            name,
+            email,
+            password,
+            role: backendRole
+            };
+
+            if (backendRole === "lawyer") {
+            data.barCouncilNumber = barCouncilNumber;
+            data.specialization = specialization;
+            data.experience = experience;
+            }
+
+            const res = await fetch("http://localhost:5000/api/users/register", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(data)
+            });
+
+            const result = await res.json();
+
+            alert(result.message);
+            if (res.ok) {
+                onSignIn();
+            }
+
+        } catch (error) {
+            console.error(error);
+        }
+        };
 
     const handleFile = (e) => {
         const f = e.target.files[0];
@@ -516,13 +618,31 @@ function RegisterPage({ role, onSignIn, onBack }) {
 
                 {/* Common fields */}
                 <div style={fieldLabel}>FULL NAME</div>
-                <input type="text" placeholder="Your full name" style={authInput} />
+                <input
+                    type="text"
+                    placeholder="Your full name"
+                    style={authInput}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                />
 
                 <div style={fieldLabel}>EMAIL</div>
-                <input type="email" placeholder="you@example.com" style={authInput} />
+                <input
+                    type="email"
+                    placeholder="you@example.com"
+                    style={authInput}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                />
 
                 <div style={fieldLabel}>PASSWORD</div>
-                <input type="password" placeholder="••••••••" style={authInput} />
+                <input
+                    type="password"
+                    placeholder="••••••••"
+                    style={authInput}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                />
 
                 {/* Lawyer-only fields */}
                 {isLawyer && (
@@ -530,10 +650,31 @@ function RegisterPage({ role, onSignIn, onBack }) {
                         <div style={sectionDivider}>Professional Details</div>
 
                         <div style={fieldLabel}>BAR COUNCIL ENROLLMENT NUMBER</div>
-                        <input type="text" placeholder="e.g. AP/1234/2018" style={authInput} />
+                        <input
+                            type="text"
+                            placeholder="e.g. AP/1234/2018"
+                            style={authInput}
+                            value={barCouncilNumber}
+                            onChange={(e) => setBarCouncilNumber(e.target.value)}
+                        />
+
+                        <div style={fieldLabel}>YEARS OF EXPERIENCE</div>
+                        <input
+                            type="number"
+                            placeholder="e.g. 5"
+                            min="0"
+                            max="60"
+                            style={authInput}
+                            value={experience}
+                            onChange={(e) => setExperience(e.target.value)}
+                        />
 
                         <div style={fieldLabel}>SPECIALIZATION</div>
-                        <select style={{ ...authInput, cursor: "pointer" }}>
+                        <select
+                            style={{ ...authInput, cursor: "pointer" }}
+                            value={specialization}
+                            onChange={(e) => setSpecialization(e.target.value)}
+                        >
                             <option value="" style={{ backgroundColor: "#1a1a2e" }}>Select specialization…</option>
                             <option value="criminal" style={{ backgroundColor: "#1a1a2e" }}>Criminal Law</option>
                             <option value="civil" style={{ backgroundColor: "#1a1a2e" }}>Civil Law</option>
@@ -544,9 +685,6 @@ function RegisterPage({ role, onSignIn, onBack }) {
                             <option value="tax" style={{ backgroundColor: "#1a1a2e" }}>Tax Law</option>
                             <option value="other" style={{ backgroundColor: "#1a1a2e" }}>Other</option>
                         </select>
-
-                        <div style={fieldLabel}>YEARS OF EXPERIENCE</div>
-                        <input type="number" placeholder="e.g. 5" min="0" max="60" style={authInput} />
 
                         <div style={sectionDivider}>License Document</div>
 
@@ -571,7 +709,10 @@ function RegisterPage({ role, onSignIn, onBack }) {
                     </>
                 )}
 
-                <button style={authPrimaryButton}>
+                <button
+                    style={authPrimaryButton}
+                    onClick={handleRegister}
+                    >
                     {isCitizen ? "Create Account" : "Submit Application"}
                 </button>
 
