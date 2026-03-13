@@ -21,6 +21,7 @@ app.use(express.json());
 // Routes
 app.use("/api/users", userRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/uploads", express.static("uploads"));
 
 // Test route
 app.get("/", (req, res) => {
@@ -28,17 +29,17 @@ app.get("/", (req, res) => {
 });
 
 // MongoDB Connection
-// mongoose.connect(process.env.MONGO_URI, {
-//   serverSelectionTimeoutMS: 50000,
-//   family: 4
-// })
-// .then(() => {
-//   console.log("MongoDB Connected Successfully ✅");
-// })
-// .catch((error) => {
-//   console.log("MongoDB Connection Error ❌");
-//   console.log(error);
-// });
+ mongoose.connect(process.env.MONGO_URI, {
+   serverSelectionTimeoutMS: 50000,
+   family: 4
+ })
+ .then(() => {
+   console.log("MongoDB Connected Successfully ✅");
+ })
+ .catch((error) => {
+   console.log("MongoDB Connection Error ❌");
+   console.log(error);
+ });
 
 // Port
 const PORT = process.env.PORT || 8000;
