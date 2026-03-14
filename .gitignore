@@ -28,4 +28,6 @@ dist-ssr
 *.sln
 *.sw?
 
-
+# Uploads
+backend/uploads/*
+!backend/uploads/.gitkeep

@@ -3,7 +3,7 @@
 import axios from "axios";
 
 const API = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: "http://localhost:8000/api",
 });
 
 API.interceptors.request.use((config) => {
@@ -130,5 +130,71 @@ export const submitSupportMessage = (data: {
   message: string;
 }) => API.post("/help/contact", data);
 export const getMySupportMessages = () => API.get("/help/my-messages");
+
+// AI Chatbot
+export const sendChatMessage = (data: {
+  message: string;
+  sessionId?: string;
+}) => API.post("/ai/chatbot", data);
+
+export const explainNotice = (data: FormData | { notice: string }) => {
+  if (data instanceof FormData) {
+    return API.post("/ai/explain-notice", data, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  }
+  return API.post("/ai/explain-notice", data);
+};
+
+export const calculateDeadline = (data: {
+  noticeType?: string;
+  receivedDate?: string;
+  noticeText?: string;
+}) => API.post("/ai/deadline", data);
+
+export const decodeLegalTerm = (data: {
+  term: string;
+  context?: string;
+}) => API.post("/ai/decode-term", data);
+
+export const filingGuidance = (data: {
+  caseType: string;
+  description?: string;
+  court?: string;
+  state?: string;
+}) => API.post("/ai/filing-guide", data);
+
+export const generateChecklist = (data: {
+  caseType: string;
+  purpose?: string;
+  state?: string;
+}) => API.post("/ai/checklist", data);
+
+export const checkLegalAid = (data: {
+  annualIncome?: string;
+  category?: string;
+  caseType?: string;
+  state?: string;
+  description?: string;
+}) => API.post("/ai/legal-aid", data);
+
+export const detectScam = (data: FormData | { notice: string }) => {
+  if (data instanceof FormData) {
+    return API.post("/ai/detect-scam", data, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  }
+  return API.post("/ai/detect-scam", data);
+};
+
+export const getChatHistory = (sessionId?: string) =>
+  API.get("/ai/chat/history", { params: { sessionId } });
+
+export const getChatSessions = () => API.get("/ai/chat/sessions");
+
+export const deleteChatSession = (sessionId: string) =>
+  API.delete(`/ai/chat/session/${sessionId}`);
+
+export const clearAllChats = () => API.delete("/ai/chat/clear");
 
 export default API;

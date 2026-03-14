@@ -403,7 +403,7 @@ function SignInPage({ role, onRegister, onBack }) {
     const handleLogin = async () => {
         try {
 
-            const res = await fetch("http://localhost:5000/api/users/login", {
+            const res = await fetch("http://localhost:8000/api/users/login", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -537,7 +537,7 @@ function RegisterPage({ role, onSignIn, onBack }) {
             data.experience = experience;
             }
 
-            const res = await fetch("http://localhost:5000/api/users/register", {
+            const res = await fetch("http://localhost:8000/api/users/register", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"

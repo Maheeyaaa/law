@@ -48,6 +48,7 @@ try {
   console.log("AI routes loaded ✅");
 } catch (e) {
   console.log("AI routes not found, skipping ⚠️");
+  console.log("Error:", e.message);
 }
 
 // Test route

@@ -17,7 +17,7 @@ function App() {
         <Route path="/deadline" element={<DeadlineCalculator />} />
         <Route path="/guide" element={<FilingGuide />} />
         <Route path="/checklist" element={<DocumentChecklist />} />
-        <Route path="/chatbot" element={<LegalChatbot />} />
+        <Route path="/citizen/legal-chatbot" element={<LegalChatbot />} />
         <Route path="/citizen" element={<Citizen />} />
 
       </Routes>

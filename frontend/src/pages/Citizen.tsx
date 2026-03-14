@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, CSSProperties, ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 import { getDashboard, globalSearch, createCase } from "../services/api";
 import scalesNavy from "../assets/scales-navy.png";
 
@@ -32,6 +33,7 @@ const NAV2: NI[] = [
   { label: "Find Lawyer", icon: "👤", id: "law" },
   { label: "Documents", icon: "📄", id: "docs" },
   { label: "Track Status", icon: "🔍", id: "track" },
+  { label: "AI Legal Assistant", icon: "🤖", id: "ai" },
   { label: "Notifications", icon: "🔔", id: "notif" },
 ];
 const NAV3: NI[] = [
@@ -84,6 +86,7 @@ function NavSec({ label, items, active, onNav }: { label: string; items: NI[]; a
 }
 
 export default function CitizenDashboard() {
+  const navigate = useNavigate();
   const [nav, setNav] = useState("dash");
     // API data states
   const [stats, setStats] = useState({ total: "07", active: "03", hearings: "01", resolved: "04" });
@@ -135,6 +138,12 @@ export default function CitizenDashboard() {
   const sectionRefs = [sec0, sec1, sec2];
 
   const handleNav = (id: string) => {
+    // Navigate to AI chatbot page
+    if (id === "ai") {
+      navigate("/citizen/legal-chatbot");
+      return;
+    }
+
     setNav(id);
     const idx = NAV_TO_SECTION[id] ?? 0;
     const target = sectionRefs[idx].current;
@@ -424,8 +433,117 @@ export default function CitizenDashboard() {
             </Plate>
           </div>
 
-          {/* BOX 3 — Recent Activity + Lawyers + Documents */}
+          {/* BOX 3 — AI Assistant Banner + Recent Activity + Lawyers + Documents */}
           <div ref={sec2} style={{ marginLeft: 18 }}>
+
+            {/* AI Legal Assistant Banner */}
+            <Plate style={{ padding: "24px 28px", marginBottom: 28, cursor: "pointer", transition: "transform .2s ease" }}>
+              <div
+                onClick={() => navigate("/citizen/legal-chatbot")}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  background: "rgba(0,0,0,0.75)",
+                  backdropFilter: "blur(16px)",
+                  borderRadius: 14,
+                  padding: "22px 28px",
+                  border: "1px solid rgba(30,95,255,.25)",
+                  boxShadow: SH_CARD,
+                  cursor: "pointer",
+                  transition: "transform .2s ease, border-color .2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.transform = "translateY(-4px)";
+                  (e.currentTarget as HTMLElement).style.borderColor = "rgba(30,95,255,.5)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+                  (e.currentTarget as HTMLElement).style.borderColor = "rgba(30,95,255,.25)";
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+                  {/* AI Icon */}
+                  <div
+                    style={{
+                      width: 52,
+                      height: 52,
+                      borderRadius: 14,
+                      background: "linear-gradient(135deg, #1e5fff, #4d8aff)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 24,
+                      flexShrink: 0,
+                      boxShadow: "0 0 20px rgba(30,95,255,.4)",
+                    }}
+                  >
+                    🤖
+                  </div>
+
+                  <div>
+                    <p style={{ ...DM, fontSize: 16, fontWeight: 700, color: "#fff", marginBottom: 4 }}>
+                      AI Legal Assistant
+                    </p>
+                    <p style={{ ...DM, fontSize: 12, color: "rgba(255,255,255,.4)", lineHeight: 1.6 }}>
+                      Get instant help with legal notices, deadlines, document checklists, scam detection & more
+                    </p>
+                  </div>
+                </div>
+
+                {/* Feature Pills */}
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", maxWidth: 340 }}>
+                    {[
+                      "📄 Notice Explainer",
+                      "⏰ Deadlines",
+                      "📖 Legal Terms",
+                      "🚨 Scam Detector",
+                      "📝 Filing Guide",
+                      "✅ Doc Checklist",
+                    ].map((pill) => (
+                      <span
+                        key={pill}
+                        style={{
+                          ...DM,
+                          fontSize: 9,
+                          padding: "4px 10px",
+                          borderRadius: 20,
+                          background: "rgba(30,95,255,.12)",
+                          border: "1px solid rgba(30,95,255,.25)",
+                          color: ICEB,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {pill}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Arrow */}
+                  <div
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      background: BLUE,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 16,
+                      color: "#fff",
+                      flexShrink: 0,
+                      boxShadow: SH_CARD,
+                      marginLeft: 8,
+                    }}
+                  >
+                    →
+                  </div>
+                </div>
+              </div>
+            </Plate>
+
+            {/* Original 3-Column Section */}
             <Plate style={{ padding: "28px" }}>
               <div style={{ display: "flex", gap: 16 }}>
                 <div style={{ flex: 1, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(16px)", borderRadius: 14, padding: "18px", border: "none", boxShadow: SH_CARD, transition: "transform .2s ease" }}
