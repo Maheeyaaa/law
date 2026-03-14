@@ -88,4 +88,47 @@ export const trackCase = (caseId: string) =>
   API.get(`/track/case/${encodeURIComponent(caseId)}`);
 export const trackCaseById = (id: string) => API.get(`/track/id/${id}`);
 
+// Find Lawyer
+export const browseLawyers = (params?: {
+  specialization?: string;
+  search?: string;
+  experience?: number;
+  page?: number;
+}) => API.get("/lawyers/browse", { params });
+
+export const getLawyerProfile = (id: string) =>
+  API.get(`/lawyers/profile/${id}`);
+
+export const sendLawyerRequest = (data: {
+  lawyerId: string;
+  caseId?: string;
+  message: string;
+}) => API.post("/lawyers/request", data);
+
+export const getMyLawyerRequests = (status?: string) =>
+  API.get("/lawyers/my-requests", { params: { status } });
+
+export const cancelLawyerRequest = (id: string) =>
+  API.delete(`/lawyers/request/${id}`);
+
+
+// Documents
+export const downloadDocument = (id: string) =>
+  API.get(`/documents/${id}/download`, { responseType: "blob" });
+
+// Notifications (expanded)
+export const deleteNotification = (id: string) =>
+  API.delete(`/notifications/${id}`);
+export const clearReadNotifications = () =>
+  API.delete("/notifications/clear-read");
+
+// Help Center
+export const getFAQs = (category?: string) =>
+  API.get("/help/faqs", { params: { category } });
+export const submitSupportMessage = (data: {
+  subject: string;
+  message: string;
+}) => API.post("/help/contact", data);
+export const getMySupportMessages = () => API.get("/help/my-messages");
+
 export default API;

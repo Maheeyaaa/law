@@ -59,3 +59,38 @@ export const markAllAsRead = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// Delete single notification
+export const deleteNotification = async (req, res) => {
+  try {
+    const notification = await Notification.findOneAndDelete({
+      _id: req.params.id,
+      citizen: req.user.id,
+    });
+
+    if (!notification) {
+      return res.status(404).json({ message: "Notification not found" });
+    }
+
+    res.json({ message: "Notification deleted" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Clear all read notifications
+export const clearAllRead = async (req, res) => {
+  try {
+    const result = await Notification.deleteMany({
+      citizen: req.user.id,
+      read: true,
+    });
+
+    res.json({
+      message: "All read notifications cleared",
+      deleted: result.deletedCount,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

@@ -132,3 +132,27 @@ export const deleteDocument = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// Download document
+export const downloadDocument = async (req, res) => {
+  try {
+    const document = await Document.findOne({
+      _id: req.params.id,
+      citizen: req.user.id,
+    });
+
+    if (!document) {
+      return res.status(404).json({ message: "Document not found" });
+    }
+
+    const filePath = `uploads/${document.filePath}`;
+
+    res.download(filePath, document.originalName, (err) => {
+      if (err) {
+        res.status(500).json({ message: "Error downloading file" });
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

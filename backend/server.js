@@ -14,6 +14,8 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
 import trackRoutes from "./routes/trackRoutes.js";
+import lawyerRoutes from "./routes/lawyerRoutes.js";
+import helpRoutes from "./routes/helpRoutes.js";
 
 dns.setServers(["1.1.1.1", "8.8.8.8"]);
 
@@ -35,6 +37,8 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/track", trackRoutes);
+app.use("/api/lawyers", lawyerRoutes);
+app.use("/api/help", helpRoutes);
 app.use("/uploads", express.static("uploads"));
 
 // Try loading aiRoutes only if it exists

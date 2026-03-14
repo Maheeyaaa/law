@@ -393,6 +393,91 @@ const seed = async () => {
 
     console.log("Timeline events created ✅");
 
+        // Create FAQs
+    const FAQ = (await import("./models/FAQ.js")).default;
+    await FAQ.deleteMany({});
+
+    const faqsData = [
+      {
+        question: "How do I file a new case?",
+        answer: "Go to your dashboard and click 'File New Case' or use the Quick File form. Fill in the case type, title, and description, then click Submit.",
+        category: "Cases",
+        order: 1,
+      },
+      {
+        question: "How long does it take for a case to be reviewed?",
+        answer: "Cases are typically reviewed within 3-5 business days after filing. You will receive a notification once your case has been reviewed.",
+        category: "Cases",
+        order: 2,
+      },
+      {
+        question: "How do I track my case status?",
+        answer: "Go to 'Track Status' in the sidebar and enter your Case ID (e.g. #LM-2025-0001). You'll see a step-by-step progress of your case.",
+        category: "Cases",
+        order: 3,
+      },
+      {
+        question: "How do I find a lawyer?",
+        answer: "Click 'Find Lawyer' in the sidebar to browse verified lawyers. You can filter by specialization and experience. Send a request to connect with a lawyer.",
+        category: "Lawyers",
+        order: 1,
+      },
+      {
+        question: "Are all lawyers on this platform verified?",
+        answer: "Yes, all lawyers must submit their bar council registration and license documents. Court staff verifies each lawyer before they can accept cases.",
+        category: "Lawyers",
+        order: 2,
+      },
+      {
+        question: "How do I upload documents for my case?",
+        answer: "Go to 'Documents' in the sidebar, click 'Upload', select your file, optionally link it to a case, and submit. Supported formats: PDF, DOC, DOCX, JPG, PNG.",
+        category: "Documents",
+        order: 1,
+      },
+      {
+        question: "What happens after I upload a document?",
+        answer: "Uploaded documents are marked as 'Pending' and will be verified by court staff. You'll receive a notification once verified.",
+        category: "Documents",
+        order: 2,
+      },
+      {
+        question: "How will I know about my hearing dates?",
+        answer: "You will receive notifications when hearings are scheduled. You can also check 'Hearings' in the sidebar to see all upcoming and past hearings.",
+        category: "Hearings",
+        order: 1,
+      },
+      {
+        question: "Can I reschedule a hearing?",
+        answer: "Hearings are scheduled by court staff. If you need to reschedule, contact your assigned lawyer or submit a support request through the Help Center.",
+        category: "Hearings",
+        order: 2,
+      },
+      {
+        question: "How do I update my profile?",
+        answer: "Go to 'Settings' in the sidebar to update your name, email, phone number, and address. You can also change your password there.",
+        category: "Account",
+        order: 1,
+      },
+      {
+        question: "Is my data secure?",
+        answer: "Yes, all data is encrypted and stored securely. Your personal information is only visible to you, your assigned lawyer, and authorized court staff.",
+        category: "General",
+        order: 1,
+      },
+      {
+        question: "How do I contact support?",
+        answer: "Go to 'Help Center' and fill out the contact form with your subject and message. Our support team will respond within 24-48 hours.",
+        category: "General",
+        order: 2,
+      },
+    ];
+
+    for (const faq of faqsData) {
+      await FAQ.create(faq);
+    }
+
+    console.log("FAQs created ✅");
+
     console.log("\n🎉 Seed completed!");
     console.log("Login: rahul@example.com / password123");
 
