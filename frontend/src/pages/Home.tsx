@@ -402,35 +402,44 @@ function SignInPage({ role, onRegister, onBack }) {
 
     const handleLogin = async () => {
         try {
-
             const res = await fetch("http://localhost:8000/api/users/login", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                email,
-                password
-            })
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    email,
+                    password
+                })
             });
 
             const data = await res.json();
 
-            if (data.token) {
-
-            localStorage.setItem("token", data.token);
-
-            alert("Login successful");
-            window.location.href = "/";
-
+            if (data.token && data.user) {
+                // ✅ Save BOTH token AND user data
+                localStorage.setItem("token", data.token);
+                localStorage.setItem("user", JSON.stringify(data.user));
+                
+                // ✅ Redirect based on role
+                const userRole = data.user.role;
+                
+                if (userRole === "citizen") {
+                    window.location.href = "/citizen";
+                } else if (userRole === "lawyer") {
+                    window.location.href = "/lawyer";  // when you build lawyer dashboard
+                } else if (userRole === "Court Staff") {
+                    window.location.href = "/court-staff";  // when you build court staff dashboard
+                } else {
+                    window.location.href = "/";  // fallback
+                }
             } else {
-            alert(data.message);
+                alert(data.message || "Login failed");
             }
-
         } catch (error) {
             console.error(error);
+            alert("Login error. Please try again.");
         }
-        };
+    };
 
     return (
         <div style={authPageWrapper}>

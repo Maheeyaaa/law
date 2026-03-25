@@ -21,7 +21,7 @@ interface NI { label: string; icon: string; badge?: number; id: string; route: s
 
 const NAV1: NI[] = [
   { label: "Dashboard", icon: "⊞", id: "dash", route: "/citizen" },
-  { label: "My Cases", icon: "📁", id: "cases", route: "/citizen" },
+  { label: "My Cases", icon: "📁", id: "cases", route: "/citizen/cases" },
   { label: "File New Case", icon: "✏️", id: "file", route: "/citizen" },
   { label: "Hearings", icon: "📅", id: "hear", route: "/citizen/hearings" },
 ];
@@ -29,6 +29,7 @@ const NAV2: NI[] = [
   { label: "Find Lawyer", icon: "👤", id: "law", route: "/citizen/find-lawyer" },
   { label: "Documents", icon: "📄", id: "docs", route: "/citizen/documents" },
   { label: "Track Status", icon: "🔍", id: "track", route: "/citizen/track" },
+  { label: "AI Assistant", icon: "🤖", id: "ai", route: "/citizen/legal-chatbot" },
   { label: "Notifications", icon: "🔔", id: "notif", route: "/citizen/notifications" },
 ];
 const NAV3: NI[] = [

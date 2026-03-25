@@ -45,11 +45,6 @@ function formatDate(dateStr: string | null): string {
   return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-function getInitials(name: string): string {
-  const parts = name.split(" ");
-  return parts.length >= 2 ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() : parts[0][0].toUpperCase();
-}
-
 export default function CaseDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -61,7 +56,6 @@ export default function CaseDetail() {
   const [documents, setDocuments] = useState<any[]>([]);
   const [hearings, setHearings] = useState<any[]>([]);
 
-  // Editable notes
   const [notes, setNotes] = useState("");
   const [editingNotes, setEditingNotes] = useState(false);
   const [savingNotes, setSavingNotes] = useState(false);
@@ -105,7 +99,6 @@ export default function CaseDetail() {
     }
   };
 
-  // Timeline expected steps
   const expectedSteps = [
     { type: "case_filed", label: "Case Filed", icon: "📝" },
     { type: "under_review", label: "Under Review", icon: "🔍" },
@@ -137,7 +130,7 @@ export default function CaseDetail() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", ...DM }}>
           <div style={{ textAlign: "center" }}>
             <p style={{ fontSize: 16, color: "#ff6b6b", marginBottom: 12 }}>{error || "Case not found"}</p>
-            <button onClick={() => navigate("/citizen")} style={{ ...DM, background: BLUE, color: "#fff", padding: "10px 24px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13 }}>Back to Dashboard</button>
+            <button onClick={() => navigate("/citizen/cases")} style={{ ...DM, background: BLUE, color: "#fff", padding: "10px 24px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13 }}>Back to Cases</button>
           </div>
         </div>
       </CitizenLayout>
@@ -150,7 +143,7 @@ export default function CaseDetail() {
 
         {/* Back Button + Case Header */}
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <button onClick={() => navigate("/citizen")} style={{ ...DM, background: "rgba(0,0,0,0.6)", border: "1px solid rgba(30,95,255,.25)", borderRadius: 10, padding: "8px 16px", color: "rgba(255,255,255,.5)", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, transition: "all .2s ease" }}
+          <button onClick={() => navigate("/citizen/cases")} style={{ ...DM, background: "rgba(0,0,0,0.6)", border: "1px solid rgba(30,95,255,.25)", borderRadius: 10, padding: "8px 16px", color: "rgba(255,255,255,.5)", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, transition: "all .2s ease" }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(30,95,255,.5)"; (e.currentTarget as HTMLElement).style.color = "#fff"; }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(30,95,255,.25)"; (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,.5)"; }}>
             ← Back
@@ -182,7 +175,7 @@ export default function CaseDetail() {
         {/* Two Column Layout */}
         <div style={{ display: "flex", gap: 20 }}>
 
-          {/* Left Column — Description + Notes + Documents */}
+          {/* Left Column */}
           <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 20 }}>
 
             {/* Description */}
@@ -212,7 +205,7 @@ export default function CaseDetail() {
               )}
             </div>
 
-            {/* Documents linked to this case */}
+            {/* Documents */}
             <div style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(16px)", borderRadius: 14, padding: "20px", boxShadow: SH_CARD }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <p style={{ ...DM, fontSize: 13, fontWeight: 600, color: "#fff" }}>Documents</p>
@@ -239,7 +232,7 @@ export default function CaseDetail() {
             </div>
           </div>
 
-          {/* Right Column — Timeline + Lawyer + Hearings */}
+          {/* Right Column */}
           <div style={{ width: 340, flexShrink: 0, display: "flex", flexDirection: "column", gap: 20 }}>
 
             {/* Timeline */}
@@ -252,10 +245,47 @@ export default function CaseDetail() {
                   const timelineEntry = timeline.find((t: any) => t.type === step.type);
                   return (
                     <div key={step.type} style={{ display: "flex", gap: 12, position: "relative" }}>
-                      {/* Line + Dot */}
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 20, flexShrink: 0 }}>
                         <div style={{ width: 20, height: 20, borderRadius: "50%", background: done ? BLUE : "rgba(255,255,255,.08)", border: done ? `2px solid ${BLUEB}` : "2px solid rgba(255,255,255,.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, flexShrink: 0, boxShadow: done ? `0 0 8px ${BLUE}` : "none" }}>
                           {done ? "✓" : ""}
                         </div>
                         {!isLast && (
-                          <div style={{ width: 2, flex: 1, minHeight: 30, background: done ? "rgba(30,95,255,.4)" : 
+                          <div style={{ width: 2, flex: 1, minHeight: 30, background: done ? "rgba(30,95,255,.4)" : "rgba(255,255,255,.08)" }} />
+                        )}
+                      </div>
+                      <div style={{ paddingBottom: isLast ? 0 : 16 }}>
+                        <p style={{ ...DM, fontSize: 12, fontWeight: 600, color: done ? "#fff" : "rgba(255,255,255,.3)" }}>{step.icon} {step.label}</p>
+                        {timelineEntry && (
+                          <p style={{ ...DM, fontSize: 10, color: "rgba(255,255,255,.25)", marginTop: 2 }}>{timelineEntry.description}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Hearings */}
+            <div style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(16px)", borderRadius: 14, padding: "20px", boxShadow: SH_CARD }}>
+              <p style={{ ...DM, fontSize: 13, fontWeight: 600, color: "#fff", marginBottom: 12 }}>Hearings</p>
+              {hearings.length === 0 ? (
+                <p style={{ ...DM, fontSize: 12, color: "rgba(255,255,255,.3)", textAlign: "center", padding: 16 }}>No hearings scheduled</p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {hearings.map((h: any) => (
+                    <div key={h._id} style={{ padding: "10px 12px", borderRadius: 8, background: "rgba(255,255,255,.03)", border: "1px solid rgba(30,95,255,.15)" }}>
+                      <p style={{ ...DM, fontSize: 11, color: "#fff", fontWeight: 600 }}>{formatDate(h.hearingDate)}</p>
+                      <p style={{ ...DM, fontSize: 10, color: "rgba(255,255,255,.4)", marginTop: 2 }}>{h.purpose}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </CitizenLayout>
+  );
+}
