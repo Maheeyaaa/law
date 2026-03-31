@@ -16,6 +16,12 @@ import profileRoutes from "./routes/profileRoutes.js";
 import trackRoutes from "./routes/trackRoutes.js";
 import lawyerRoutes from "./routes/lawyerRoutes.js";
 import helpRoutes from "./routes/helpRoutes.js";
+import locationRoutes from "./routes/locationRoutes.js";
+import { seedScamPatterns } from "./utils/scamDetector.js";
+import scamRoutes from "./routes/scamRoutes.js";
+import analyticsRoutes from "./routes/analyticsRoutes.js";
+import predictionRoutes from "./routes/predictionRoutes.js";
+import voiceRoutes from "./routes/voiceRoutes.js";
 
 dns.setServers(["1.1.1.1", "8.8.8.8"]);
 
@@ -26,6 +32,7 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use("/api/scam", scamRoutes);
 
 // Routes
 app.use("/api/users", userRoutes);
@@ -40,6 +47,10 @@ app.use("/api/track", trackRoutes);
 app.use("/api/lawyers", lawyerRoutes);
 app.use("/api/help", helpRoutes);
 app.use("/uploads", express.static("uploads"));
+app.use("/api/locations", locationRoutes);
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/prediction", predictionRoutes);
+app.use("/api/voice", voiceRoutes);
 
 // Try loading aiRoutes only if it exists
 try {
@@ -64,6 +75,7 @@ mongoose
   })
   .then(() => {
     console.log("MongoDB Connected Successfully ✅");
+    seedScamPatterns();
   })
   .catch((error) => {
     console.log("MongoDB Connection Error ❌");

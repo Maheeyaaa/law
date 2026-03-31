@@ -5,9 +5,88 @@ import fs from "fs";
 import path from "path";
 import ChatMessage from "../models/ChatMessage.js";
 import { extractTextFromPDF } from "../utils/pdfExtractor.js";
+import { ScamDetector } from "../utils/scamDetector.js";
+import ScamReport from "../models/ScamReport.js";
+import UserAnalytics from "../models/UserAnalytics.js";
 
-// ▲ REMOVED: createRequire and pdf-parse import
-// ▲ ADDED: extractTextFromPDF utility
+// ⭐ REPLACE lines 9-16 with these:
+
+const trackFeatureUsage = async (userId, featureName) => {
+  try {
+    let analytics = await UserAnalytics.findOne({ user: userId });
+
+    if (!analytics) {
+      analytics = await UserAnalytics.create({ user: userId });
+    }
+
+    // Map feature names to schema fields
+    const featureMap = {
+      chatbot: "chatbot",
+      explainNotice: "noticeExplanation",
+      calculateDeadline: "deadlineCalculation",
+      decodeTerm: "termDecoder",
+      filingGuide: "filingGuidance",
+      generateChecklist: "checklistGeneration",
+      checkLegalAid: "legalAidCheck",
+      detectScam: "scamDetection",
+    };
+
+    const field = featureMap[featureName];
+
+    if (field) {
+      analytics.featureUsage[field] += 1;
+      analytics.totalMessages += 1;
+      analytics.lastActive = new Date();
+      analytics.lastFeatureUsed = featureName;
+      await analytics.save();
+    }
+  } catch (error) {
+    console.error("Analytics tracking error:", error);
+  }
+};
+
+const trackPDFUpload = async (userId, isOCR = false) => {
+  try {
+    let analytics = await UserAnalytics.findOne({ user: userId });
+
+    if (!analytics) {
+      analytics = await UserAnalytics.create({ user: userId });
+    }
+
+    analytics.totalPDFsUploaded += 1;
+    if (isOCR) {
+      analytics.totalOCRProcessed += 1;
+    }
+    await analytics.save();
+  } catch (error) {
+    console.error("PDF tracking error:", error);
+  }
+};
+
+// ⭐ ADD this NEW function (for tracking scam results):
+const trackScamResult = async (userId, isScam, score) => {
+  try {
+    let analytics = await UserAnalytics.findOne({ user: userId });
+
+    if (!analytics) {
+      analytics = await UserAnalytics.create({ user: userId });
+    }
+
+    analytics.scamStats.totalScansPerformed += 1;
+
+    if (score <= 3) {
+      analytics.scamStats.scamsDetected += 1;
+    } else if (score >= 8) {
+      analytics.scamStats.genuineNoticesVerified += 1;
+    } else {
+      analytics.scamStats.suspiciousNotices += 1;
+    }
+
+    await analytics.save();
+  } catch (error) {
+    console.error("Scam tracking error:", error);
+  }
+};
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -128,6 +207,8 @@ export const chatbot = async (req, res) => {
       return res.status(400).json({ message: "Message is required" });
     }
 
+    await trackFeatureUsage(req.user.id, "chatbot");
+
     const session = sessionId || `session_${req.user.id}_${Date.now()}`;
 
     await ChatMessage.create({
@@ -186,6 +267,8 @@ export const explainNotice = async (req, res) => {
   try {
     let noticeText = req.body.notice || "";
     let isOCR = false;
+
+    await trackFeatureUsage(req.user.id, "explainNotice");
 
     // If file was uploaded, extract text
     if (req.file) {
@@ -252,6 +335,8 @@ export const calculateDeadline = async (req, res) => {
   try {
     const { noticeType, receivedDate, noticeText } = req.body;
 
+    await trackFeatureUsage(req.user.id, "calculateDeadline");
+
     if (!noticeType && !noticeText) {
       return res.status(400).json({
         message: "Please provide either the notice type or the notice text.",
@@ -304,6 +389,8 @@ export const decodeLegalTerm = async (req, res) => {
   try {
     const { term, context } = req.body;
 
+    await trackFeatureUsage(req.user.id, "decodeLegalTerm");
+
     if (!term || !term.trim()) {
       return res.status(400).json({ message: "Legal term is required." });
     }
@@ -346,6 +433,8 @@ Keep the explanation simple and easy to understand for someone with no legal bac
 export const filingGuidance = async (req, res) => {
   try {
     const { caseType, description, court, state } = req.body;
+
+    await trackFeatureUsage(req.user.id, "filingGuidance");
 
     if (!caseType || !caseType.trim()) {
       return res.status(400).json({ message: "Case type is required." });
@@ -397,6 +486,8 @@ Make each step clear and actionable. A person with no legal knowledge should be 
 export const generateChecklist = async (req, res) => {
   try {
     const { caseType, purpose, state } = req.body;
+
+    await trackFeatureUsage(req.user.id, "generateChecklist");
 
     if (!caseType || !caseType.trim()) {
       return res.status(400).json({ message: "Case type is required." });
@@ -453,6 +544,8 @@ Make this practical and easy to follow. The citizen should be able to use this a
 export const checkLegalAid = async (req, res) => {
   try {
     const { annualIncome, category, caseType, state, description } = req.body;
+
+    await trackFeatureUsage(req.user.id, "checkLegalAid");
 
     const prompt = `A citizen wants to know if they are eligible for free legal aid in India.
 
@@ -511,7 +604,7 @@ Please be specific about Indian legal aid rules and provide accurate income thre
 };
 
 // ═══════════════════════════════════════
-// FEATURE 7: Fake Notice / Scam Detector
+// FEATURE 7: Fake Notice / Scam Detector (ENHANCED)
 // ═══════════════════════════════════════
 export const detectScam = async (req, res) => {
   try {
@@ -528,73 +621,167 @@ export const detectScam = async (req, res) => {
 
       noticeText = text;
       isOCR = ocrUsed;
+
+      // Track PDF upload
+      await trackPDFUpload(req.user.id, ocrUsed);
     }
 
     if (!noticeText || !noticeText.trim()) {
       return res.status(400).json({
-        message:
-          "Notice text is required. Upload a file or paste the text.",
+        message: "Notice text is required. Upload a file or paste the text.",
       });
     }
 
-    const prompt = `A citizen received the following notice/document and wants to verify if it's genuine or a potential scam/fake.
+    // Track feature usage
+    await trackFeatureUsage(req.user.id, "detectScam");
 
-${isOCR ? "Note: This text was extracted via OCR from a scanned document, so there may be minor character recognition errors. Don't flag OCR artifacts as red flags for scam detection.\n\n" : ""}Notice/Document:
+    // ═══════════════════════════════════════════════════
+    // STEP 1: Rule-based detection (NEW!)
+    // ═══════════════════════════════════════════════════
+    const detector = new ScamDetector();
+    const ruleBasedAnalysis = await detector.analyze(noticeText.trim());
+
+    // ═══════════════════════════════════════════════════
+    // STEP 2: AI-based detection (existing)
+    // ═══════════════════════════════════════════════════
+    const aiPrompt = `A citizen received the following notice/document and wants to verify if it's genuine or a potential scam/fake.
+
+${isOCR ? "Note: This text was extracted via OCR from a scanned document.\n\n" : ""}Notice/Document:
 "${noticeText.trim()}"
 
-Please analyze this notice for authenticity. Check for:
+Please provide:
+1. Your assessment (Genuine/Suspicious/Fake)
+2. Key indicators you noticed
+3. Recommendations for the citizen
 
-1. **Authenticity Score** - Rate 1-10 (1 = likely fake, 10 = likely genuine). Give a clear score.
+Keep it concise.`;
 
-2. **Red flags found** 🚩 - List any suspicious elements:
-   - Grammatical errors or unprofessional language
-   - Missing official headers, logos, or reference numbers
-   - Vague or threatening language
-   - Unusual payment demands or bank account details
-   - Missing sender details or incomplete addresses
-   - Unrealistic deadlines (e.g., "respond in 24 hours or face arrest")
-   - Wrong legal references or non-existent laws cited
+    const aiResponse = await askGroq(LEGAL_SYSTEM_PROMPT, aiPrompt, 800);
 
-3. **Genuine indicators** ✅ - List elements that look legitimate:
-   - Proper court/authority name
-   - Valid legal sections cited
-   - Proper format and language
-   - Realistic timelines
-   - Proper seal/stamp mentions
+    // ═══════════════════════════════════════════════════
+    // STEP 3: Combine both analyses
+    // ═══════════════════════════════════════════════════
+    const finalScore = ruleBasedAnalysis.score;
+    const isScam = finalScore <= 5;
 
-4. **Verdict** - Is this notice:
-   - ✅ Likely Genuine
-   - ⚠️ Suspicious - needs verification
-   - 🚩 Likely Fake/Scam
+    await trackScamResult(req.user.id, isScam, finalScore);
 
-5. **How to verify** - Steps the citizen can take to confirm authenticity:
-   - Where to call/visit
-   - What to check
-   - Who to contact
+    // Format red flags for display
+    let redFlagsText = "";
+    if (ruleBasedAnalysis.redFlags.length > 0) {
+      redFlagsText = "\n\n🚩 **RED FLAGS DETECTED:**\n\n";
+      ruleBasedAnalysis.redFlags.forEach((flag, index) => {
+        const emoji = {
+          critical: "🔴",
+          high: "🟠",
+          medium: "🟡",
+          low: "⚪",
+        }[flag.severity];
 
-6. **What to do if it's fake** - Steps to report the scam
+        redFlagsText += `${index + 1}. ${emoji} **${flag.type.replace(/_/g, " ").toUpperCase()}**\n`;
+        redFlagsText += `   ${flag.message}\n\n`;
+      });
+    }
 
-7. **What to do if it's genuine** - Immediate action items
+    // Build final response
+    const finalResponse = `
+# 🔍 SCAM DETECTION ANALYSIS
 
-Be thorough but clear. Many citizens receive fake legal notices and this analysis could save them from fraud.`;
+## 📊 Authenticity Score: ${finalScore}/10
 
-    const reply = await askGroq(LEGAL_SYSTEM_PROMPT, prompt, 1500);
+## ${ruleBasedAnalysis.verdict}
 
+${redFlagsText}
+
+---
+
+## 🤖 AI Analysis:
+
+${aiResponse}
+
+---
+
+## ✅ VERIFICATION STEPS:
+
+1. **Check sender details**
+   - Verify the court/authority name
+   - Call the official landline (NOT the number in the notice)
+   - Visit official website (.gov.in domain)
+
+2. **Verify case number**
+   - Search case number on official court website
+   - Contact court registrar office
+
+3. **Check for official seal/stamp**
+   - Genuine notices have court seal
+   - Signature of authorized officer
+
+4. **Never pay immediately**
+   - Government never asks for urgent payments
+   - No personal bank accounts or UPI
+   - All payments through official portals
+
+## 🚨 If this is a SCAM:
+
+- **Do NOT respond** to the sender
+- **Do NOT pay** any amount
+- **Report** to Cyber Crime Portal: cybercrime.gov.in
+- **Save** this notice as evidence
+- Call **National Cyber Crime Helpline: 1930**
+
+## ✅ If this is GENUINE:
+
+- Respond through proper legal channels
+- Consult a lawyer if needed
+- Follow official court procedures
+- Keep all documentation
+
+${isOCR ? "\n📸 *Note: This was a scanned document processed via OCR*" : ""}
+    `.trim();
+
+    // ═══════════════════════════════════════════════════
+    // STEP 4: Save to database for learning
+    // ═══════════════════════════════════════════════════
+    try {
+      await ScamReport.create({
+        reportedBy: req.user.id,
+        noticeText: noticeText.trim().substring(0, 5000),
+        noticeFile: req.file ? req.file.filename : null,
+        isScam,
+        scamType: isScam ? "fake_legal_threat" : null,
+        detectedPatterns: ruleBasedAnalysis.redFlags.map((f) => f.type),
+        authenticityScore: finalScore,
+        aiAnalysis: aiResponse.substring(0, 2000),
+        redFlags: ruleBasedAnalysis.redFlags.map((f) => f.message),
+      });
+    } catch (dbError) {
+      console.error("Failed to save scam report:", dbError);
+      // Don't fail the request if DB save fails
+    }
+
+    // Save to chat history
     const session = `scam_${req.user.id}_${Date.now()}`;
     await saveToHistory(
       req.user.id,
       session,
       `[Scam Detection Request]\n${noticeText.trim().substring(0, 500)}...`,
-      reply
+      finalResponse
     );
 
     res.json({
-      reply: isOCR
-        ? `📸 *Note: This was a scanned document processed via OCR. Minor character recognition errors are possible and were not flagged as scam indicators.*\n\n${reply}`
-        : reply,
+      reply: finalResponse,
       sessionId: session,
+      analysis: {
+        score: finalScore,
+        verdict: ruleBasedAnalysis.verdict,
+        isScam,
+        totalRedFlags: ruleBasedAnalysis.totalRedFlags,
+        criticalFlags: ruleBasedAnalysis.criticalFlags,
+        highFlags: ruleBasedAnalysis.highFlags,
+      },
     });
   } catch (error) {
+    console.error("SCAM DETECTION ERROR:", error);
     res.status(500).json({
       error: error.message,
       reply: "Sorry, I could not analyze this notice. Please try again.",

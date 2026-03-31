@@ -170,7 +170,7 @@ export default function TrackStatus() {
               </div>
 
               {/* Info Cards */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
                 <div style={{ background: "rgba(0,0,0,0.5)", borderRadius: 12, padding: "16px", border: "1px solid rgba(30,95,255,.15)" }}>
                   <p style={{ ...DM, fontSize: 9, color: "rgba(255,255,255,.3)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 6 }}>Assigned Lawyer</p>
                   <p style={{ ...DM, fontSize: 13, color: "#fff", fontWeight: 600 }}>
@@ -191,6 +191,17 @@ export default function TrackStatus() {
                 <div style={{ background: "rgba(0,0,0,0.5)", borderRadius: 12, padding: "16px", border: "1px solid rgba(30,95,255,.15)" }}>
                   <p style={{ ...DM, fontSize: 9, color: "rgba(255,255,255,.3)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 6 }}>Case Type</p>
                   <p style={{ ...DM, fontSize: 13, color: "#fff", fontWeight: 600 }}>{trackingData.case.caseType}</p>
+                </div>
+                <div style={{ background: "rgba(0,0,0,0.5)", borderRadius: 12, padding: "16px", border: "1px solid rgba(30,95,255,.15)" }}>
+                  <p style={{ ...DM, fontSize: 9, color: "rgba(255,255,255,.3)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 6 }}>Court & District</p>
+                  <p style={{ ...DM, fontSize: 13, color: "#fff", fontWeight: 600 }}>
+                    {trackingData.case.courtName || "Not assigned"}
+                  </p>
+                  {trackingData.case.district && (
+                    <p style={{ ...DM, fontSize: 10, color: "rgba(255,255,255,.3)", marginTop: 2 }}>
+                      📍 {trackingData.case.district}, Telangana
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

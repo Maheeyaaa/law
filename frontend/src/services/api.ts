@@ -29,6 +29,8 @@ export const createCase = (data: {
   title: string;
   description: string;
   caseType: string;
+  district?: string;
+  courtName?: string;
 }) => API.post("/cases", data);
 export const getCaseStats = () => API.get("/cases/stats");
 
@@ -75,6 +77,13 @@ export const uploadAvatar = (formData: FormData) =>
   API.post("/profile/upload-avatar", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
+
+  // Location data (Telangana)
+export const getLocationData = () => API.get("/location");
+export const getDistricts = () => API.get("/location/districts");
+export const getCourts = (district?: string) =>
+  API.get("/location/courts", { params: { district } });
+export const getSpecializations = () => API.get("/location/specializations");
 
   // Case Detail + Timeline
 export const getCaseDetail = (id: string) => API.get(`/cases/${id}`);

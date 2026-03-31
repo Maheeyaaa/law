@@ -1,5 +1,3 @@
-// backend/models/CaseTimeline.js
-
 import mongoose from "mongoose";
 
 const caseTimelineSchema = new mongoose.Schema(
@@ -25,6 +23,7 @@ const caseTimelineSchema = new mongoose.Schema(
     type: {
       type: String,
       enum: [
+        "case_created",
         "case_filed",
         "under_review",
         "lawyer_assigned",

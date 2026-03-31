@@ -152,8 +152,8 @@ export default function MyCases() {
           ) : (
             <>
               {/* Table Header */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 2.5fr 1fr 1fr 1fr 1fr", gap: 12, padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,.06)", marginBottom: 8 }}>
-                {["Case ID", "Title", "Type", "Status", "Priority", "Action"].map(h => (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 0.8fr 1fr 0.8fr 0.8fr 0.6fr", gap: 12, padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,.06)", marginBottom: 8 }}>
+                {["Case ID", "Title", "Type", "district", "Status", "Priority", "Action"].map(h => (
                   <p key={h} style={{ ...DM, fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "rgba(255,255,255,.3)" }}>{h}</p>
                 ))}
               </div>
@@ -161,13 +161,14 @@ export default function MyCases() {
               {/* Table Rows */}
               <div style={{ maxHeight: 500, overflowY: "auto" }}>
                 {cases.map((c, i) => (
-                  <div key={c._id} style={{ display: "grid", gridTemplateColumns: "1fr 2.5fr 1fr 1fr 1fr 1fr", gap: 12, padding: "14px 16px", borderRadius: 10, background: i % 2 === 0 ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,.02)", alignItems: "center", marginBottom: 4, transition: "all .2s ease", cursor: "pointer" }}
+                  <div key={c._id} style={{ display: "grid", gridTemplateColumns: "1fr 2fr 0.8fr 1fr 0.8fr 0.8fr 0.6fr", gap: 12, padding: "14px 16px", borderRadius: 10, background: i % 2 === 0 ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,.02)", alignItems: "center", marginBottom: 4, transition: "all .2s ease", cursor: "pointer" }}
                     onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(30,95,255,.08)"; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = i % 2 === 0 ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,.02)"; }}
                     onClick={() => navigate(`/citizen/cases/${c._id}`)}>
                     <p style={{ ...DM, fontSize: 11, color: BLUEB, fontWeight: 600 }}>{c.caseId}</p>
                     <p style={{ ...DM, fontSize: 12, color: "rgba(255,255,255,.7)" }}>{c.title}</p>
                     <p style={{ ...DM, fontSize: 10, color: "rgba(255,255,255,.4)" }}>{c.caseType}</p>
+                    <p style={{ ...DM, fontSize: 10, color: "rgba(255,255,255,.4)" }}>{c.district || "—"}</p>
                     <span style={{ ...DM, fontSize: 9, fontWeight: 600, padding: "4px 10px", borderRadius: 99, background: `${statusColor(c.status)}15`, border: `1px solid ${statusColor(c.status)}44`, color: statusColor(c.status), display: "inline-block", textAlign: "center" }}>{c.status}</span>
                     <span style={{ ...DM, fontSize: 9, fontWeight: 600, padding: "4px 10px", borderRadius: 99, background: `${priorityColor(c.priority)}15`, color: priorityColor(c.priority), display: "inline-block", textAlign: "center" }}>{c.priority}</span>
                     <span style={{ ...DM, fontSize: 11, color: BLUEB, fontWeight: 600 }}>View →</span>

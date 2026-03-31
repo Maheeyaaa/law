@@ -162,6 +162,12 @@ export default function CaseDetail() {
               <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                 <span style={{ ...DM, fontSize: 10, padding: "4px 12px", borderRadius: 99, background: "rgba(30,95,255,0.2)", border: `1px solid ${statusColor(caseData.status)}44`, color: statusColor(caseData.status), fontWeight: 600 }}>{caseData.status}</span>
                 <span style={{ ...DM, fontSize: 10, padding: "4px 12px", borderRadius: 99, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,.1)", color: "rgba(255,255,255,.5)" }}>{caseData.caseType}</span>
+                {caseData.district && (
+                  <span style={{ ...DM, fontSize: 10, padding: "4px 12px", borderRadius: 99, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,.1)", color: "rgba(255,255,255,.5)" }}>📍 {caseData.district}</span>
+                )}
+                {caseData.courtName && (
+                  <span style={{ ...DM, fontSize: 10, padding: "4px 12px", borderRadius: 99, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,.1)", color: "rgba(255,255,255,.5)" }}>🏛️ {caseData.courtName}</span>
+                )}
                 <span style={{ ...DM, fontSize: 10, padding: "4px 12px", borderRadius: 99, background: "rgba(255,255,255,0.05)", border: `1px solid ${priorityColor(caseData.priority)}44`, color: priorityColor(caseData.priority) }}>{caseData.priority} Priority</span>
               </div>
             </div>

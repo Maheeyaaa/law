@@ -1,9 +1,5 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom"
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import Home from "./pages/Home"
-import NoticeExplainer from "./pages/NoticeExplainer"
-import DeadlineCalculator from "./pages/DeadlineCalculator"
-import FilingGuide from "./pages/FilingGuide"
-import DocumentChecklist from "./pages/DocumentChecklist"
 import LegalChatbot from "./pages/LegalChatbot"
 import Citizen from "./pages/Citizen";
 import MyCases from "./pages/MyCases";
@@ -15,18 +11,26 @@ import FindLawyer from "./pages/FindLawyer";
 import Notifications from "./pages/Notifications";
 import Help from "./pages/Help";
 import Settings from "./pages/Settings";
+import AdminPanel from "./pages/AdminPanel";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-
+        {/* Main */}
         <Route path="/" element={<Home />} />
-        <Route path="/notice" element={<NoticeExplainer />} />
-        <Route path="/deadline" element={<DeadlineCalculator />} />
-        <Route path="/guide" element={<FilingGuide />} />
-        <Route path="/checklist" element={<DocumentChecklist />} />
+        
+        {/* AI Assistant - All AI features in one place */}
         <Route path="/citizen/legal-chatbot" element={<LegalChatbot />} />
+        <Route path="/citizen/ai-assistant" element={<LegalChatbot />} />
+        
+        {/* Redirect old routes to unified AI page */}
+        <Route path="/notice" element={<Navigate to="/citizen/legal-chatbot" replace />} />
+        <Route path="/deadline" element={<Navigate to="/citizen/legal-chatbot" replace />} />
+        <Route path="/guide" element={<Navigate to="/citizen/legal-chatbot" replace />} />
+        <Route path="/checklist" element={<Navigate to="/citizen/legal-chatbot" replace />} />
+        
+        {/* Citizen Dashboard & Pages */}
         <Route path="/citizen" element={<Citizen />} />
         <Route path="/citizen/cases" element={<MyCases />} />
         <Route path="/citizen/cases/:id" element={<CaseDetail />} />
@@ -37,6 +41,9 @@ function App() {
         <Route path="/citizen/notifications" element={<Notifications />} />
         <Route path="/citizen/help" element={<Help />} />
         <Route path="/citizen/settings" element={<Settings />} />
+        
+        {/* Admin */}
+        <Route path="/admin-panel" element={<AdminPanel />} />
       </Routes>
     </BrowserRouter>
   )

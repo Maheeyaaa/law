@@ -520,6 +520,7 @@ function RegisterPage({ role, onSignIn, onBack }) {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
 
+    const [district, setDistrict] = useState("");
     const [barCouncilNumber, setBarCouncilNumber] = useState("");
     const [specialization, setSpecialization] = useState("");
     const [experience, setExperience] = useState("");
@@ -537,7 +538,8 @@ function RegisterPage({ role, onSignIn, onBack }) {
             name,
             email,
             password,
-            role: backendRole
+            role: backendRole,
+            district,
             };
 
             if (backendRole === "lawyer") {
@@ -653,6 +655,28 @@ function RegisterPage({ role, onSignIn, onBack }) {
                     onChange={(e) => setPassword(e.target.value)}
                 />
 
+                {/* District selection for all users */}
+                    <div style={fieldLabel}>DISTRICT (TELANGANA)</div>
+                    <select
+                        style={{ ...authInput, cursor: "pointer" }}
+                        value={district}
+                        onChange={(e) => setDistrict(e.target.value)}
+                    >
+                        <option value="" style={{ backgroundColor: "#1a1a2e" }}>Select your district…</option>
+                        {[
+                            "Hyderabad", "Rangareddy", "Medchal-Malkajgiri", "Sangareddy", "Vikarabad",
+                            "Warangal Urban", "Warangal Rural", "Hanumakonda", "Khammam", "Nalgonda",
+                            "Karimnagar", "Nizamabad", "Adilabad", "Komaram Bheem Asifabad", "Mancherial",
+                            "Peddapalli", "Jagtial", "Rajanna Sircilla", "Kamareddy", "Medak",
+                            "Siddipet", "Jangaon", "Mahabubabad", "Warangal", "Suryapet",
+                            "Yadadri Bhuvanagiri", "Mahabubnagar", "Nagarkurnool", "Wanaparthy",
+                            "Jogulamba Gadwal", "Narayanpet", "Mulugu", "Jayashankar Bhupalpally",
+                            "Bhadradri Kothagudem",
+                        ].map(d => (
+                            <option key={d} value={d} style={{ backgroundColor: "#1a1a2e" }}>{d}</option>
+                        ))}
+                    </select>
+
                 {/* Lawyer-only fields */}
                 {isLawyer && (
                     <>
@@ -685,15 +709,23 @@ function RegisterPage({ role, onSignIn, onBack }) {
                             onChange={(e) => setSpecialization(e.target.value)}
                         >
                             <option value="" style={{ backgroundColor: "#1a1a2e" }}>Select specialization…</option>
-                            <option value="criminal" style={{ backgroundColor: "#1a1a2e" }}>Criminal Law</option>
-                            <option value="civil" style={{ backgroundColor: "#1a1a2e" }}>Civil Law</option>
-                            <option value="corporate" style={{ backgroundColor: "#1a1a2e" }}>Corporate Law</option>
-                            <option value="family" style={{ backgroundColor: "#1a1a2e" }}>Family Law</option>
-                            <option value="property" style={{ backgroundColor: "#1a1a2e" }}>Property Law</option>
-                            <option value="intellectual" style={{ backgroundColor: "#1a1a2e" }}>Intellectual Property</option>
-                            <option value="tax" style={{ backgroundColor: "#1a1a2e" }}>Tax Law</option>
-                            <option value="other" style={{ backgroundColor: "#1a1a2e" }}>Other</option>
-                        </select>
+                            <option value="Criminal Law" style={{ backgroundColor: "#1a1a2e" }}>Criminal Law</option>
+                            <option value="Civil Law" style={{ backgroundColor: "#1a1a2e" }}>Civil Law</option>
+                            <option value="Corporate Law" style={{ backgroundColor: "#1a1a2e" }}>Corporate Law</option>
+                            <option value="Family Law" style={{ backgroundColor: "#1a1a2e" }}>Family Law</option>
+                            <option value="Property Law" style={{ backgroundColor: "#1a1a2e" }}>Property Law</option>
+                            <option value="Consumer Law" style={{ backgroundColor: "#1a1a2e" }}>Consumer Law</option>
+                            <option value="Employment Law" style={{ backgroundColor: "#1a1a2e" }}>Employment Law</option>
+                            <option value="Tax Law" style={{ backgroundColor: "#1a1a2e" }}>Tax Law</option>
+                            <option value="Constitutional Law" style={{ backgroundColor: "#1a1a2e" }}>Constitutional Law</option>
+                            <option value="Intellectual Property" style={{ backgroundColor: "#1a1a2e" }}>Intellectual Property</option>
+                            <option value="Land & Real Estate" style={{ backgroundColor: "#1a1a2e" }}>Land & Real Estate</option>
+                            <option value="Revenue Law" style={{ backgroundColor: "#1a1a2e" }}>Revenue Law</option>
+                            <option value="Cyber Law" style={{ backgroundColor: "#1a1a2e" }}>Cyber Law</option>
+                            <option value="Environmental Law" style={{ backgroundColor: "#1a1a2e" }}>Environmental Law</option>
+                            <option value="Motor Accident Claims" style={{ backgroundColor: "#1a1a2e" }}>Motor Accident Claims</option>
+                            <option value="Other" style={{ backgroundColor: "#1a1a2e" }}>Other</option>
+                            </select>
 
                         <div style={sectionDivider}>License Document</div>
 

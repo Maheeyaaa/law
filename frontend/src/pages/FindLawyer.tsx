@@ -45,6 +45,7 @@ export default function FindLawyer() {
   const [lawyers, setLawyers] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [specFilter, setSpecFilter] = useState("");
+  const [districtFilter, setDistrictFilter] = useState("");
   const [specializations, setSpecializations] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -222,6 +223,16 @@ export default function FindLawyer() {
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
+              <select value={districtFilter} onChange={e => { setDistrictFilter(e.target.value); setPage(1); }} style={{ ...DM, background: "rgba(0,0,0,0.6)", border: "1px solid rgba(30,95,255,.25)", borderRadius: 10, padding: "10px 16px", color: "rgba(255,255,255,.6)", fontSize: 12, outline: "none", cursor: "pointer", minWidth: 160 }}>
+                <option value="">All Districts</option>
+                {["Hyderabad", "Rangareddy", "Medchal-Malkajgiri", "Sangareddy", "Vikarabad",
+                  "Warangal Urban", "Warangal Rural", "Hanumakonda", "Khammam", "Nalgonda",
+                  "Karimnagar", "Nizamabad", "Adilabad", "Mancherial", "Peddapalli",
+                  "Jagtial", "Kamareddy", "Medak", "Siddipet", "Mahabubnagar"
+                ].map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
             </div>
 
             {/* Results Count */}
@@ -254,6 +265,7 @@ export default function FindLawyer() {
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <p style={{ ...DM, fontSize: 14, fontWeight: 700, color: "#fff" }}>{l.name}</p>
                           <p style={{ ...DM, fontSize: 11, color: ICEB, marginTop: 2 }}>{l.specialization || "General Practice"}</p>
+                          {l.district && <p style={{ ...DM, fontSize: 10, color: "rgba(255,255,255,.3)", marginTop: 2 }}>📍 {l.district}, Telangana</p>}
                         </div>
                       </div>
 

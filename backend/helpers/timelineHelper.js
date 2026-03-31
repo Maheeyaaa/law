@@ -1,5 +1,3 @@
-// backend/helpers/timelineHelper.js
-
 import CaseTimeline from "../models/CaseTimeline.js";
 
 export const addTimelineEvent = async ({

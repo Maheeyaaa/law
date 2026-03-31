@@ -20,6 +20,7 @@ const activitySchema = new mongoose.Schema(
     type: {
       type: String,
       enum: [
+        "case_created",
         "case_filed",
         "case_updated",
         "hearing_scheduled",

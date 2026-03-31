@@ -1,15 +1,12 @@
-// backend/controllers/caseController.js
-
 import Case from "../models/Case.js";
 import CaseTimeline from "../models/CaseTimeline.js";
 import Activity from "../models/Activity.js";
 import Notification from "../models/Notification.js";
 import { addTimelineEvent } from "../helpers/timelineHelper.js";
 
-// Create a new case
 export const createCase = async (req, res) => {
   try {
-    const { title, description, caseType, priority, notes } = req.body;
+    const { title, description, caseType, priority, notes, district, courtName } = req.body;
 
     if (!title || !description || !caseType) {
       return res.status(400).json({
@@ -24,40 +21,34 @@ export const createCase = async (req, res) => {
       caseType,
       priority: priority || "Medium",
       notes: notes || "",
+      state: "Telangana",
+      district: district || "",
+      courtName: courtName || "",
+      status: "Draft",
+      cnrNumber: null,
     });
 
     await newCase.save();
 
-    // Auto-create timeline events
     await addTimelineEvent({
       caseId: newCase._id,
       citizenId: req.user.id,
-      event: "Case Filed",
-      description: `Case "${title}" has been filed successfully`,
-      type: "case_filed",
+      event: "Case Created",
+      description: `Case "${title}" has been created and is awaiting court filing.`,
+      type: "case_created",
     });
 
-    await addTimelineEvent({
-      caseId: newCase._id,
-      citizenId: req.user.id,
-      event: "Under Review",
-      description: "Your case is being reviewed by the court",
-      type: "under_review",
-    });
-
-    // Log activity
     await Activity.create({
       citizen: req.user.id,
       case: newCase._id,
-      text: `New case filed: ${title}`,
-      type: "case_filed",
+      text: `New case created: ${title}`,
+      type: "case_created",
     });
 
-    // Create notification
     await Notification.create({
       citizen: req.user.id,
-      title: "Case Filed Successfully",
-      message: `Your case "${title}" has been filed with ID ${newCase.caseId}`,
+      title: "Case Created Successfully",
+      message: `Your case "${title}" has been created and is awaiting court filing.`,
       type: "case",
     });
 
@@ -70,7 +61,6 @@ export const createCase = async (req, res) => {
   }
 };
 
-// Get all cases for logged-in citizen
 export const getMyCases = async (req, res) => {
   try {
     const { status, search, page = 1, limit = 10 } = req.query;
@@ -110,7 +100,6 @@ export const getMyCases = async (req, res) => {
   }
 };
 
-// Get single case by ID with full details
 export const getCaseById = async (req, res) => {
   try {
     const caseDoc = await Case.findOne({
@@ -122,18 +111,15 @@ export const getCaseById = async (req, res) => {
       return res.status(404).json({ message: "Case not found" });
     }
 
-    // Get timeline for this case
     const timeline = await CaseTimeline.find({ case: caseDoc._id })
       .sort({ completedAt: 1 });
 
-    // Get documents linked to this case
     const Document = (await import("../models/Document.js")).default;
     const documents = await Document.find({
       case: caseDoc._id,
       citizen: req.user.id,
     }).sort({ createdAt: -1 });
 
-    // Get hearings for this case
     const Hearing = (await import("../models/Hearing.js")).default;
     const hearings = await Hearing.find({
       case: caseDoc._id,
@@ -151,7 +137,6 @@ export const getCaseById = async (req, res) => {
   }
 };
 
-// Update case
 export const updateCase = async (req, res) => {
   try {
     const { description, notes } = req.body;
@@ -192,7 +177,6 @@ export const updateCase = async (req, res) => {
   }
 };
 
-// Get case stats for dashboard
 export const getCaseStats = async (req, res) => {
   try {
     const citizenId = req.user.id;
@@ -220,10 +204,8 @@ export const getCaseStats = async (req, res) => {
   }
 };
 
-// Get case timeline
 export const getCaseTimeline = async (req, res) => {
   try {
-    // Verify the case belongs to this citizen
     const caseDoc = await Case.findOne({
       _id: req.params.id,
       citizen: req.user.id,
@@ -236,7 +218,6 @@ export const getCaseTimeline = async (req, res) => {
     const timeline = await CaseTimeline.find({ case: req.params.id })
       .sort({ completedAt: 1 });
 
-    // Build the full expected steps with completion status
     const expectedSteps = [
       { type: "case_filed", event: "Case Filed" },
       { type: "under_review", event: "Under Review" },
@@ -259,7 +240,6 @@ export const getCaseTimeline = async (req, res) => {
       };
     });
 
-    // Add any extra timeline events not in expected steps (like document uploads)
     const extraEvents = timeline.filter(
       (t) => !expectedSteps.find((s) => s.type === t.type)
     );
@@ -271,6 +251,89 @@ export const getCaseTimeline = async (req, res) => {
       timeline: fullTimeline,
       extraEvents,
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const updateCNR = async (req, res) => {
+  try {
+    if (req.user.role !== "Court Staff") {
+      return res.status(403).json({
+        message: "Access denied. Only court staff can file cases in court.",
+      });
+    }
+
+    const { cnrNumber } = req.body;
+
+    if (!cnrNumber) {
+      return res.status(400).json({
+        message: "CNR number is required",
+      });
+    }
+
+    const cnrRegex = /^[A-Z]{4}\d{12}$/;
+    if (!cnrRegex.test(cnrNumber)) {
+      return res.status(400).json({
+        message: "Invalid CNR number format",
+        format: "Must be 4 letters + 12 digits (e.g., TSHY012345678901)",
+      });
+    }
+
+    const existingCase = await Case.findOne({ cnrNumber });
+    if (existingCase) {
+      return res.status(400).json({
+        message: "This CNR number is already assigned to another case",
+        existingCaseId: existingCase.caseId,
+      });
+    }
+
+    const caseDoc = await Case.findById(req.params.id);
+
+    if (!caseDoc) {
+      return res.status(404).json({ message: "Case not found" });
+    }
+
+    if (caseDoc.cnrNumber) {
+      return res.status(400).json({
+        message: "Case already has CNR number assigned",
+        cnrNumber: caseDoc.cnrNumber,
+      });
+    }
+
+    caseDoc.cnrNumber = cnrNumber;
+    caseDoc.status = "Filed";
+    caseDoc.courtFilingDate = new Date();
+
+    await caseDoc.save();
+
+    await addTimelineEvent({
+      caseId: caseDoc._id,
+      citizenId: caseDoc.citizen,
+      event: "Case Filed in Court",
+      description: `Case officially filed in court with CNR: ${cnrNumber}`,
+      type: "case_filed",
+    });
+
+    await Activity.create({
+      citizen: caseDoc.citizen,
+      case: caseDoc._id,
+      text: `Case filed in court with CNR: ${cnrNumber}`,
+      type: "case_filed",
+    });
+
+    await Notification.create({
+      citizen: caseDoc.citizen,
+      title: "Case Filed in Court",
+      message: `Your case "${caseDoc.title}" has been officially filed in court. CNR: ${cnrNumber}`,
+      type: "case",
+    });
+
+    res.json({
+      message: "Case filed successfully in court",
+      case: caseDoc,
+    });
+
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

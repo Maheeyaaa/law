@@ -9,7 +9,7 @@ import Notification from "../models/Notification.js";
 // Browse all approved lawyers
 export const browseLawyers = async (req, res) => {
   try {
-    const { specialization, search, experience, page = 1, limit = 10 } = req.query;
+    const { specialization, search, experience, language, page = 1, limit = 10 } = req.query;
 
     const filter = {
       role: "lawyer",
@@ -18,6 +18,10 @@ export const browseLawyers = async (req, res) => {
 
     if (specialization) {
       filter.specialization = { $regex: specialization, $options: "i" };
+    }
+
+    if (language) {
+      filter.languages = language;  // Filter lawyers who speak this language
     }
 
     if (search) {
@@ -48,12 +52,18 @@ export const browseLawyers = async (req, res) => {
       specialization: { $ne: null, $ne: "" },
     });
 
+    const languages = await User.distinct("languages", {
+      role: "lawyer",
+      verificationStatus: "approved",
+    });
+
     res.json({
       lawyers,
       total,
       page: parseInt(page),
       totalPages: Math.ceil(total / parseInt(limit)),
       specializations,
+      languages,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

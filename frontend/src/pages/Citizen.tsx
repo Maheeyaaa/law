@@ -39,6 +39,7 @@ const NAV2: NI[] = [
 const NAV3: NI[] = [
   { label: "Help Center", icon: "❓", id: "help" },
   { label: "Settings", icon: "⚙️", id: "set" },
+  { label: "Admin Panel", icon: "🛠️", id: "admin" },
 ];
 
 const NAV_TO_SECTION: Record<string, number> = {
@@ -108,13 +109,69 @@ export default function CitizenDashboard() {
   
   // Form states
   const [caseFilter, setCaseFilter] = useState("All");
-  const [fileForm, setFileForm] = useState({ caseType: "Civil Dispute", title: "", description: "" });
+  const [fileForm, setFileForm] = useState({ caseType: "Civil Dispute", title: "", description: "", district: "", courtName: "" });
   const [filing, setFiling] = useState(false);
   const [fileMsg, setFileMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any>(null);
   const [searching, setSearching] = useState(false);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Telangana data
+  const telanganaDistricts = [
+    "Hyderabad", "Rangareddy", "Medchal-Malkajgiri", "Sangareddy", "Vikarabad",
+    "Warangal Urban", "Warangal Rural", "Hanumakonda", "Khammam", "Nalgonda",
+    "Karimnagar", "Nizamabad", "Adilabad", "Komaram Bheem Asifabad", "Mancherial",
+    "Peddapalli", "Jagtial", "Rajanna Sircilla", "Kamareddy", "Medak",
+    "Siddipet", "Jangaon", "Mahabubabad", "Warangal", "Suryapet",
+    "Yadadri Bhuvanagiri", "Mahabubnagar", "Nagarkurnool", "Wanaparthy",
+    "Jogulamba Gadwal", "Narayanpet", "Mulugu", "Jayashankar Bhupalpally",
+    "Bhadradri Kothagudem",
+  ];
+
+const telanganaCourts = [
+  { name: "Telangana High Court, Hyderabad", district: "Hyderabad" },
+  { name: "District Court, Hyderabad", district: "Hyderabad" },
+  { name: "City Civil Court, Hyderabad", district: "Hyderabad" },
+  { name: "City Criminal Court, Hyderabad", district: "Hyderabad" },
+  { name: "Family Court, Hyderabad", district: "Hyderabad" },
+  { name: "Consumer Court, Hyderabad", district: "Hyderabad" },
+  { name: "Labour Court, Hyderabad", district: "Hyderabad" },
+  { name: "Small Causes Court, Hyderabad", district: "Hyderabad" },
+  { name: "Metropolitan Magistrate Court, Hyderabad", district: "Hyderabad" },
+  { name: "District Court, Rangareddy", district: "Rangareddy" },
+  { name: "District Court, Medchal-Malkajgiri", district: "Medchal-Malkajgiri" },
+  { name: "District Court, Sangareddy", district: "Sangareddy" },
+  { name: "District Court, Vikarabad", district: "Vikarabad" },
+  { name: "District Court, Warangal", district: "Warangal Urban" },
+  { name: "District Court, Hanumakonda", district: "Hanumakonda" },
+  { name: "District Court, Khammam", district: "Khammam" },
+  { name: "District Court, Nalgonda", district: "Nalgonda" },
+  { name: "District Court, Karimnagar", district: "Karimnagar" },
+  { name: "District Court, Nizamabad", district: "Nizamabad" },
+  { name: "District Court, Adilabad", district: "Adilabad" },
+  { name: "District Court, Mancherial", district: "Mancherial" },
+  { name: "District Court, Peddapalli", district: "Peddapalli" },
+  { name: "District Court, Jagtial", district: "Jagtial" },
+  { name: "District Court, Rajanna Sircilla", district: "Rajanna Sircilla" },
+  { name: "District Court, Kamareddy", district: "Kamareddy" },
+  { name: "District Court, Medak", district: "Medak" },
+  { name: "District Court, Siddipet", district: "Siddipet" },
+  { name: "District Court, Jangaon", district: "Jangaon" },
+  { name: "District Court, Mahabubabad", district: "Mahabubabad" },
+  { name: "District Court, Suryapet", district: "Suryapet" },
+  { name: "District Court, Yadadri Bhuvanagiri", district: "Yadadri Bhuvanagiri" },
+  { name: "District Court, Mahabubnagar", district: "Mahabubnagar" },
+  { name: "District Court, Nagarkurnool", district: "Nagarkurnool" },
+  { name: "District Court, Wanaparthy", district: "Wanaparthy" },
+  { name: "District Court, Jogulamba Gadwal", district: "Jogulamba Gadwal" },
+  { name: "District Court, Narayanpet", district: "Narayanpet" },
+  { name: "District Court, Mulugu", district: "Mulugu" },
+  { name: "District Court, Jayashankar Bhupalpally", district: "Jayashankar Bhupalpally" },
+  { name: "District Court, Bhadradri Kothagudem", district: "Bhadradri Kothagudem" },
+  { name: "Telangana State Consumer Disputes Redressal Commission", district: "Hyderabad" },
+  { name: "Telangana Administrative Tribunal", district: "Hyderabad" },
+];
 
   // Dynamic badges based on stats
   const NAV1_WITH_BADGES = NAV1_BASE.map(item => {
@@ -148,6 +205,7 @@ export default function CitizenDashboard() {
       notif: "/citizen/notifications",
       help: "/citizen/help",
       set: "/citizen/settings",
+      admin: "/admin-panel",
     };
 
     if (routeMap[id]) {
@@ -234,9 +292,15 @@ export default function CitizenDashboard() {
     }
     try {
       setFiling(true); setFileMsg(null);
-      const res = await createCase({ title: fileForm.title, description: fileForm.description, caseType: fileForm.caseType });
+      const res = await createCase({
+        title: fileForm.title,
+        description: fileForm.description,
+        caseType: fileForm.caseType,
+        district: fileForm.district,
+        courtName: fileForm.courtName,
+      });
       setFileMsg({ type: "success", text: `Case filed! ID: ${res.data.case.caseId}` });
-      setFileForm({ caseType: "Civil Dispute", title: "", description: "" });
+      setFileForm({ caseType: "Civil Dispute", title: "", description: "", district: "", courtName: "" });
       // Refresh dashboard
       try {
         const dashRes = await getDashboard();
@@ -468,8 +532,26 @@ export default function CitizenDashboard() {
                         </select>
                       </div>
                       <div>
+                        <p style={{ ...DM, fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "rgba(255,255,255,.25)", marginBottom: 6 }}>District (Telangana)</p>
+                        <select value={fileForm.district} onChange={e => {
+                          setFileForm({ ...fileForm, district: e.target.value, courtName: "" });
+                        }} style={{ ...DM, width: "100%", background: "rgba(255,255,255,.04)", border: "1px solid rgba(30,95,255,.25)", borderRadius: 8, padding: "8px 12px", color: "rgba(255,255,255,.5)", fontSize: 12, outline: "none", cursor: "pointer" }}>
+                          <option value="">Select District</option>
+                          {telanganaDistricts.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <p style={{ ...DM, fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "rgba(255,255,255,.25)", marginBottom: 6 }}>Court</p>
+                        <select value={fileForm.courtName} onChange={e => setFileForm({ ...fileForm, courtName: e.target.value })} style={{ ...DM, width: "100%", background: "rgba(255,255,255,.04)", border: "1px solid rgba(30,95,255,.25)", borderRadius: 8, padding: "8px 12px", color: "rgba(255,255,255,.5)", fontSize: 12, outline: "none", cursor: "pointer" }}>
+                          <option value="">Select Court</option>
+                          {telanganaCourts
+                            .filter(c => !fileForm.district || c.district === fileForm.district)
+                            .map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                        </select>
+                      </div>
+                      <div>
                         <p style={{ ...DM, fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "rgba(255,255,255,.25)", marginBottom: 6 }}>Case Title</p>
-                        <input placeholder="e.g. Property Dispute" value={fileForm.title} onChange={e => setFileForm({ ...fileForm, title: e.target.value })} style={{ ...DM, width: "100%", background: "rgba(255,255,255,.04)", border: "1px solid rgba(30,95,255,.25)", borderRadius: 8, padding: "8px 12px", color: "rgba(255,255,255,.5)", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
+                        <input placeholder="e.g. Property Dispute in Madhapur" value={fileForm.title} onChange={e => setFileForm({ ...fileForm, title: e.target.value })} style={{ ...DM, width: "100%", background: "rgba(255,255,255,.04)", border: "1px solid rgba(30,95,255,.25)", borderRadius: 8, padding: "8px 12px", color: "rgba(255,255,255,.5)", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
                       </div>
                       <div>
                         <p style={{ ...DM, fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "rgba(255,255,255,.25)", marginBottom: 6 }}>Brief Description</p>

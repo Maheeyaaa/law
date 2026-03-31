@@ -45,6 +45,8 @@ const seed = async () => {
         email: "rahul@example.com",
         password: hashed,
         role: "citizen",
+        state: "Telangana",
+        district: "Hyderabad",
         verificationStatus: "approved",
       });
       console.log("Created citizen ✅");
@@ -59,24 +61,28 @@ const seed = async () => {
         email: "ananya@example.com",
         specialization: "Property Law",
         experience: 8,
+        district: "Hyderabad",
       },
       {
         name: "Adv. Suresh K.",
         email: "suresh@example.com",
         specialization: "Employment Law",
         experience: 12,
+        district: "Rangareddy",
       },
       {
         name: "Adv. Ritu Mehra",
         email: "ritu@example.com",
         specialization: "Consumer Law",
         experience: 6,
+        district: "Hyderabad",
       },
       {
         name: "Adv. N. Verma",
         email: "nverma@example.com",
         specialization: "Family Law",
         experience: 15,
+        district: "Medchal-Malkajgiri",
       },
     ];
 
@@ -108,6 +114,9 @@ const seed = async () => {
         "Dispute regarding ownership of residential property in Sector 45",
       caseType: "Property",
       status: "Active",
+      state: "Telangana",
+      district: "Hyderabad",
+      courtName: "City Civil Court, Hyderabad",
       assignedLawyer: lawyers[0]._id,
       priority: "High",
       nextHearingDate: new Date(now.getTime() + 5 * 86400000),
@@ -119,6 +128,9 @@ const seed = async () => {
       description: "Civil complaint against municipal corporation",
       caseType: "Civil Dispute",
       status: "Pending",
+      state: "Telangana",
+      district: "Hyderabad",
+      courtName: "District Court, Hyderabad",
       priority: "Medium",
     });
 
@@ -128,6 +140,9 @@ const seed = async () => {
       description: "Dispute over tenant agreement terms and conditions",
       caseType: "Property",
       status: "Resolved",
+      state: "Telangana",
+      district: "Rangareddy",
+      courtName: "District Court, Rangareddy",
       assignedLawyer: lawyers[0]._id,
       priority: "Low",
     });
@@ -138,6 +153,9 @@ const seed = async () => {
       description: "Government land acquisition compensation dispute",
       caseType: "Property",
       status: "Active",
+      state: "Telangana",
+      district: "Rangareddy",
+      courtName: "District Court, Rangareddy",
       assignedLawyer: lawyers[1]._id,
       priority: "High",
       nextHearingDate: new Date(now.getTime() + 12 * 86400000),
@@ -149,6 +167,9 @@ const seed = async () => {
       description: "Breach of service contract by vendor company",
       caseType: "Contract",
       status: "Pending",
+      state: "Telangana",
+      district: "Hyderabad",
+      courtName: "City Civil Court, Hyderabad",
       priority: "Medium",
     });
 
@@ -158,6 +179,9 @@ const seed = async () => {
       description: "Mutual consent divorce proceeding",
       caseType: "Family",
       status: "Resolved",
+      state: "Telangana",
+      district: "Hyderabad",
+      courtName: "Family Court, Hyderabad",
       assignedLawyer: lawyers[3]._id,
       priority: "Medium",
     });
@@ -168,6 +192,9 @@ const seed = async () => {
       description: "Defective product complaint against electronics company",
       caseType: "Consumer",
       status: "Active",
+      state: "Telangana",
+      district: "Hyderabad",
+      courtName: "Consumer Court, Hyderabad",
       assignedLawyer: lawyers[2]._id,
       priority: "Low",
     });
