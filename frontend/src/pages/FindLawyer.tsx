@@ -79,7 +79,7 @@ export default function FindLawyer() {
   useEffect(() => {
     fetchLawyers();
     fetchCases();
-  }, [searchQuery, specFilter, page]);
+  }, [searchQuery, specFilter, districtFilter,page]);
 
   useEffect(() => {
     if (tab === "requests") fetchRequests();
@@ -91,6 +91,7 @@ export default function FindLawyer() {
       const params: any = { page, limit: 12 };
       if (searchQuery.trim()) params.search = searchQuery.trim();
       if (specFilter) params.specialization = specFilter;
+      if (districtFilter) params.district = districtFilter;
 
       const res = await browseLawyers(params);
       setLawyers(res.data.lawyers);

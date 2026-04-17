@@ -10,6 +10,8 @@ import Hearing from "./models/Hearing.js";
 import Document from "./models/Document.js";
 import Activity from "./models/Activity.js";
 import Notification from "./models/Notification.js";
+import CaseTimeline from "./models/CaseTimeline.js";
+import FAQ from "./models/FAQ.js";
 
 // Fix DNS issue
 dns.setServers(["1.1.1.1", "8.8.8.8"]);
@@ -33,6 +35,8 @@ const seed = async () => {
     await Document.deleteMany({});
     await Activity.deleteMany({});
     await Notification.deleteMany({});
+    await CaseTimeline.deleteMany({});
+    await FAQ.deleteMany({});
     console.log("Cleared old data ✅");
 
     // Find or create citizen
@@ -52,6 +56,23 @@ const seed = async () => {
       console.log("Created citizen ✅");
     } else {
       console.log("Citizen already exists ✅");
+    }
+
+    let courtStaff = await User.findOne({ email: "admin@court.gov.in" });
+    if (!courtStaff) {
+      const hashed = await bcrypt.hash("admin123", 10);
+      courtStaff = await User.create({
+        name: "Court Admin",
+        email: "admin@court.gov.in",
+        password: hashed,
+        role: "court_staff",
+        state: "Telangana",
+        district: "Hyderabad",
+        verificationStatus: "approved",
+      });
+      console.log("Created court staff ✅");
+    } else {
+      console.log("Court staff already exists ✅");
     }
 
     // Create lawyers
@@ -96,8 +117,14 @@ const seed = async () => {
           ...info,
           password: hashed,
           role: "lawyer",
-          barCouncilNumber: "BC-" + Math.floor(10000 + Math.random() * 90000),
+          barCouncilNumber: `TS/${Math.floor(1000 + Math.random() * 9000)}/${2010 + Math.floor(Math.random() * 14)}`,
           verificationStatus: "approved",
+          isVerified: true,
+          isProfileComplete: true,
+          availability: "available",
+          availableDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+          languages: ["Telugu", "English"],
+          state: "Telangana",
         });
       }
       lawyers.push(lawyer);
@@ -173,32 +200,6 @@ const seed = async () => {
       priority: "Medium",
     });
 
-    const case6 = await Case.create({
-      citizen: citizen._id,
-      title: "Divorce Filing",
-      description: "Mutual consent divorce proceeding",
-      caseType: "Family",
-      status: "Resolved",
-      state: "Telangana",
-      district: "Hyderabad",
-      courtName: "Family Court, Hyderabad",
-      assignedLawyer: lawyers[3]._id,
-      priority: "Medium",
-    });
-
-    const case7 = await Case.create({
-      citizen: citizen._id,
-      title: "Consumer Complaint",
-      description: "Defective product complaint against electronics company",
-      caseType: "Consumer",
-      status: "Active",
-      state: "Telangana",
-      district: "Hyderabad",
-      courtName: "Consumer Court, Hyderabad",
-      assignedLawyer: lawyers[2]._id,
-      priority: "Low",
-    });
-
     console.log("Cases created ✅");
 
     // Create hearings
@@ -240,11 +241,11 @@ const seed = async () => {
     // Create documents
     const allCases = [case1, case2, case3, case4, case5];
     const docsInfo = [
-      { name: "Hearing Notice.pdf", fileType: "PDF", fileSize: "1.2 MB", status: "Verified", daysAgo: 2 },
-      { name: "Property Deed.pdf", fileType: "PDF", fileSize: "3.4 MB", status: "Verified", daysAgo: 12 },
-      { name: "Affidavit.docx", fileType: "DOCX", fileSize: "0.8 MB", status: "Pending", daysAgo: 20 },
-      { name: "Court Order.pdf", fileType: "PDF", fileSize: "2.1 MB", status: "Verified", daysAgo: 30 },
-      { name: "ID Proof.jpg", fileType: "JPG", fileSize: "0.5 MB", status: "Pending", daysAgo: 45 },
+      { name: "Hearing Notice.pdf", fileType: "PDF", fileSize: 1258291, status: "Verified", daysAgo: 2 },
+      { name: "Property Deed.pdf", fileType: "PDF", fileSize: 3565158, status: "Verified", daysAgo: 12 },
+      { name: "Affidavit.docx", fileType: "DOCX", fileSize: 838860, status: "Pending", daysAgo: 20 },
+      { name: "Court Order.pdf", fileType: "PDF", fileSize: 2202009, status: "Verified", daysAgo: 30 },
+      { name: "ID Proof.jpg", fileType: "JPG", fileSize: 524288, status: "Pending", daysAgo: 45 },
     ];
 
     for (let i = 0; i < docsInfo.length; i++) {
@@ -311,10 +312,6 @@ const seed = async () => {
     });
 
     console.log("Notifications created ✅");
-
-        // Create timeline events for existing cases
-    const CaseTimeline = (await import("./models/CaseTimeline.js")).default;
-    await CaseTimeline.deleteMany({});
 
     // Case 1 (Property Dispute - Active, has lawyer + hearing)
     await CaseTimeline.create({
@@ -418,11 +415,59 @@ const seed = async () => {
       completedAt: new Date(now.getTime() - 10 * 86400000),
     });
 
-    console.log("Timeline events created ✅");
+    // Case 4 (Land Acquisition - Active, has lawyer + hearing)
+    await CaseTimeline.create({
+      case: case4._id,
+      citizen: citizen._id,
+      event: "Case Filed",
+      description: 'Case "Land Acquisition" has been filed',
+      type: "case_filed",
+      completedAt: new Date(now.getTime() - 20 * 86400000),
+    });
+    await CaseTimeline.create({
+      case: case4._id,
+      citizen: citizen._id,
+      event: "Under Review",
+      description: "Case is under review",
+      type: "under_review",
+      completedAt: new Date(now.getTime() - 18 * 86400000),
+    });
+    await CaseTimeline.create({
+      case: case4._id,
+      citizen: citizen._id,
+      event: "Lawyer Assigned",
+      description: "Adv. Suresh K. has been assigned",
+      type: "lawyer_assigned",
+      completedAt: new Date(now.getTime() - 14 * 86400000),
+    });
+    await CaseTimeline.create({
+      case: case4._id,
+      citizen: citizen._id,
+      event: "Hearing Scheduled",
+      description: "Land compensation assessment hearing scheduled",
+      type: "hearing_scheduled",
+      completedAt: new Date(now.getTime() - 7 * 86400000),
+    });
 
-        // Create FAQs
-    const FAQ = (await import("./models/FAQ.js")).default;
-    await FAQ.deleteMany({});
+    // Case 5 (Contract Breach - Pending, no lawyer)
+    await CaseTimeline.create({
+      case: case5._id,
+      citizen: citizen._id,
+      event: "Case Filed",
+      description: 'Case "Contract Breach" has been filed',
+      type: "case_filed",
+      completedAt: new Date(now.getTime() - 10 * 86400000),
+    });
+    await CaseTimeline.create({
+      case: case5._id,
+      citizen: citizen._id,
+      event: "Under Review",
+      description: "Case is under review by the court",
+      type: "under_review",
+      completedAt: new Date(now.getTime() - 9 * 86400000),
+    });
+
+    console.log("Timeline events created ✅");
 
     const faqsData = [
       {

@@ -3,6 +3,14 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { DISTRICTS, SPECIALIZATIONS, LANGUAGES } from "../constants/telangana.js";
 
+console.log("Signing with secret:", process.env.JWT_SECRET?.substring(0, 10));
+const signToken = (id, role) => {
+  if (!process.env.JWT_SECRET) {
+    throw new Error("JWT_SECRET not defined");
+  }
+  return jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: "7d" });
+};
+
 export const registerUser = async (req, res) => {
   try {
     const { 
@@ -103,12 +111,7 @@ export const registerUser = async (req, res) => {
     });
 
     await user.save();
-
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET || "secretKey",
-      { expiresIn: "7d" }
-    );
+    const token = signToken(user._id, user.role);
 
     const userResponse = user.toObject();
     delete userResponse.password;
@@ -163,11 +166,7 @@ export const loginUser = async (req, res) => {
       });
     }
 
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET || "secretKey",
-      { expiresIn: "7d" }
-    );
+    const token = signToken(user._id, user.role);
 
     const userData = user.toObject();
     delete userData.password;
@@ -189,12 +188,6 @@ export const loginUser = async (req, res) => {
 
 export const getPendingLawyers = async (req, res) => {
   try {
-    if (req.user.role !== "Court Staff") {
-      return res.status(403).json({
-        message: "Access denied. Only court staff can view pending lawyers.",
-      });
-    }
-
     const lawyers = await User.find({
       role: "lawyer",
       verificationStatus: "pending",
@@ -212,12 +205,6 @@ export const getPendingLawyers = async (req, res) => {
 
 export const approveLawyer = async (req, res) => {
   try {
-    if (req.user.role !== "Court Staff") {
-      return res.status(403).json({
-        message: "Access denied. Only court staff can approve lawyers.",
-      });
-    }
-
     const lawyer = await User.findById(req.params.id);
 
     if (!lawyer) {
@@ -239,6 +226,7 @@ export const approveLawyer = async (req, res) => {
     }
 
     lawyer.verificationStatus = "approved";
+    lawyer.isVerified = true;
     await lawyer.save();
 
     res.json({
@@ -273,15 +261,12 @@ export const getApprovedLawyers = async (req, res) => {
   }
 };
 
-// TEMPORARY - For creating court staff account
 export const createCourtStaff = async (req, res) => {
   try {
     console.log("🔧 Creating court staff...");
 
-    // Check if already exists
     const existing = await User.findOne({ email: "admin@court.gov.in" });
     if (existing) {
-      console.log("⚠️ Court staff already exists");
       return res.status(400).json({ 
         message: "Court staff already exists",
         email: "admin@court.gov.in",
@@ -295,7 +280,7 @@ export const createCourtStaff = async (req, res) => {
       name: "Court Admin",
       email: "admin@court.gov.in",
       password: hashedPassword,
-      role: "Court Staff",
+      role: "court_staff",
       state: "Telangana",
       district: "Hyderabad",
       verificationStatus: "approved",
@@ -304,30 +289,24 @@ export const createCourtStaff = async (req, res) => {
     await courtStaff.save();
     console.log("✅ Court staff created successfully");
 
-    const token = jwt.sign(
-      { id: courtStaff._id, role: courtStaff.role },
-      process.env.JWT_SECRET || "secretKey",
-      { expiresIn: "7d" }
-    );
+    const token = signToken(courtStaff._id, courtStaff.role); // ← fixed
 
     res.json({
       message: "Court Staff created successfully",
       email: "admin@court.gov.in",
-      password: "admin123",
       token,
       user: {
         id: courtStaff._id,
         name: courtStaff.name,
         email: courtStaff.email,
-        role: courtStaff.role
-      }
+        role: courtStaff.role,
+      },
     });
 
   } catch (error) {
     console.error("❌ Error creating court staff:", error);
     res.status(500).json({ 
-      error: error.message,
-      stack: error.stack
+      error: error.message
     });
   }
 };

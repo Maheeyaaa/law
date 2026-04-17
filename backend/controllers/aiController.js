@@ -1,5 +1,5 @@
 // backend/controllers/aiController.js
-
+import mongoose from "mongoose";
 import Groq from "groq-sdk";
 import fs from "fs";
 import path from "path";
@@ -8,8 +8,6 @@ import { extractTextFromPDF } from "../utils/pdfExtractor.js";
 import { ScamDetector } from "../utils/scamDetector.js";
 import ScamReport from "../models/ScamReport.js";
 import UserAnalytics from "../models/UserAnalytics.js";
-
-// ⭐ REPLACE lines 9-16 with these:
 
 const trackFeatureUsage = async (userId, featureName) => {
   try {
@@ -24,8 +22,8 @@ const trackFeatureUsage = async (userId, featureName) => {
       chatbot: "chatbot",
       explainNotice: "noticeExplanation",
       calculateDeadline: "deadlineCalculation",
-      decodeTerm: "termDecoder",
-      filingGuide: "filingGuidance",
+      decodeLegalTerm: "termDecoder",
+      filingGuidance: "filingGuidance",
       generateChecklist: "checklistGeneration",
       checkLegalAid: "legalAidCheck",
       detectScam: "scamDetection",
@@ -63,7 +61,6 @@ const trackPDFUpload = async (userId, isOCR = false) => {
   }
 };
 
-// ⭐ ADD this NEW function (for tracking scam results):
 const trackScamResult = async (userId, isScam, score) => {
   try {
     let analytics = await UserAnalytics.findOne({ user: userId });
@@ -88,7 +85,24 @@ const trackScamResult = async (userId, isScam, score) => {
   }
 };
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const askGroq = async (systemPrompt, userMessage, maxTokens = 1024) => {
+  if (!process.env.GROQ_API_KEY) {
+    throw new Error("GROQ_API_KEY is not configured. AI features are unavailable.");
+  }
+  
+  const groq = new Groq({ apiKey: process.env.GROQ_API_KEY }); // ← create here
+  
+  const completion = await groq.chat.completions.create({
+    model: "llama-3.3-70b-versatile",
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userMessage },
+    ],
+    max_tokens: maxTokens,
+    temperature: 0.7,
+  });
+  return completion.choices[0].message.content;
+};
 
 const LEGAL_SYSTEM_PROMPT = `You are LegalMind AI, a helpful legal assistant for Indian citizens. Your role is to:
 
@@ -114,20 +128,6 @@ You must NOT:
 - Encourage any illegal activities
 - Provide information about how to evade law`;
 
-// Helper: Call Groq API
-const askGroq = async (systemPrompt, userMessage, maxTokens = 1024) => {
-  const completion = await groq.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userMessage },
-    ],
-    max_tokens: maxTokens,
-    temperature: 0.7,
-  });
-  return completion.choices[0].message.content;
-};
-
 // Helper: Save chat to history
 const saveToHistory = async (userId, sessionId, userMsg, assistantMsg) => {
   await ChatMessage.create({
@@ -148,7 +148,7 @@ const saveToHistory = async (userId, sessionId, userMsg, assistantMsg) => {
 // Helper: Extract text from uploaded file
 // ══════════════════════════════════════════
 const extractTextFromFile = async (file) => {
-  const filePath = path.join("uploads", file.filename);
+  const filePath = path.join(process.cwd(), "uploads", file.filename);
   const ext = path.extname(file.originalname).toLowerCase();
 
   let text = "";
@@ -235,14 +235,17 @@ export const chatbot = async (req, res) => {
       })),
     ];
 
-    const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      messages: messages,
-      max_tokens: 1024,
-      temperature: 0.7,
-    });
+    // Build conversation context as text for askGroq
+    const conversationContext = chronological
+      .slice(0, -1) // exclude the message we just saved (last one)
+      .map(msg => `${msg.role === "user" ? "User" : "Assistant"}: ${msg.message}`)
+      .join("\n");
 
-    const reply = completion.choices[0].message.content;
+    const userPrompt = conversationContext.length > 0
+      ? `Previous conversation:\n${conversationContext}\n\nUser: ${message.trim()}`
+      : message.trim();
+
+    const reply = await askGroq(LEGAL_SYSTEM_PROMPT, userPrompt, 1024);
 
     await ChatMessage.create({
       user: req.user.id,
@@ -545,6 +548,12 @@ export const checkLegalAid = async (req, res) => {
   try {
     const { annualIncome, category, caseType, state, description } = req.body;
 
+    if (!annualIncome && !category && !caseType) {
+      return res.status(400).json({
+        message: "Please provide at least annual income, category, or case type to check eligibility.",
+      });
+    }
+
     await trackFeatureUsage(req.user.id, "checkLegalAid");
 
     const prompt = `A citizen wants to know if they are eligible for free legal aid in India.
@@ -814,7 +823,11 @@ export const getChatHistory = async (req, res) => {
 export const getChatSessions = async (req, res) => {
   try {
     const sessions = await ChatMessage.aggregate([
-      { $match: { user: req.user.id } },
+      { 
+        $match: { 
+          user: new mongoose.Types.ObjectId(req.user.id) // ← convert to ObjectId
+        } 
+      },
       { $sort: { createdAt: -1 } },
       {
         $group: {

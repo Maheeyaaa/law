@@ -42,17 +42,10 @@ const TELANGANA_DISTRICTS = [
 
 const userSchema = new mongoose.Schema(
   {
-    name: String,
-    email: {
-      type: String,
-      unique: true,
-    },
-    password: String,
-
-    role: {
-      type: String,
-      enum: ["citizen", "lawyer", "Court Staff"],
-    },
+    name: { type: String, required: true, trim: true },
+    email: { type: String, unique: true, required: true, lowercase: true },
+    password: { type: String, required: true },
+    role: { type: String, enum: ["citizen", "lawyer", "court_Staff"], required: true },
 
     // Location fields
     state: {
@@ -78,7 +71,23 @@ const userSchema = new mongoose.Schema(
     verificationStatus: {
       type: String,
       enum: ["pending", "approved"],
-      default: "approved",
+      default: "pending",
+    },
+    importedFrom: {
+      type: String,
+      default: null,
+    },
+    scrapedFrom: {
+      type: String,
+      default: null,
+    },
+    dataSource: {
+      type: String,
+      default: null,
+    },
+    proBonoRegistrationNo: {
+      type: String,
+      default: null,
     },
 
     // Profile fields
@@ -97,6 +106,64 @@ const userSchema = new mongoose.Schema(
     bio: {
       type: String,
       default: "",
+    },
+
+    // 🆕 Additional lawyer fields for enhanced functionality
+    education: {
+      type: [String],
+      default: [],
+    },
+    courtsPracticing: {
+      type: [String],
+      default: [],
+    },
+    
+    // Availability
+    availability: {
+      type: String,
+      enum: ["available", "busy", "unavailable"],
+      default: "available",
+    },
+    availableDays: {
+      type: [String],
+      enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+      default: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+    },
+    consultationFee: {
+      type: Number,
+      default: 0,
+    },
+    
+    // Rating system
+    rating: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5,
+    },
+    totalReviews: {
+      type: Number,
+      default: 0,
+    },
+    
+    // Profile completion
+    isProfileComplete: {
+      type: Boolean,
+      default: false,
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    
+    // Cases statistics
+    casesHandled: {
+      type: Number,
+      default: 0,
+    },
+    casesWon: {
+      type: Number,
+      default: 0,
     },
   },
   { timestamps: true }

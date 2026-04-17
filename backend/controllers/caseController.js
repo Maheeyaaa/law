@@ -2,13 +2,17 @@ import Case from "../models/Case.js";
 import CaseTimeline from "../models/CaseTimeline.js";
 import Activity from "../models/Activity.js";
 import Notification from "../models/Notification.js";
+import Document from "../models/Document.js";
+import Hearing from "../models/Hearing.js"; 
 import { addTimelineEvent } from "../helpers/timelineHelper.js";
 
 export const createCase = async (req, res) => {
   try {
+    
     const { title, description, caseType, priority, notes, district, courtName } = req.body;
 
     if (!title || !description || !caseType) {
+      console.log("❌ Validation failed - missing fields");
       return res.status(400).json({
         message: "Title, description, and case type are required",
       });
@@ -57,6 +61,7 @@ export const createCase = async (req, res) => {
       case: newCase,
     });
   } catch (error) {
+    console.log("❌ ERROR in createCase:", error);  // ← This will show the real error
     res.status(500).json({ error: error.message });
   }
 };
@@ -114,13 +119,11 @@ export const getCaseById = async (req, res) => {
     const timeline = await CaseTimeline.find({ case: caseDoc._id })
       .sort({ completedAt: 1 });
 
-    const Document = (await import("../models/Document.js")).default;
     const documents = await Document.find({
       case: caseDoc._id,
       citizen: req.user.id,
     }).sort({ createdAt: -1 });
 
-    const Hearing = (await import("../models/Hearing.js")).default;
     const hearings = await Hearing.find({
       case: caseDoc._id,
       citizen: req.user.id,
@@ -181,8 +184,10 @@ export const getCaseStats = async (req, res) => {
   try {
     const citizenId = req.user.id;
 
-    const [total, active, pending, resolved, hearings] = await Promise.all([
+    const [total, draft, filed, active, pending, resolved, hearings] = await Promise.all([
       Case.countDocuments({ citizen: citizenId }),
+      Case.countDocuments({ citizen: citizenId, status: "Draft" }),
+      Case.countDocuments({ citizen: citizenId, status: "Filed" }),
       Case.countDocuments({ citizen: citizenId, status: "Active" }),
       Case.countDocuments({ citizen: citizenId, status: "Pending" }),
       Case.countDocuments({ citizen: citizenId, status: "Resolved" }),
@@ -194,6 +199,8 @@ export const getCaseStats = async (req, res) => {
 
     res.json({
       total,
+      draft,
+      filed,
       active,
       pending,
       resolved,
@@ -258,9 +265,9 @@ export const getCaseTimeline = async (req, res) => {
 
 export const updateCNR = async (req, res) => {
   try {
-    if (req.user.role !== "Court Staff") {
+    if (req.user.role !== "court_staff") {
       return res.status(403).json({
-        message: "Access denied. Only court staff can file cases in court.",
+        message: "Access denied. Only court_staff can file cases in court.",
       });
     }
 

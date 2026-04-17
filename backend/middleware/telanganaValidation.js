@@ -4,17 +4,18 @@ import { STATE, DISTRICTS, COURTS } from "../constants/telangana.js";
 
 // Validate that district belongs to Telangana
 export const validateDistrict = (req, res, next) => {
-  const { district } = req.body;
+  const { district, role } = req.body;
+
+  // District optional for lawyers (they serve multiple districts)
+  if (!district && role === "lawyer") return next();
 
   if (!district) {
-    return res.status(400).json({
-      message: "District is required",
-    });
+    return res.status(400).json({ message: "District is required" });
   }
 
   if (!DISTRICTS.includes(district)) {
     return res.status(400).json({
-      message: `Invalid district. Must be a district in ${STATE}`,
+      message: `Invalid district. Must be a Telangana district`,
       validDistricts: DISTRICTS,
     });
   }

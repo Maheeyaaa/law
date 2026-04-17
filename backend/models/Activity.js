@@ -37,4 +37,6 @@ const activitySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+activitySchema.index({ citizen: 1, createdAt: -1 });
+
 export default mongoose.model("Activity", activitySchema);

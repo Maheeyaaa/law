@@ -222,7 +222,7 @@ function UnifiedRoleCard({ onSignIn, onRegister }) {
             loginLabel: "Lawyer Login",
             note: "New accounts require admin approval before activation.",
         },
-        "Court Staff": {
+        "court_staff": {
             text: "Court staff accounts are created exclusively by the administrator to protect sensitive court operations. Staff members manage lawyer verifications, case assignments, and administrative actions.",
             badge: "Admin Access Only",
             badgeColor: "rgba(255,80,80,0.12)",
@@ -395,14 +395,14 @@ function UnifiedRoleCard({ onSignIn, onRegister }) {
 
 /* ─── SIGN IN PAGE ─── */
 function SignInPage({ role, onRegister, onBack }) {
-    const isCourtStaff = role === "Court Staff";
+    const isCourtStaff = role === "court_staff";
     const isLawyer = role === "Lawyer";
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
 
     const handleLogin = async () => {
         try {
-            const res = await fetch("http://localhost:8000/api/users/login", {
+            const res = await fetch("http://localhost:8000/api/auth/login", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
@@ -427,8 +427,8 @@ function SignInPage({ role, onRegister, onBack }) {
                     window.location.href = "/citizen";
                 } else if (userRole === "lawyer") {
                     window.location.href = "/lawyer";  // when you build lawyer dashboard
-                } else if (userRole === "Court Staff") {
-                    window.location.href = "/court-staff";  // when you build court staff dashboard
+                } else if (userRole === "court_staff") {
+                    window.location.href = "/court-staff";  // when you build court_staff dashboard
                 } else {
                     window.location.href = "/";  // fallback
                 }
@@ -532,7 +532,7 @@ function RegisterPage({ role, onSignIn, onBack }) {
                     ? "citizen"
                     : role === "Lawyer"
                     ? "lawyer"
-                    : "Court Staff";
+                    : "court_staff";
 
             const data = {
             name,
@@ -548,7 +548,7 @@ function RegisterPage({ role, onSignIn, onBack }) {
             data.experience = experience;
             }
 
-            const res = await fetch("http://localhost:8000/api/users/register", {
+            const res = await fetch("http://localhost:8000/api/auth/register", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -778,7 +778,7 @@ function RoleBadge({ role }) {
     const colors = {
         Citizens: { bg: "rgba(100,200,255,0.1)", border: "rgba(100,200,255,0.3)", text: "#90D5FF" },
         Lawyer: { bg: "rgba(255,190,50,0.1)", border: "rgba(255,190,50,0.3)", text: "#FFD166" },
-        "Court Staff": { bg: "rgba(255,100,100,0.1)", border: "rgba(255,100,100,0.3)", text: "#FF8A8A" },
+        "court_staff": { bg: "rgba(255,100,100,0.1)", border: "rgba(255,100,100,0.3)", text: "#FF8A8A" },
     };
     const c = colors[role] || colors.Citizens;
     return (

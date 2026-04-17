@@ -118,7 +118,7 @@ export class ScamDetector {
       { pattern: /dear\s+(sir|customer|user)\s*,?\s*$/im, msg: "Generic greeting" },
       { pattern: /kindly\s+do\s+the\s+needful/i, msg: "Non-official phrasing" },
       { pattern: /revert\s+back/i, msg: "Redundant phrasing" },
-      { pattern: /[a-z][A-Z]|[A-Z]{5,}/, msg: "Inconsistent capitalization" },
+      { pattern: /[A-Z]{8,}(?!\s*:)/, msg: "Excessive capitalization" }
     ];
 
     grammarIssues.forEach(({ pattern, msg }) => {

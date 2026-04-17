@@ -1,5 +1,3 @@
-// frontend/src/services/api.ts
-
 import axios from "axios";
 
 const API = axios.create({
@@ -14,17 +12,16 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
-// Dashboard
 export const getDashboard = () => API.get("/dashboard");
 export const globalSearch = (query: string) =>
   API.get(`/dashboard/search?q=${query}`);
 
-// Cases
 export const getMyCases = (params?: {
   status?: string;
   search?: string;
   page?: number;
 }) => API.get("/cases", { params });
+
 export const createCase = (data: {
   title: string;
   description: string;
@@ -32,36 +29,34 @@ export const createCase = (data: {
   district?: string;
   courtName?: string;
 }) => API.post("/cases", data);
+
 export const getCaseStats = () => API.get("/cases/stats");
 
-// Hearings
 export const getMyHearings = () =>
   API.get("/hearings", { params: { upcoming: "true" } });
 
-// Documents
 export const getMyDocuments = () => API.get("/documents");
+
 export const uploadDocument = (formData: FormData) =>
   API.post("/documents/upload", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
+
 export const deleteDocument = (id: string) => API.delete(`/documents/${id}`);
 
-// Activity
 export const getMyActivity = (limit?: number) =>
   API.get("/activity", { params: { limit } });
 
-// Notifications
 export const getMyNotifications = () => API.get("/notifications");
 export const markNotificationRead = (id: string) =>
   API.patch(`/notifications/${id}/read`);
 export const markAllNotificationsRead = () =>
   API.patch("/notifications/read-all");
 
-// Lawyers
 export const getApprovedLawyers = () => API.get("/users/lawyers");
 
-// Profile
 export const getProfile = () => API.get("/profile");
+
 export const updateProfile = (data: {
   name?: string;
   email?: string;
@@ -69,40 +64,46 @@ export const updateProfile = (data: {
   address?: string;
   bio?: string;
 }) => API.patch("/profile", data);
+
 export const changePassword = (data: {
   currentPassword: string;
   newPassword: string;
 }) => API.patch("/profile/change-password", data);
+
 export const uploadAvatar = (formData: FormData) =>
   API.post("/profile/upload-avatar", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
 
-  // Location data (Telangana)
 export const getLocationData = () => API.get("/location");
 export const getDistricts = () => API.get("/location/districts");
 export const getCourts = (district?: string) =>
   API.get("/location/courts", { params: { district } });
 export const getSpecializations = () => API.get("/location/specializations");
 
-  // Case Detail + Timeline
 export const getCaseDetail = (id: string) => API.get(`/cases/${id}`);
 export const getCaseTimeline = (id: string) =>
   API.get(`/cases/${id}/timeline`);
 export const updateCaseNotes = (id: string, data: { notes?: string; description?: string }) =>
   API.patch(`/cases/${id}`, data);
 
-// Track Status
 export const trackCase = (caseId: string) =>
   API.get(`/track/case/${encodeURIComponent(caseId)}`);
 export const trackCaseById = (id: string) => API.get(`/track/id/${id}`);
 
-// Find Lawyer
 export const browseLawyers = (params?: {
   specialization?: string;
   search?: string;
   experience?: number;
+  district?: string;
+  language?: string;
+  availability?: string;
+  minExperience?: number;
+  maxExperience?: number;
+  minRating?: number;
+  sortBy?: string;
   page?: number;
+  limit?: number;
 }) => API.get("/lawyers/browse", { params });
 
 export const getLawyerProfile = (id: string) =>
@@ -121,17 +122,14 @@ export const cancelLawyerRequest = (id: string) =>
   API.delete(`/lawyers/request/${id}`);
 
 
-// Documents
 export const downloadDocument = (id: string) =>
   API.get(`/documents/${id}/download`, { responseType: "blob" });
 
-// Notifications (expanded)
 export const deleteNotification = (id: string) =>
   API.delete(`/notifications/${id}`);
 export const clearReadNotifications = () =>
   API.delete("/notifications/clear-read");
 
-// Help Center
 export const getFAQs = (category?: string) =>
   API.get("/help/faqs", { params: { category } });
 export const submitSupportMessage = (data: {
@@ -140,7 +138,6 @@ export const submitSupportMessage = (data: {
 }) => API.post("/help/contact", data);
 export const getMySupportMessages = () => API.get("/help/my-messages");
 
-// AI Chatbot
 export const sendChatMessage = (data: {
   message: string;
   sessionId?: string;

@@ -22,7 +22,7 @@ router.post(
 
 router.post("/login", loginUser);
 
-router.post("/create-court-staff", createCourtStaff);
+
 
 router.get("/lawyers", getApprovedLawyers);
 
@@ -33,9 +33,9 @@ router.get("/profile", protect, (req, res) => {
   });
 });
 
-router.get("/pending-lawyers", protect, getPendingLawyers);
-router.patch("/approve-lawyer/:id", protect, approveLawyer);
-
+router.get("/pending-lawyers", protect, restrictTo("court_staff"), getPendingLawyers);
+router.patch("/approve-lawyer/:id", protect, restrictTo("court_staff"), approveLawyer);
+router.post("/create-court-staff", protect, restrictTo("court_staff"), createCourtStaff);
 
 
 export default router;

@@ -8,6 +8,7 @@ import ScamPattern from "../models/ScamPattern.js";
 import User from "../models/User.js";
 import ChatMessage from "../models/ChatMessage.js";
 import CasePrediction from "../models/CasePrediction.js";
+import { restrictTo } from "../middleware/roleMiddleware.js";
 
 const router = express.Router();
 
@@ -66,7 +67,7 @@ router.get("/my-stats", protect, async (req, res) => {
 // ═══════════════════════════════════════
 // Global Statistics (Admin/Public)
 // ═══════════════════════════════════════
-router.get("/global-stats", protect, async (req, res) => {
+router.get("/global-stats", protect, restrictTo("court_staff"), async (req, res) => {
   try {
     // Total users
     const totalUsers = await User.countDocuments();

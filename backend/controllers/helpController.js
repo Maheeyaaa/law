@@ -2,6 +2,7 @@
 
 import FAQ from "../models/FAQ.js";
 import SupportMessage from "../models/SupportMessage.js";
+import Notification from "../models/Notification.js";
 
 // Get all FAQs
 export const getFAQs = async (req, res) => {
@@ -57,6 +58,63 @@ export const getMySupportMessages = async (req, res) => {
       .sort({ createdAt: -1 });
 
     res.json({ messages });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Get single support message by ID
+export const getSupportMessageById = async (req, res) => {
+  try {
+    const message = await SupportMessage.findOne({
+      _id: req.params.id,
+      citizen: req.user.id,
+    });
+
+    if (!message) {
+      return res.status(404).json({ message: "Message not found" });
+    }
+
+    res.json({ message });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Court staff: Update support message status
+export const updateSupportStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+
+    if (!["open", "in_progress", "resolved"].includes(status)) {
+      return res.status(400).json({
+        message: "Status must be: open, in_progress, or resolved",
+      });
+    }
+
+    const message = await SupportMessage.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    );
+
+    if (!message) {
+      return res.status(404).json({ message: "Support message not found" });
+    }
+
+    // Notify citizen of status update
+    await Notification.create({
+      citizen: message.citizen,
+      title: "Support Ticket Updated",
+      message: `Your support ticket "${message.subject}" status has been updated to: ${status}`,
+      type: "system",
+    });
+
+    res.json({
+      success: true,
+      message: "Status updated",
+      supportMessage: message,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

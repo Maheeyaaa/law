@@ -1,6 +1,7 @@
 // backend/models/Case.js
 
 import mongoose from "mongoose";
+import { customAlphabet } from "nanoid";
 
 // Telangana courts - easy to expand later for multi-state
 const TELANGANA_COURTS = [
@@ -63,8 +64,6 @@ const caseSchema = new mongoose.Schema(
     cnrNumber: {
       type: String,
       default: null,
-      unique: true,
-      sparse: true,
     },
     citizen: {
       type: mongoose.Schema.Types.ObjectId,
@@ -150,11 +149,17 @@ const caseSchema = new mongoose.Schema(
 // Auto-generate caseId with TS (Telangana State) prefix
 caseSchema.pre("save", async function () {
   if (!this.caseId) {
-    const count = await mongoose.model("Case").countDocuments();
-    const num = String(count + 1).padStart(4, "0");
-    this.caseId = `#TS-${new Date().getFullYear()}-${num}`;
+    const timestamp = Date.now().toString().slice(-6);
+    const random = Math.floor(Math.random() * 1000)
+      .toString()
+      .padStart(3, "0");
+    this.caseId = `#TS-${new Date().getFullYear()}-${timestamp}-${random}`;
   }
 });
+
+caseSchema.index({ citizen: 1, status: 1 });
+caseSchema.index({ assignedLawyer: 1 });
+caseSchema.index({ caseType: 1, district: 1 });
 
 export { TELANGANA_COURTS };
 export default mongoose.model("Case", caseSchema);

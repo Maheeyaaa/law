@@ -30,8 +30,8 @@ const documentSchema = new mongoose.Schema(
       default: "PDF",
     },
     fileSize: {
-      type: String,
-      default: "0 MB",
+      type: Number,
+      default: 0,
     },
     status: {
       type: String,

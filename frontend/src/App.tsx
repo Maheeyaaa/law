@@ -12,6 +12,7 @@ import Notifications from "./pages/Notifications";
 import Help from "./pages/Help";
 import Settings from "./pages/Settings";
 import AdminPanel from "./pages/AdminPanel";
+import AdminImportLawyers from "./pages/AdminImportLawyers";
 
 function App() {
   return (
@@ -41,6 +42,7 @@ function App() {
         <Route path="/citizen/notifications" element={<Notifications />} />
         <Route path="/citizen/help" element={<Help />} />
         <Route path="/citizen/settings" element={<Settings />} />
+        <Route path="/admin/import-lawyers" element={<AdminImportLawyers />} />
         
         {/* Admin */}
         <Route path="/admin-panel" element={<AdminPanel />} />

@@ -15,7 +15,8 @@ export const requireRole = (...roles) => {
     next();
   };
 };
+export const restrictTo = requireRole;
 
 export const requireCitizen = requireRole("citizen");
 export const requireLawyer = requireRole("lawyer");
-export const requireCourtStaff = requireRole("Court Staff");
+export const requireCourtStaff = requireRole("court_staff");

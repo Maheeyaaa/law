@@ -103,10 +103,10 @@ export const getDashboardData = async (req, res) => {
 
     res.json({
       stats: {
-        total: String(totalCases).padStart(2, "0"),
-        active: String(activeCases).padStart(2, "0"),
-        hearings: String(upcomingHearingsCount).padStart(2, "0"),
-        resolved: String(resolvedCases).padStart(2, "0"),
+        total: totalCases,
+        active: activeCases,
+        hearings: upcomingHearingsCount,
+        resolved: resolvedCases,
       },
       welcome: {
         nextHearingDate,
