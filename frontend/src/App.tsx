@@ -13,6 +13,8 @@ import Help from "./pages/Help";
 import Settings from "./pages/Settings";
 import AdminPanel from "./pages/AdminPanel";
 import AdminImportLawyers from "./pages/AdminImportLawyers";
+import Lawyer from "./pages/Lawyer";
+import CourtStaff from "./pages/CourtStaff";
 
 function App() {
   return (
@@ -42,10 +44,13 @@ function App() {
         <Route path="/citizen/notifications" element={<Notifications />} />
         <Route path="/citizen/help" element={<Help />} />
         <Route path="/citizen/settings" element={<Settings />} />
-        <Route path="/admin/import-lawyers" element={<AdminImportLawyers />} />
+
+        <Route path="/lawyer" element={<Lawyer />} />
+        <Route path="/court-staff" element={<CourtStaff />} />
         
         {/* Admin */}
         <Route path="/admin-panel" element={<AdminPanel />} />
+        <Route path="/admin/import-lawyers" element={<AdminImportLawyers />} />
       </Routes>
     </BrowserRouter>
   )

@@ -1,7 +1,8 @@
 // frontend/src/pages/AdminImportLawyers.tsx
 
-import { useState, CSSProperties } from "react";
+import { useState, useEffect, CSSProperties } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 const DM: CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
 const BN: CSSProperties = { fontFamily: "'Bebas Neue', cursive" };
@@ -20,20 +21,33 @@ export default function AdminImportLawyers() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [stats, setStats] = useState<any>(null);
 
+  const navigate = useNavigate();
+
   const API_URL = "http://localhost:8000/api";
+
+  const getAuthHeaders = () => ({
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
+    },
+  });
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    if (user.role !== "court_staff") {
+      navigate("/");
+      return;
+    }
+    fetchStats();
+  }, []);
 
   const fetchStats = async () => {
     try {
-      const res = await axios.get(`${API_URL}/admin/lawyers-stats`);
+      const res = await axios.get(`${API_URL}/admin/lawyers-stats`, getAuthHeaders());
       setStats(res.data.stats);
     } catch (err) {
       console.error(err);
     }
   };
-
-  useState(() => {
-    fetchStats();
-  });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -56,7 +70,7 @@ export default function AdminImportLawyers() {
       formData.append("file", file);
 
       const res = await axios.post(`${API_URL}/admin/import-lawyers`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+        headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${localStorage.getItem("token")}`, },
       });
 
       setMessage({ 
@@ -83,7 +97,7 @@ export default function AdminImportLawyers() {
     if (!confirm("This will delete all generated/synthetic lawyers. Continue?")) return;
 
     try {
-      const res = await axios.delete(`${API_URL}/admin/clear-generated`);
+      const res = await axios.delete(`${API_URL}/admin/clear-generated`, getAuthHeaders());
       setMessage({ type: "success", text: `✅ ${res.data.message}` });
       fetchStats();
     } catch (err: any) {
