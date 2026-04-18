@@ -13,6 +13,7 @@ import { restrictTo } from "../middleware/roleMiddleware.js";
 import {
   getPendingLawyers,
   approveLawyer,
+  rejectLawyer,
   createCourtStaff,
 } from "../controllers/userController.js";
 
@@ -24,6 +25,7 @@ router.use(restrictTo("court_staff"));
 
 router.get("/pending-lawyers", getPendingLawyers);
 router.patch("/approve-lawyer/:id", approveLawyer);
+router.patch("/reject-lawyer/:id", rejectLawyer);
 router.post("/create-court-staff", createCourtStaff);
 
 // Configure multer for CSV upload

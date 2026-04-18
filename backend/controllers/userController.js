@@ -151,10 +151,17 @@ export const loginUser = async (req, res) => {
       });
     }
 
-    if (user.role === "lawyer" && user.verificationStatus !== "approved") {
+    if (user.role === "lawyer" && user.verificationStatus === "pending") {
       return res.status(403).json({
-        message: "Your lawyer account is pending verification by court staff",
-        verificationStatus: user.verificationStatus,
+        message: "Your account is pending verification by court staff",
+        verificationStatus: "pending",
+      });
+    }
+
+    if (user.role === "lawyer" && user.verificationStatus === "rejected") {
+      return res.status(403).json({
+        message: "Your lawyer account has been rejected. Please contact support for more information.",
+        verificationStatus: "rejected",
       });
     }
 
@@ -236,6 +243,57 @@ export const approveLawyer = async (req, res) => {
         name: lawyer.name,
         email: lawyer.email,
         barCouncilNumber: lawyer.barCouncilNumber,
+      },
+    });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const rejectLawyer = async (req, res) => {
+  try {
+    const { reason } = req.body;
+
+    const lawyer = await User.findById(req.params.id);
+
+    if (!lawyer) {
+      return res.status(404).json({
+        message: "Lawyer not found",
+      });
+    }
+
+    if (lawyer.role !== "lawyer") {
+      return res.status(400).json({
+        message: "User is not a lawyer",
+      });
+    }
+
+    if (lawyer.verificationStatus === "approved") {
+      return res.status(400).json({
+        message: "Cannot reject an already approved lawyer",
+      });
+    }
+
+    if (lawyer.verificationStatus === "rejected") {
+      return res.status(400).json({
+        message: "Lawyer is already rejected",
+      });
+    }
+
+    lawyer.verificationStatus = "rejected";
+    await lawyer.save();
+
+    res.json({
+      success: true,
+      message: `Lawyer ${lawyer.name} has been rejected`,
+      lawyer: {
+        id: lawyer._id,
+        name: lawyer.name,
+        email: lawyer.email,
+        barCouncilNumber: lawyer.barCouncilNumber,
+        verificationStatus: lawyer.verificationStatus,
+        reason: reason || "Not specified",
       },
     });
 

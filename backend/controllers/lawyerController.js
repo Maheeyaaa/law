@@ -128,9 +128,16 @@ export const browseLawyers = async (req, res) => {
     });
      const languages = allLanguages.filter(l => l && l.trim() !== "");
 
+    const lawyersWithType = lawyers.map(lawyer => {
+      const obj = lawyer.toObject();
+      obj.isContactOnly = lawyer.importedFrom === "DoJ Pro Bono";
+      obj.isProBono = lawyer.importedFrom === "DoJ Pro Bono";
+      return obj;
+    });
+
     res.json({
       success: true,
-      lawyers,
+      lawyers: lawyersWithType,
       total,
       page: parseInt(page),
       totalPages: Math.ceil(total / parseInt(limit)),
@@ -154,21 +161,25 @@ export const getLawyerProfile = async (req, res) => {
     }).select("-password");
 
     if (!lawyer) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Lawyer not found" 
+      return res.status(404).json({
+        success: false,
+        message: "Lawyer not found",
       });
     }
 
-    // Count active cases
-    const activeCases = await Case.countDocuments({
-      assignedLawyer: lawyer._id,
-      status: { $in: ["Active", "Pending", "Open", "Under Review", "In Progress"] },
-    });
+    const isContactOnly = lawyer.importedFrom === "DoJ Pro Bono";
 
-    // Check if current citizen already sent a request to this lawyer
+    // Active cases — only meaningful for registered lawyers
+    const activeCases = isContactOnly
+      ? 0
+      : await Case.countDocuments({
+          assignedLawyer: lawyer._id,
+          status: { $in: ["Active", "Pending", "Filed"] },
+        });
+
+    // Existing request — only for registered lawyers
     let existingRequest = null;
-    if (req.user) {
+    if (!isContactOnly && req.user) {
       existingRequest = await LawyerRequest.findOne({
         citizen: req.user.id,
         lawyer: lawyer._id,
@@ -176,21 +187,41 @@ export const getLawyerProfile = async (req, res) => {
       });
     }
 
-    // Get recent cases (anonymized for privacy)
-    const recentCases = await Case.find({
-      assignedLawyer: lawyer._id,
-      status: { $in: ["Resolved", "Closed"] },
-    })
-      .select("caseType status createdAt")
-      .sort({ createdAt: -1 })
-      .limit(5);
+    // Recent cases — only for registered lawyers
+    const recentCases = isContactOnly
+      ? []
+      : await Case.find({
+          assignedLawyer: lawyer._id,
+          status: { $in: ["Resolved", "Closed"] },
+        })
+          .select("caseType status createdAt")
+          .sort({ createdAt: -1 })
+          .limit(5);
+
+    // Contact info for DoJ lawyers
+    const contactInfo = isContactOnly
+      ? {
+          enrollmentNo: lawyer.barCouncilNumber,
+          registrationNo: lawyer.proBonoRegistrationNo,
+          portalLink: "https://www.probono-doj.in",
+          nalsaHelpline: "15100",
+          nalsaWebsite: "https://nalsa.gov.in",
+          note: "This lawyer is registered under the DoJ Pro Bono scheme and provides free legal aid. Contact them directly or call the NALSA helpline.",
+        }
+      : null;
 
     res.json({
       success: true,
-      lawyer,
+      lawyer: {
+        ...lawyer.toObject(),
+        isContactOnly,
+        isProBono: isContactOnly,
+      },
+      isContactOnly,
       activeCases,
-      alreadyRequested: !!existingRequest,
+      alreadyRequested: isContactOnly ? false : !!existingRequest,
       recentCases,
+      contactInfo,
     });
   } catch (error) {
     console.error("Get lawyer profile error:", error);
@@ -210,7 +241,6 @@ export const sendRequest = async (req, res) => {
       });
     }
 
-    // Verify lawyer exists and is approved
     const lawyer = await User.findOne({
       _id: lawyerId,
       role: "lawyer",
@@ -218,9 +248,26 @@ export const sendRequest = async (req, res) => {
     });
 
     if (!lawyer) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Lawyer not found" 
+      return res.status(404).json({
+        success: false,
+        message: "Lawyer not found",
+      });
+    }
+
+    // ── Block DoJ Pro Bono lawyers ─────────────────────
+    if (lawyer.importedFrom === "DoJ Pro Bono") {
+      return res.status(400).json({
+        success: false,
+        isContactOnly: true,
+        message: "This lawyer is from the DoJ Pro Bono directory and cannot receive platform requests. Please contact them directly.",
+        contactInfo: {
+          enrollmentNo: lawyer.barCouncilNumber,
+          registrationNo: lawyer.proBonoRegistrationNo,
+          portalLink: "https://www.probono-doj.in",
+          nalsaHelpline: "15100",
+          nalsaWebsite: "https://nalsa.gov.in",
+          note: "Call NALSA helpline 15100 for free legal aid assistance.",
+        },
       });
     }
 
@@ -232,7 +279,7 @@ export const sendRequest = async (req, res) => {
       });
     }
 
-    // Check if citizen already has a pending request to this lawyer
+    // Check existing pending request
     const existingRequest = await LawyerRequest.findOne({
       citizen: req.user.id,
       lawyer: lawyerId,
@@ -246,7 +293,7 @@ export const sendRequest = async (req, res) => {
       });
     }
 
-    // If caseId provided, verify the case belongs to this citizen
+    // Verify case belongs to citizen
     if (caseId) {
       const caseDoc = await Case.findOne({
         _id: caseId,
@@ -254,13 +301,12 @@ export const sendRequest = async (req, res) => {
       });
 
       if (!caseDoc) {
-        return res.status(404).json({ 
-          success: false, 
-          message: "Case not found" 
+        return res.status(404).json({
+          success: false,
+          message: "Case not found",
         });
       }
 
-      // Check if case already has a lawyer
       if (caseDoc.assignedLawyer) {
         return res.status(400).json({
           success: false,
@@ -276,7 +322,6 @@ export const sendRequest = async (req, res) => {
       message,
     });
 
-    // Log activity
     await Activity.create({
       citizen: req.user.id,
       case: caseId || null,
@@ -284,15 +329,13 @@ export const sendRequest = async (req, res) => {
       type: "general",
     });
 
-    // Notify the lawyer
     await Notification.create({
-      citizen: lawyerId, // notification goes to lawyer
+      citizen: lawyerId,
       title: "New Client Request",
       message: `A citizen has requested your legal assistance`,
       type: "lawyer",
     });
 
-    // Notify the citizen
     await Notification.create({
       citizen: req.user.id,
       title: "Request Sent",
