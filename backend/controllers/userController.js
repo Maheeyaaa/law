@@ -321,50 +321,52 @@ export const getApprovedLawyers = async (req, res) => {
 
 export const createCourtStaff = async (req, res) => {
   try {
-    console.log("🔧 Creating court staff...");
+    const { name, email, password, district, courtName } = req.body;
 
-    const existing = await User.findOne({ email: "admin@court.gov.in" });
-    if (existing) {
-      return res.status(400).json({ 
-        message: "Court staff already exists",
-        email: "admin@court.gov.in",
-        note: "Try logging in instead"
+    if (!name || !email || !password || !courtName) {
+      return res.status(400).json({
+        message: "Name, email, password and court name are required",
       });
     }
 
-    const hashedPassword = await bcrypt.hash("admin123", 10);
-    
+    const existing = await User.findOne({ email });
+    if (existing) {
+      return res.status(400).json({
+        message: "Email already registered",
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const courtStaff = new User({
-      name: "Court Admin",
-      email: "admin@court.gov.in",
+      name,
+      email,
       password: hashedPassword,
       role: "court_staff",
       state: "Telangana",
-      district: "Hyderabad",
+      district: district || "Hyderabad",
+      courtName: courtName,
       verificationStatus: "approved",
     });
 
     await courtStaff.save();
-    console.log("✅ Court staff created successfully");
 
-    const token = signToken(courtStaff._id, courtStaff.role); // ← fixed
+    const token = signToken(courtStaff._id, courtStaff.role);
 
-    res.json({
+    res.status(201).json({
       message: "Court Staff created successfully",
-      email: "admin@court.gov.in",
       token,
       user: {
         id: courtStaff._id,
         name: courtStaff.name,
         email: courtStaff.email,
         role: courtStaff.role,
+        courtName: courtStaff.courtName,
+        district: courtStaff.district,
       },
     });
-
   } catch (error) {
-    console.error("❌ Error creating court staff:", error);
-    res.status(500).json({ 
-      error: error.message
-    });
+    console.error("Error creating court staff:", error);
+    res.status(500).json({ error: error.message });
   }
 };

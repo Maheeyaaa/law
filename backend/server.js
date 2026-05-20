@@ -23,7 +23,8 @@ import predictionRoutes from "./routes/predictionRoutes.js";
 import voiceRoutes from "./routes/voiceRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import lawyerPanelRoutes from "./routes/lawyerPanelRoutes.js";
-import aiRoutes from "./routes/aiRoutes.js";            // ← static import now
+import aiRoutes from "./routes/aiRoutes.js";      // ← static import now
+import courtStaffRoutes from "./routes/courtStaffRoutes.js";
 import { seedScamPatterns } from "./utils/scamDetector.js";
 
 dns.setServers(["1.1.1.1", "8.8.8.8"]);
@@ -61,6 +62,7 @@ app.use("/api/voice", voiceRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/lawyer", lawyerPanelRoutes);
+app.use("/api/court-staff", courtStaffRoutes);
 
 // ── Health check ───────────────────────────────────────────
 app.get("/", (req, res) => {

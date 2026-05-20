@@ -56,6 +56,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    courtName: {
+      type: String,
+      default: "",
+    },
 
     // Lawyer-specific fields
     barCouncilNumber: String,

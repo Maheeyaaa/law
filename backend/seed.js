@@ -68,6 +68,7 @@ const seed = async () => {
         role: "court_staff",
         state: "Telangana",
         district: "Hyderabad",
+        courtName: "City Civil Court, Hyderabad",
         verificationStatus: "approved",
       });
       console.log("Created court staff ✅");
