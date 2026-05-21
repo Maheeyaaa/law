@@ -246,13 +246,7 @@ export default function MyCases() {
                             ? "rgba(0,0,0,0.3)"
                             : "rgba(255,255,255,.02)"
                       }
-                      onClick={() =>
-                        setExpandedRequest(
-                          expandedRequest === c._id
-                            ? null
-                            : c._id
-                        )
-                      }
+                      onClick={() => navigate(`/citizen/cases/${c._id}`)}
                     >
                       <p style={{ ...DM, fontSize: 11, color: BLUEB }}>
                         {c.caseId || c.requestId}
@@ -291,74 +285,9 @@ export default function MyCases() {
                           color: BLUEB
                         }}
                       >
-                        View Details ↓
+                        View →
                       </span>
                     </div>
-
-                    {expandedRequest === c._id && (
-                      <div
-                        style={{
-                          background: "rgba(255,255,255,.03)",
-                          padding: 18,
-                          borderRadius: 10,
-                          marginBottom: 10
-                        }}
-                      >
-                        <p
-                          style={{
-                            ...DM,
-                            fontSize: 10,
-                            color: "rgba(255,255,255,.4)"
-                          }}
-                        >
-                          Uploaded Documents
-                        </p>
-
-                        <div style={{ marginTop: 10 }}>
-
-                          {documents
-                          .filter(
-                            (d) => String(d.case?._id || d.case) === String(c._id)
-                          )
-                          .length === 0 ? (
-
-                          <p
-                          style={{
-                          ...DM,
-                          fontSize:12,
-                          color:"rgba(255,255,255,.3)"
-                          }}
-                          >
-                          No documents uploaded yet
-                          </p>
-
-                          ) : (
-
-                          documents
-                          .filter(
-                          (d) => String(d.case?._id || d.case) === String(c._id)
-                          )
-                          .map((d) => (
-
-                          <p
-                          key={d._id}
-                          style={{
-                          ...DM,
-                          fontSize:12,
-                          color:BLUEB,
-                          marginBottom:8
-                          }}
-                          >
-                          📄 {d.name}
-                          </p>
-
-                          ))
-
-                          )}
-
-                          </div>
-                      </div>
-                    )}
 
                   </div>
                 ))}

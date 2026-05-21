@@ -32,6 +32,8 @@ const NAV1: NI[] = [
 
   { label: "Consultations", icon: "📅", id: "consult", route: "/citizen/hearings" },
 
+  { label: "Documents", icon: "📄", id: "docs", route: "/citizen/documents" },
+
   { label: "Track Progress", icon: "🔍", id: "track", route: "/citizen/track" },
 ];
 
@@ -88,6 +90,7 @@ export default function CitizenLayout({ children, activeNav }: { children: React
       request: "submit-request",
       cases: "my-requests",
       law: "find-lawyer",
+      docs: "documents-section",
     };
 
     const target = dashboardScrollMap[item.id];

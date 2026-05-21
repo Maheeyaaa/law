@@ -24,13 +24,12 @@ export const getMyCases = (params?: {
   page?: number;
 }) => API.get("/cases", { params });
 
-export const createCase = (data: {
-  title: string;
-  description: string;
-  caseType: string;
-  district?: string;
-  courtName?: string;
-}) => API.post("/cases", data);
+export const createCase = (data: FormData) =>
+  API.post("/cases", data, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
 
 export const getCaseStats = () => API.get("/cases/stats");
 export const getCaseDetail = (id: string) => API.get(`/cases/${id}`);

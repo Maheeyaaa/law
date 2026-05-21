@@ -279,13 +279,24 @@ const telanganaCourts = [
     }
     try {
       setFiling(true); setFileMsg(null);
-      const res = await createCase({
-        title: fileForm.title,
-        description: fileForm.description,
-        caseType: fileForm.caseType,
-        district: fileForm.district,
-        courtName: fileForm.courtName,
+      const formData = new FormData();
+
+      formData.append("title", fileForm.title);
+      formData.append("description", fileForm.description);
+      formData.append("caseType", fileForm.caseType);
+
+      if (fileForm.district)
+        formData.append("district", fileForm.district);
+
+      if (fileForm.courtName)
+        formData.append("courtName", fileForm.courtName);
+
+      supportingDocs.forEach((file) => {
+        formData.append("documents", file);
       });
+
+      const res = await createCase(formData);
+
       setFileMsg({ type: "success", text: `Request submitted! ID: ${res.data.case.caseId}` });
       setFileForm({ caseType: "Civil Dispute", title: "", description: "", district: "", courtName: "" });
       setSupportingDocs([]);
@@ -685,7 +696,7 @@ const telanganaCourts = [
                   </div>
                   
                   {/* My Documents */}
-                  <div style={{ flex: 1, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(16px)", borderRadius: 14, padding: "18px", border: "none", boxShadow: SH_CARD, transition: "transform .2s ease" }}
+                  <div id="documents-section" style={{ flex: 1, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(16px)", borderRadius: 14, padding: "18px", border: "none", boxShadow: SH_CARD, transition: "transform .2s ease" }}
                     onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-4px)"; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>

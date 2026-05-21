@@ -121,16 +121,16 @@ export default function Hearings() {
         {/* Header */}
         <div>
           <p style={{ ...DM, fontSize: 9, letterSpacing: "2.5px", textTransform: "uppercase", color: "rgba(168,200,255,.5)" }}>MY CONSULTATIONS</p>
-          <p style={{ ...BN, fontSize: 32, color: "#fff", marginTop: 4 }}>Legal Consultations</p>
+          <p style={{ ...BN, fontSize: 32, color: "#fff", marginTop: 4 }}>My Consultations</p>
         </div>
 
         {/* Stats Cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16 }}>
           {[
-            { label: "Total Consultations", value: stats.total, color: BLUEB },
-            { label: "Scheduled", value: stats.scheduled, color: "#3b82f6" },
+            { label: "All Consultations", value: stats.total, color: BLUEB },
+            { label: "Upcoming", value: stats.scheduled, color: "#3b82f6" },
             { label: "Completed", value: stats.completed, color: "#34d399" },
-            { label: "Postponed", value: stats.postponed, color: "#fbbf24" },
+            { label: "Rescheduled", value: stats.postponed, color: "#fbbf24" },
             { label: "Cancelled", value: stats.cancelled, color: "#ef4444" },
           ].map((stat, i) => (
             <div key={i} style={{ ...GLASS, borderRadius: 16, padding: "20px 24px", position: "relative", overflow: "hidden", transition: "transform .2s ease" }}
@@ -150,7 +150,7 @@ export default function Hearings() {
             { id: "all", label: "All" },
             { id: "scheduled", label: "Scheduled" },
             { id: "completed", label: "Completed" },
-            { id: "postponed", label: "Postponed" },
+            { id: "postponed", label: "Rescheduled" },
             { id: "cancelled", label: "Cancelled" },
           ].map((f) => (
             <button key={f.id} onClick={() => setFilter(f.id)} style={{ ...DM, fontSize: 11, fontWeight: 600, padding: "8px 16px", borderRadius: 99, cursor: "pointer", background: filter === f.id ? BLUE : "rgba(30,95,255,0.15)", color: "#fff", border: filter === f.id ? "none" : "1px solid rgba(30,95,255,0.4)", transition: "all .2s ease" }}>
@@ -167,7 +167,7 @@ export default function Hearings() {
           </div>
         ) : consultations.length === 0 ? (
           <div style={{ ...GLASS, borderRadius: 16, padding: 60, textAlign: "center" }}>
-            <p style={{ ...DM, fontSize: 16, color: "rgba(255,255,255,.3)" }}>No consultations found</p>
+            <p style={{ ...DM, fontSize: 16, color: "rgba(255,255,255,.3)" }}>No consultations scheduled yet</p>
           </div>
         ) : (
           <>
@@ -207,7 +207,7 @@ export default function Hearings() {
                           color:"rgba(255,255,255,.6)"
                           }}
                           >
-                            {h.mode || "Online Consultation"}
+                            {h.mode || "Online Meeting"}
                           </p>
                         </div>
 
@@ -221,7 +221,7 @@ export default function Hearings() {
                           color:"rgba(255,255,255,.4)"
                           }}
                           >
-                            {h.purpose || "Legal consultation"}
+                            {h.purpose || "Discussion with lawyer"}
                           </p>
                         </div>
                       </div>
@@ -256,7 +256,13 @@ export default function Hearings() {
                           <p style={{ ...DM, fontSize: 10, color: "rgba(255,255,255,.3)", marginTop: 2 }}>{h.hearingTime || formatTime(h.hearingDate)}</p>
                         </div>
                         <span style={{ ...DM, fontSize: 9, padding: "5px 12px", borderRadius: 99, background: `${statusColor(h.status)}15`, border: `1px solid ${statusColor(h.status)}44`, color: statusColor(h.status), fontWeight: 600 }}>
-                          {h.status}
+                          {
+                            h.status === "Scheduled"
+                              ? "Upcoming"
+                              : h.status === "Postponed"
+                              ? "Rescheduled"
+                              : h.status
+                            }
                         </span>
                       </div>
                     </div>

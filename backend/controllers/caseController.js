@@ -33,7 +33,23 @@ export const createCase = async (req, res) => {
     });
 
     await newCase.save();
+    if (req.files?.length) {
+      const docs = req.files.map((file) => ({
+        citizen: req.user.id,
+        case: newCase._id,
 
+        name: file.originalname,
+        originalName: file.originalname,
+
+        filePath: file.path,
+        fileType: file.mimetype,
+        fileSize: file.size,
+
+        status: "Pending",
+      }));
+
+      await Document.insertMany(docs);
+    }
     await addTimelineEvent({
       caseId: newCase._id,
       citizenId: req.user.id,
