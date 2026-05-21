@@ -21,21 +21,23 @@ interface NI { label: string; icon: string; badge?: number; id: string; route: s
 
 const NAV1: NI[] = [
   { label: "Dashboard", icon: "⊞", id: "dash", route: "/citizen" },
-  { label: "My Cases", icon: "📁", id: "cases", route: "/citizen/cases" },
-  { label: "File New Case", icon: "✏️", id: "file", route: "/citizen" },
-  { label: "Hearings", icon: "📅", id: "hear", route: "/citizen/hearings" },
-];
-const NAV2: NI[] = [
+
+  { label: "AI Legal Assistant", icon: "🤖", id: "ai", route: "/citizen/legal-chatbot" },
+
+  { label: "Submit Legal Request", icon: "✏️", id: "request", route: "/citizen" },
+
+  { label: "My Requests", icon: "📁", id: "cases", route: "/citizen/cases" },
+
   { label: "Find Lawyer", icon: "👤", id: "law", route: "/citizen/find-lawyer" },
-  { label: "Documents", icon: "📄", id: "docs", route: "/citizen/documents" },
-  { label: "Track Status", icon: "🔍", id: "track", route: "/citizen/track" },
-  { label: "AI Assistant", icon: "🤖", id: "ai", route: "/citizen/legal-chatbot" },
-  { label: "Notifications", icon: "🔔", id: "notif", route: "/citizen/notifications" },
+
+  { label: "Consultations", icon: "📅", id: "consult", route: "/citizen/hearings" },
+
+  { label: "Track Progress", icon: "🔍", id: "track", route: "/citizen/track" },
 ];
-const NAV3: NI[] = [
-  { label: "Help Center", icon: "❓", id: "help", route: "/citizen/help" },
-  { label: "Settings", icon: "⚙️", id: "set", route: "/citizen/settings" },
-];
+
+const NAV2: NI[] = [];
+
+const NAV3: NI[] = [];
 
 function NavSec({ label, items, active, onNav }: { label: string; items: NI[]; active: string; onNav: (item: NI) => void }) {
   return (
@@ -80,6 +82,47 @@ export default function CitizenLayout({ children, activeNav }: { children: React
   }, []);
 
   const handleNav = (item: NI) => {
+
+    const dashboardScrollMap: Record<string, string> = {
+      ai: "ai-section",
+      request: "submit-request",
+      cases: "my-requests",
+      law: "find-lawyer",
+    };
+
+    const target = dashboardScrollMap[item.id];
+
+    if (target) {
+
+      if (window.location.pathname === "/citizen") {
+
+        const el =
+          document.getElementById(target);
+
+        if (el) {
+          el.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+
+          return;
+        }
+      }
+
+      navigate("/citizen");
+
+      setTimeout(() => {
+        document
+          .getElementById(target)
+          ?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+      }, 400);
+
+      return;
+    }
+
     navigate(item.route);
   };
 
@@ -111,27 +154,95 @@ export default function CitizenLayout({ children, activeNav }: { children: React
             <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>⚖</span>
           </div>
           <p style={{ ...PF, fontSize: 20, fontWeight: 700, background: "linear-gradient(135deg,#fff 30%,#a8c8ff)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>LegalMind</p>
-          <p style={{ ...DM, fontSize: 9, letterSpacing: "2.5px", textTransform: "uppercase", color: "rgba(255,255,255,.2)", marginTop: 2 }}>Citizen Portal</p>
+          <p
+            style={{
+              ...DM,
+              fontSize: 10,
+              color: "rgba(255,255,255,.45)",
+              marginTop: 4,
+              lineHeight: 1.4
+            }}
+          >
+            AI-powered legal guidance and lawyer assistance
+          </p>
+          <p style={{ ...DM, fontSize: 9, letterSpacing: "2.5px", textTransform: "uppercase", color: "rgba(255,255,255,.2)", marginTop: 2 }}>Legal Guidance Portal</p>
         </div>
         <div style={{ flex: 1 }}>
           <NavSec label="Main" items={NAV1} active={activeNav} onNav={handleNav} />
-          <NavSec label="Resources" items={NAV2} active={activeNav} onNav={handleNav} />
-          <NavSec label="Support" items={NAV3} active={activeNav} onNav={handleNav} />
+          {NAV2.length > 0 && (
+            <NavSec label="Resources" items={NAV2} active={activeNav} onNav={handleNav} />
+          )}
+          {NAV3.length > 0 && (
+            <NavSec label="Support" items={NAV3} active={activeNav} onNav={handleNav} />
+          )}
         </div>
         <div style={{ padding: 12, borderTop: "1px solid rgba(255,255,255,.06)", flexShrink: 0 }}>
-          <div onClick={() => navigate("/citizen/settings")} style={{ display: "flex", alignItems: "center", gap: 10, padding: 10, borderRadius: 13, background: "rgba(255,255,255,.03)", border: "1px solid rgba(30,95,255,.1)", cursor: "pointer" }}>
+          <div onClick={() => navigate("/citizen/account")} style={{ display: "flex", alignItems: "center", gap: 10, padding: 10, borderRadius: 13, background: "rgba(255,255,255,.03)", border: "1px solid rgba(30,95,255,.1)", cursor: "pointer" }}>
             <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg,#0a1840,#1e5fff)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0, ...DM }}>{userInitials}</div>
             <div style={{ minWidth: 0 }}>
               <p style={{ ...DM, fontSize: 13, fontWeight: 600 }}>{userName}</p>
-              <p style={{ ...DM, fontSize: 10, color: "rgba(255,255,255,.25)", marginTop: 1 }}>Citizen · ID #2024-0311</p>
+              <p style={{ ...DM, fontSize: 10, color: "rgba(255,255,255,.25)", marginTop: 1 }}>LegalMind Citizen</p>
             </div>
           </div>
         </div>
       </aside>
 
       {/* MAIN CONTENT */}
-      <main style={{ flex: 1, minWidth: 0, height: "100vh", overflowY: "auto", overflowX: "hidden", position: "relative", zIndex: 10 }}>
-        {children}
+      <main style={{ flex: 1, height: "100vh", overflowY: "auto", position: "relative", zIndex: 10, padding: 24 }}>
+        <div
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 100,
+            display: "flex",
+            justifyContent: "flex-end",
+            padding: "18px 22px 0",
+            pointerEvents: "none",
+          }}
+        >
+        <div
+          onClick={() => navigate("/citizen/notifications")}
+          style={{
+            pointerEvents: "auto",
+            width: 42,
+            height: 42,
+            borderRadius: 12,
+            background: "rgba(0,0,0,.75)",
+            border: "1px solid rgba(30,95,255,.25)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            fontSize: 18,
+            backdropFilter: "blur(16px)",
+            boxShadow: "3px 4px 14px rgba(0,0,0,.5)",
+            transition: "all .2s ease",
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+          }}
+        >
+          <>
+            🔔
+            <span
+              style={{
+                position: "absolute",
+                top: 8,
+                right: 8,
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: "#1e5fff",
+                boxShadow: "0 0 8px #1e5fff",
+              }}
+            />
+          </>
+        </div>
+      </div>
+      {children}
       </main>
     </div>
   );

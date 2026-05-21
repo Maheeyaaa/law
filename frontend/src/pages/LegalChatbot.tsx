@@ -17,7 +17,7 @@ const FEATURES = [
   { id: "voice", label: "🎤 Voice Assistant", desc: "Speak your questions", section: "Interactive AI" },
 
   // Analysis Tools
-  { id: "predict", label: "🎯 Case Predictor", desc: "Predict case outcome", section: "Analysis Tools" },
+  { id: "predict", label: "🎯 Case Readiness", desc: "Predict case outcome", section: "Analysis Tools" },
   { id: "scam", label: "🚨 Scam Detector", desc: "Verify if notice is fake", section: "Analysis Tools" },
   { id: "notice", label: "📄 Notice Explainer", desc: "Understand legal notices", section: "Analysis Tools" },
 
@@ -688,6 +688,20 @@ export default function LegalChatbot() {
                   <p style={{ fontSize: 12, color: "rgba(255,255,255,.3)", lineHeight: 1.8, maxWidth: 400, margin: "0 auto" }}>
                     Ask me anything about Indian law — your rights, legal procedures, court processes, or any legal concept you need explained in simple language.
                   </p>
+                  <div style={{
+                    background: "rgba(255,190,50,.08)",
+                    border: "1px solid rgba(255,190,50,.2)",
+                    borderRadius: 10,
+                    padding: "12px 16px",
+                    maxWidth: 500,
+                    margin: "16px auto 0",
+                    fontSize: 11,
+                    color: "#FFD166",
+                    lineHeight: 1.7,
+                    ...DM,
+                  }}>
+                    ⚠️ This assistant provides general legal information for Indian legal scenarios. It does not replace professional legal advice. Consult a qualified lawyer for specific matters.
+                  </div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 24 }}>
                     {["What are my tenant rights?", "How to file an FIR?", "What is bail?", "Consumer complaint process"].map((q) => (
                       <button key={q} onClick={() => { setChatInput(q); }} style={{ ...DM, background: "rgba(0,0,0,0.5)", border: "1px solid rgba(30,95,255,.2)", borderRadius: 20, padding: "8px 16px", color: "rgba(255,255,255,.5)", fontSize: 11, cursor: "pointer" }}>{q}</button>
@@ -795,8 +809,8 @@ export default function LegalChatbot() {
           <div style={{ flex: 1, overflowY: "auto", padding: "28px" }}>
             <div style={{ maxWidth: 700, margin: "0 auto" }}>
               <div style={{ marginBottom: 24 }}>
-                <p style={{ fontSize: 20, fontWeight: 700 }}>🎯 Case Outcome Predictor</p>
-                <p style={{ fontSize: 12, color: "rgba(255,255,255,.3)", marginTop: 4 }}>Predict your case winning probability before filing</p>
+                <p style={{ fontSize: 20, fontWeight: 700 }}>🎯 Case Readiness Insights</p>
+                <p style={{ fontSize: 12, color: "rgba(255,255,255,.3)", marginTop: 4 }}>Understand the strength of your legal position</p>
               </div>
 
               <div style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(16px)", borderRadius: 16, padding: "24px", border: "1px solid rgba(30,95,255,.15)", marginBottom: 20 }}>
@@ -950,7 +964,7 @@ export default function LegalChatbot() {
 
                   <div style={{ marginTop: 16, padding: "12px", background: "rgba(255,255,255,.02)", borderRadius: 8 }}>
                     <p style={{ fontSize: 10, color: "rgba(255,255,255,.4)", lineHeight: 1.8, textAlign: "center" }}>
-                      ⚠️ This is a prediction based on provided information, not a guarantee. Always consult a qualified lawyer for legal advice.
+                      ⚠️ Case Readiness Insights help you understand your legal position. This is not a prediction of court outcomes and does not constitute legal advice. Always consult a qualified lawyer.
                     </p>
                   </div>
 
@@ -969,8 +983,183 @@ export default function LegalChatbot() {
           </div>
         )}
 
+
+        {/* ══ COURT FEE CALCULATOR VIEW ══ */}
+        {feature === "courtfee" && (
+          <div style={{ flex: 1, overflowY: "auto", padding: "28px" }}>
+            <div style={{ maxWidth: 700, margin: "0 auto" }}>
+              <div style={{ marginBottom: 24 }}>
+                <p style={{ fontSize: 20, fontWeight: 700 }}>💰 Court Fee Calculator</p>
+                <p style={{ fontSize: 12, color: "rgba(255,255,255,.3)", marginTop: 4 }}>Calculate filing costs before going to court</p>
+              </div>
+
+              <div style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(16px)", borderRadius: 16, padding: "24px", border: "1px solid rgba(30,95,255,.15)", marginBottom: 20 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  
+                  <div>
+                    <p style={labelStyle}>State</p>
+                    <select value={feeState} onChange={(e) => setFeeState(e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
+                      <option value="Telangana">Telangana</option>
+                      <option value="Andhra Pradesh">Andhra Pradesh</option>
+                      <option value="Karnataka">Karnataka</option>
+                      <option value="Maharashtra">Maharashtra</option>
+                      <option value="Tamil Nadu">Tamil Nadu</option>
+                      <option value="Delhi">Delhi</option>
+                      <option value="Other">Other State</option>
+                    </select>
+                    <p style={{ fontSize: 9, color: "rgba(255,255,255,.3)", marginTop: 4 }}>* Fees calculated based on Telangana Court Fees Act. Other states may vary slightly.</p>
+                  </div>
+
+                  <div>
+                    <p style={labelStyle}>Case Type *</p>
+                    <select value={feeCaseType} onChange={(e) => setFeeCaseType(e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
+                      <option value="">Select case type...</option>
+                      <option value="Civil Suit (Money Recovery)">Civil Suit (Money Recovery)</option>
+                      <option value="Property Dispute">Property Dispute</option>
+                      <option value="Consumer Complaint">Consumer Complaint</option>
+                      <option value="Cheque Bounce (Section 138)">Cheque Bounce (Section 138)</option>
+                      <option value="Divorce (Mutual Consent)">Divorce (Mutual Consent)</option>
+                      <option value="Divorce (Contested)">Divorce (Contested)</option>
+                      <option value="Bail Application">Bail Application</option>
+                      <option value="Criminal Complaint">Criminal Complaint</option>
+                      <option value="Labour/Employment Dispute">Labour/Employment Dispute</option>
+                      <option value="RTI Appeal">RTI Appeal</option>
+                      <option value="Writ Petition (High Court)">Writ Petition (High Court)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <p style={labelStyle}>Claim/Suit Amount (₹)</p>
+                    <input 
+                      type="number" 
+                      value={feeClaimAmount} 
+                      onChange={(e) => setFeeClaimAmount(e.target.value)} 
+                      placeholder="e.g. 500000" 
+                      style={inputStyle} 
+                    />
+                    <p style={{ fontSize: 9, color: "rgba(255,255,255,.3)", marginTop: 4 }}>Enter 0 for criminal/bail matters</p>
+                  </div>
+
+                  <button onClick={calculateCourtFee} style={{ ...btnStyle }}>
+                    💰 Calculate Total Cost
+                  </button>
+                </div>
+              </div>
+
+              {/* Results */}
+              {feeResult && (
+                <div style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(16px)", borderRadius: 16, padding: "24px", border: "1px solid rgba(30,95,255,.15)" }}>
+                  
+                  {/* Header */}
+                  <div style={{ textAlign: "center", marginBottom: 24, paddingBottom: 20, borderBottom: "1px solid rgba(255,255,255,.1)" }}>
+                    <p style={{ fontSize: 14, color: "rgba(255,255,255,.5)", marginBottom: 8 }}>{feeResult.caseType}</p>
+                    {feeResult.claimAmount > 0 && (
+                      <p style={{ fontSize: 12, color: "rgba(255,255,255,.3)" }}>Claim Amount: ₹{feeResult.claimAmount.toLocaleString("en-IN")}</p>
+                    )}
+                  </div>
+
+                  {/* Fee Breakdown */}
+                  <div style={{ marginBottom: 24 }}>
+                    <p style={{ fontSize: 12, color: BLUEB, fontWeight: 600, marginBottom: 12 }}>📋 FEE BREAKDOWN:</p>
+                    
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", background: "rgba(255,255,255,.02)", borderRadius: 8 }}>
+                        <span style={{ fontSize: 13, color: "rgba(255,255,255,.6)" }}>Court Fee</span>
+                        <span style={{ fontSize: 13, color: "#fff", fontWeight: 600 }}>₹{feeResult.courtFee.toLocaleString("en-IN")}</span>
+                      </div>
+                      
+                      <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", background: "rgba(255,255,255,.02)", borderRadius: 8 }}>
+                        <span style={{ fontSize: 13, color: "rgba(255,255,255,.6)" }}>Stamp Duty</span>
+                        <span style={{ fontSize: 13, color: "#fff", fontWeight: 600 }}>₹{feeResult.stampDuty.toLocaleString("en-IN")}</span>
+                      </div>
+                      
+                      <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", background: "rgba(255,255,255,.02)", borderRadius: 8 }}>
+                        <span style={{ fontSize: 13, color: "rgba(255,255,255,.6)" }}>Process Fee</span>
+                        <span style={{ fontSize: 13, color: "#fff", fontWeight: 600 }}>₹{feeResult.processFee.toLocaleString("en-IN")}</span>
+                      </div>
+                      
+                      <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", background: "rgba(255,255,255,.02)", borderRadius: 8 }}>
+                        <span style={{ fontSize: 13, color: "rgba(255,255,255,.6)" }}>Miscellaneous</span>
+                        <span style={{ fontSize: 13, color: "#fff", fontWeight: 600 }}>₹{feeResult.miscFee.toLocaleString("en-IN")}</span>
+                      </div>
+                      
+                      <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", background: "rgba(30,95,255,.1)", borderRadius: 8, border: "1px solid rgba(30,95,255,.2)" }}>
+                        <span style={{ fontSize: 13, color: BLUEB }}>Advocate Fee (Estimated)</span>
+                        <span style={{ fontSize: 13, color: BLUEB, fontWeight: 600 }}>₹{feeResult.advocateFeeMin.toLocaleString("en-IN")} - ₹{feeResult.advocateFeeMax.toLocaleString("en-IN")}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Total */}
+                  <div style={{ background: "linear-gradient(135deg, rgba(30,95,255,.15), rgba(30,95,255,.05))", border: "1px solid rgba(30,95,255,.3)", borderRadius: 12, padding: 20, marginBottom: 24, textAlign: "center" }}>
+                    <p style={{ fontSize: 11, color: "rgba(255,255,255,.5)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "1px" }}>Estimated Total Cost</p>
+                    <p style={{ fontSize: 28, fontWeight: 700, color: "#fff" }}>
+                      ₹{feeResult.totalMin.toLocaleString("en-IN")} - ₹{feeResult.totalMax.toLocaleString("en-IN")}
+                    </p>
+                  </div>
+
+                  {/* Timeline */}
+                  <div style={{ display: "flex", gap: 16, marginBottom: 24 }}>
+                    <div style={{ flex: 1, background: "rgba(255,255,255,.02)", padding: 16, borderRadius: 10, textAlign: "center" }}>
+                      <p style={{ fontSize: 10, color: "rgba(255,255,255,.4)", marginBottom: 4 }}>⏱️ EXPECTED TIMELINE</p>
+                      <p style={{ fontSize: 16, fontWeight: 600, color: "#fff" }}>{feeResult.timeline}</p>
+                    </div>
+                    <div style={{ flex: 1, background: "rgba(255,255,255,.02)", padding: 16, borderRadius: 10, textAlign: "center" }}>
+                      <p style={{ fontSize: 10, color: "rgba(255,255,255,.4)", marginBottom: 4 }}>📍 JURISDICTION</p>
+                      <p style={{ fontSize: 16, fontWeight: 600, color: "#fff" }}>{feeResult.state}</p>
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  {feeResult.notes && feeResult.notes.length > 0 && (
+                    <div style={{ background: "rgba(255,193,7,.05)", border: "1px solid rgba(255,193,7,.2)", borderRadius: 10, padding: 16, marginBottom: 20 }}>
+                      <p style={{ fontSize: 11, color: "#ffc107", fontWeight: 600, marginBottom: 8 }}>📌 IMPORTANT NOTES:</p>
+                      {feeResult.notes.map((note: string, i: number) => (
+                        <p key={i} style={{ fontSize: 12, color: "rgba(255,255,255,.6)", marginBottom: 4, paddingLeft: 12 }}>• {note}</p>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Disclaimer */}
+                  <div style={{ background: "rgba(255,255,255,.02)", borderRadius: 8, padding: 12, textAlign: "center" }}>
+                    <p style={{ fontSize: 10, color: "rgba(255,255,255,.3)", lineHeight: 1.8 }}>
+                      ⚠️ These are estimates based on Telangana Court Fees Act. Actual fees may vary. Consult a lawyer for exact costs.
+                      <br />
+                      💡 Can't afford these fees? Check "Legal Aid Eligibility" for free legal services.
+                    </p>
+                  </div>
+
+                  {/* Actions */}
+                  <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
+                    <button onClick={() => setFeeResult(null)} style={{ ...btnStyle, flex: 1, background: "rgba(255,255,255,.05)" }}>
+                      Calculate Another
+                    </button>
+                    <button onClick={() => switchFeature("legalaid")} style={{ ...btnStyle, flex: 1, background: "#16a34a" }}>
+                      Check Legal Aid Eligibility
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Info Card */}
+              {!feeResult && (
+                <div style={{ background: "rgba(30,95,255,.05)", border: "1px solid rgba(30,95,255,.15)", borderRadius: 12, padding: 20 }}>
+                  <p style={{ fontSize: 12, color: BLUEB, fontWeight: 600, marginBottom: 12 }}>💡 Why calculate court fees?</p>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,.5)", lineHeight: 2 }}>
+                    <p>• Know the total cost <b>before</b> meeting a lawyer</p>
+                    <p>• Compare costs across different case types</p>
+                    <p>• Decide if filing a case is worth the expense</p>
+                    <p>• Check if you qualify for free legal aid</p>
+                    <p>• Plan your budget for legal proceedings</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* ══ EXISTING FORM VIEWS (Notice, Deadline, etc.) ══ */}
-        {feature !== "chat" && feature !== "voice" && feature !== "predict" && (
+        {feature !== "chat" && feature !== "voice" && feature !== "predict" && feature !== "courtfee" && (
           <div style={{ flex: 1, overflowY: "auto", padding: "28px" }}>
             <div style={{ maxWidth: 700, margin: "0 auto" }}>
 
@@ -1103,180 +1292,6 @@ export default function LegalChatbot() {
                       <input value={checklistState} onChange={(e) => setChecklistState(e.target.value)} placeholder="e.g. Delhi, Tamil Nadu..." style={inputStyle} />
                     </div>
                     <button onClick={handleChecklist} disabled={loading} style={{ ...btnStyle, opacity: loading ? 0.6 : 1 }}>{loading ? "Generating..." : "✅ Generate Checklist"}</button>
-                  </div>
-                )}
-
-                {/* ══ COURT FEE CALCULATOR VIEW ══ */}
-                {feature === "courtfee" && (
-                  <div style={{ flex: 1, overflowY: "auto", padding: "28px" }}>
-                    <div style={{ maxWidth: 700, margin: "0 auto" }}>
-                      <div style={{ marginBottom: 24 }}>
-                        <p style={{ fontSize: 20, fontWeight: 700 }}>💰 Court Fee Calculator</p>
-                        <p style={{ fontSize: 12, color: "rgba(255,255,255,.3)", marginTop: 4 }}>Calculate filing costs before going to court</p>
-                      </div>
-
-                      <div style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(16px)", borderRadius: 16, padding: "24px", border: "1px solid rgba(30,95,255,.15)", marginBottom: 20 }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                          
-                          <div>
-                            <p style={labelStyle}>State</p>
-                            <select value={feeState} onChange={(e) => setFeeState(e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
-                              <option value="Telangana">Telangana</option>
-                              <option value="Andhra Pradesh">Andhra Pradesh</option>
-                              <option value="Karnataka">Karnataka</option>
-                              <option value="Maharashtra">Maharashtra</option>
-                              <option value="Tamil Nadu">Tamil Nadu</option>
-                              <option value="Delhi">Delhi</option>
-                              <option value="Other">Other State</option>
-                            </select>
-                            <p style={{ fontSize: 9, color: "rgba(255,255,255,.3)", marginTop: 4 }}>* Fees calculated based on Telangana Court Fees Act. Other states may vary slightly.</p>
-                          </div>
-
-                          <div>
-                            <p style={labelStyle}>Case Type *</p>
-                            <select value={feeCaseType} onChange={(e) => setFeeCaseType(e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
-                              <option value="">Select case type...</option>
-                              <option value="Civil Suit (Money Recovery)">Civil Suit (Money Recovery)</option>
-                              <option value="Property Dispute">Property Dispute</option>
-                              <option value="Consumer Complaint">Consumer Complaint</option>
-                              <option value="Cheque Bounce (Section 138)">Cheque Bounce (Section 138)</option>
-                              <option value="Divorce (Mutual Consent)">Divorce (Mutual Consent)</option>
-                              <option value="Divorce (Contested)">Divorce (Contested)</option>
-                              <option value="Bail Application">Bail Application</option>
-                              <option value="Criminal Complaint">Criminal Complaint</option>
-                              <option value="Labour/Employment Dispute">Labour/Employment Dispute</option>
-                              <option value="RTI Appeal">RTI Appeal</option>
-                              <option value="Writ Petition (High Court)">Writ Petition (High Court)</option>
-                            </select>
-                          </div>
-
-                          <div>
-                            <p style={labelStyle}>Claim/Suit Amount (₹)</p>
-                            <input 
-                              type="number" 
-                              value={feeClaimAmount} 
-                              onChange={(e) => setFeeClaimAmount(e.target.value)} 
-                              placeholder="e.g. 500000" 
-                              style={inputStyle} 
-                            />
-                            <p style={{ fontSize: 9, color: "rgba(255,255,255,.3)", marginTop: 4 }}>Enter 0 for criminal/bail matters</p>
-                          </div>
-
-                          <button onClick={calculateCourtFee} style={{ ...btnStyle }}>
-                            💰 Calculate Total Cost
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Results */}
-                      {feeResult && (
-                        <div style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(16px)", borderRadius: 16, padding: "24px", border: "1px solid rgba(30,95,255,.15)" }}>
-                          
-                          {/* Header */}
-                          <div style={{ textAlign: "center", marginBottom: 24, paddingBottom: 20, borderBottom: "1px solid rgba(255,255,255,.1)" }}>
-                            <p style={{ fontSize: 14, color: "rgba(255,255,255,.5)", marginBottom: 8 }}>{feeResult.caseType}</p>
-                            {feeResult.claimAmount > 0 && (
-                              <p style={{ fontSize: 12, color: "rgba(255,255,255,.3)" }}>Claim Amount: ₹{feeResult.claimAmount.toLocaleString("en-IN")}</p>
-                            )}
-                          </div>
-
-                          {/* Fee Breakdown */}
-                          <div style={{ marginBottom: 24 }}>
-                            <p style={{ fontSize: 12, color: BLUEB, fontWeight: 600, marginBottom: 12 }}>📋 FEE BREAKDOWN:</p>
-                            
-                            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                              <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", background: "rgba(255,255,255,.02)", borderRadius: 8 }}>
-                                <span style={{ fontSize: 13, color: "rgba(255,255,255,.6)" }}>Court Fee</span>
-                                <span style={{ fontSize: 13, color: "#fff", fontWeight: 600 }}>₹{feeResult.courtFee.toLocaleString("en-IN")}</span>
-                              </div>
-                              
-                              <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", background: "rgba(255,255,255,.02)", borderRadius: 8 }}>
-                                <span style={{ fontSize: 13, color: "rgba(255,255,255,.6)" }}>Stamp Duty</span>
-                                <span style={{ fontSize: 13, color: "#fff", fontWeight: 600 }}>₹{feeResult.stampDuty.toLocaleString("en-IN")}</span>
-                              </div>
-                              
-                              <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", background: "rgba(255,255,255,.02)", borderRadius: 8 }}>
-                                <span style={{ fontSize: 13, color: "rgba(255,255,255,.6)" }}>Process Fee</span>
-                                <span style={{ fontSize: 13, color: "#fff", fontWeight: 600 }}>₹{feeResult.processFee.toLocaleString("en-IN")}</span>
-                              </div>
-                              
-                              <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", background: "rgba(255,255,255,.02)", borderRadius: 8 }}>
-                                <span style={{ fontSize: 13, color: "rgba(255,255,255,.6)" }}>Miscellaneous</span>
-                                <span style={{ fontSize: 13, color: "#fff", fontWeight: 600 }}>₹{feeResult.miscFee.toLocaleString("en-IN")}</span>
-                              </div>
-                              
-                              <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", background: "rgba(30,95,255,.1)", borderRadius: 8, border: "1px solid rgba(30,95,255,.2)" }}>
-                                <span style={{ fontSize: 13, color: BLUEB }}>Advocate Fee (Estimated)</span>
-                                <span style={{ fontSize: 13, color: BLUEB, fontWeight: 600 }}>₹{feeResult.advocateFeeMin.toLocaleString("en-IN")} - ₹{feeResult.advocateFeeMax.toLocaleString("en-IN")}</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Total */}
-                          <div style={{ background: "linear-gradient(135deg, rgba(30,95,255,.15), rgba(30,95,255,.05))", border: "1px solid rgba(30,95,255,.3)", borderRadius: 12, padding: 20, marginBottom: 24, textAlign: "center" }}>
-                            <p style={{ fontSize: 11, color: "rgba(255,255,255,.5)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "1px" }}>Estimated Total Cost</p>
-                            <p style={{ fontSize: 28, fontWeight: 700, color: "#fff" }}>
-                              ₹{feeResult.totalMin.toLocaleString("en-IN")} - ₹{feeResult.totalMax.toLocaleString("en-IN")}
-                            </p>
-                          </div>
-
-                          {/* Timeline */}
-                          <div style={{ display: "flex", gap: 16, marginBottom: 24 }}>
-                            <div style={{ flex: 1, background: "rgba(255,255,255,.02)", padding: 16, borderRadius: 10, textAlign: "center" }}>
-                              <p style={{ fontSize: 10, color: "rgba(255,255,255,.4)", marginBottom: 4 }}>⏱️ EXPECTED TIMELINE</p>
-                              <p style={{ fontSize: 16, fontWeight: 600, color: "#fff" }}>{feeResult.timeline}</p>
-                            </div>
-                            <div style={{ flex: 1, background: "rgba(255,255,255,.02)", padding: 16, borderRadius: 10, textAlign: "center" }}>
-                              <p style={{ fontSize: 10, color: "rgba(255,255,255,.4)", marginBottom: 4 }}>📍 JURISDICTION</p>
-                              <p style={{ fontSize: 16, fontWeight: 600, color: "#fff" }}>{feeResult.state}</p>
-                            </div>
-                          </div>
-
-                          {/* Notes */}
-                          {feeResult.notes && feeResult.notes.length > 0 && (
-                            <div style={{ background: "rgba(255,193,7,.05)", border: "1px solid rgba(255,193,7,.2)", borderRadius: 10, padding: 16, marginBottom: 20 }}>
-                              <p style={{ fontSize: 11, color: "#ffc107", fontWeight: 600, marginBottom: 8 }}>📌 IMPORTANT NOTES:</p>
-                              {feeResult.notes.map((note: string, i: number) => (
-                                <p key={i} style={{ fontSize: 12, color: "rgba(255,255,255,.6)", marginBottom: 4, paddingLeft: 12 }}>• {note}</p>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* Disclaimer */}
-                          <div style={{ background: "rgba(255,255,255,.02)", borderRadius: 8, padding: 12, textAlign: "center" }}>
-                            <p style={{ fontSize: 10, color: "rgba(255,255,255,.3)", lineHeight: 1.8 }}>
-                              ⚠️ These are estimates based on Telangana Court Fees Act. Actual fees may vary. Consult a lawyer for exact costs.
-                              <br />
-                              💡 Can't afford these fees? Check "Legal Aid Eligibility" for free legal services.
-                            </p>
-                          </div>
-
-                          {/* Actions */}
-                          <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
-                            <button onClick={() => setFeeResult(null)} style={{ ...btnStyle, flex: 1, background: "rgba(255,255,255,.05)" }}>
-                              Calculate Another
-                            </button>
-                            <button onClick={() => switchFeature("legalaid")} style={{ ...btnStyle, flex: 1, background: "#16a34a" }}>
-                              Check Legal Aid Eligibility
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Info Card */}
-                      {!feeResult && (
-                        <div style={{ background: "rgba(30,95,255,.05)", border: "1px solid rgba(30,95,255,.15)", borderRadius: 12, padding: 20 }}>
-                          <p style={{ fontSize: 12, color: BLUEB, fontWeight: 600, marginBottom: 12 }}>💡 Why calculate court fees?</p>
-                          <div style={{ fontSize: 12, color: "rgba(255,255,255,.5)", lineHeight: 2 }}>
-                            <p>• Know the total cost <b>before</b> meeting a lawyer</p>
-                            <p>• Compare costs across different case types</p>
-                            <p>• Decide if filing a case is worth the expense</p>
-                            <p>• Check if you qualify for free legal aid</p>
-                            <p>• Plan your budget for legal proceedings</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
                   </div>
                 )}
 

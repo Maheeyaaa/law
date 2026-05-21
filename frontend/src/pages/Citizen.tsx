@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, CSSProperties, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { getDashboard, globalSearch, createCase } from "../services/api";
 import scalesNavy from "../assets/scales-navy.png";
+import CitizenLayout from "../components/CitizenLayout";
 
 const PF: CSSProperties = { fontFamily: "'Playfair Display',serif" };
 const BN: CSSProperties = { fontFamily: "'Bebas Neue',cursive" };
@@ -25,21 +26,20 @@ interface NI { label: string; icon: string; badge?: number; id: string }
 // Base nav items WITHOUT badges (badges will be added dynamically)
 const NAV1_BASE: NI[] = [
   { label: "Dashboard", icon: "⊞", id: "dash" },
-  { label: "My Cases", icon: "📁", id: "cases" },
-  { label: "File New Case", icon: "✏️", id: "file" },
-  { label: "Hearings", icon: "📅", id: "hear" },
+  { label: "My Requests", icon: "📁", id: "cases" },
+  { label: "Submit Legal Request", icon: "✏️", id: "file" },
+  { label: "Consultations", icon: "📅", id: "hear" },
 ];
 const NAV2: NI[] = [
   { label: "Find Lawyer", icon: "👤", id: "law" },
   { label: "Documents", icon: "📄", id: "docs" },
-  { label: "Track Status", icon: "🔍", id: "track" },
+  { label: "Track Progress", icon: "🔍", id: "track" },
   { label: "AI Legal Assistant", icon: "🤖", id: "ai" },
   { label: "Notifications", icon: "🔔", id: "notif" },
 ];
 const NAV3: NI[] = [
   { label: "Help Center", icon: "❓", id: "help" },
   { label: "Settings", icon: "⚙️", id: "set" },
-  { label: "Admin Panel", icon: "🛠️", id: "admin" },
 ];
 
 const NAV_TO_SECTION: Record<string, number> = {
@@ -88,9 +88,6 @@ function NavSec({ label, items, active, onNav }: { label: string; items: NI[]; a
 export default function CitizenDashboard() {
   const navigate = useNavigate();
   
-  // Navigation state
-  const [nav, setNav] = useState("dash");
-  
   // User data from localStorage
   const [user, setUser] = useState<{ name: string; email: string; _id: string } | null>(null);
   const [userInitials, setUserInitials] = useState("--");
@@ -110,6 +107,7 @@ export default function CitizenDashboard() {
   // Form states
   const [caseFilter, setCaseFilter] = useState("All");
   const [fileForm, setFileForm] = useState({ caseType: "Civil Dispute", title: "", description: "", district: "", courtName: "" });
+  const [supportingDocs, setSupportingDocs] = useState<File[]>([]);
   const [filing, setFiling] = useState(false);
   const [fileMsg, setFileMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -173,19 +171,6 @@ const telanganaCourts = [
   { name: "Telangana Administrative Tribunal", district: "Hyderabad" },
 ];
 
-  // Dynamic badges based on stats
-  const NAV1_WITH_BADGES = NAV1_BASE.map(item => {
-    if (item.id === "cases") {
-      const badge = parseInt(stats.active);
-      return { ...item, badge: badge > 0 ? badge : undefined };
-    }
-    if (item.id === "hear") {
-      const badge = parseInt(stats.hearings);
-      return { ...item, badge: badge > 0 ? badge : undefined };
-    }
-    return item;
-  });
-
   const filteredCases = caseFilter === "All" ? casesList : casesList.filter(c => c.status === caseFilter);
   
   const mainRef = useRef<HTMLDivElement>(null);
@@ -195,30 +180,32 @@ const telanganaCourts = [
   const sectionRefs = [sec0, sec1, sec2];
 
   const handleNav = (id: string) => {
-    const routeMap: Record<string, string> = {
-      cases: "/citizen/cases",
-      hear: "/citizen/hearings",
-      law: "/citizen/find-lawyer",
-      docs: "/citizen/documents",
-      track: "/citizen/track",
-      ai: "/citizen/legal-chatbot",
-      notif: "/citizen/notifications",
-      help: "/citizen/help",
-      set: "/citizen/settings",
-      admin: "/admin-panel",
-    };
 
-    if (routeMap[id]) {
-      navigate(routeMap[id]);
+    if (id === "dash") {
+      sec0.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
       return;
     }
 
-    setNav(id);
-    const idx = NAV_TO_SECTION[id] ?? 0;
-    const target = sectionRefs[idx].current;
-    if (target && mainRef.current) {
-      mainRef.current.scrollTo({ top: target.offsetTop - 20, behavior: "smooth" });
+    if (id === "file" || id === "cases") {
+      sec1.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+      return;
     }
+
+    if (id === "ai" || id === "law") {
+      sec2.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+      return;
+    }
+
+    navigate("/citizen");
   };
 
   // Load user + Fetch dashboard data
@@ -299,8 +286,9 @@ const telanganaCourts = [
         district: fileForm.district,
         courtName: fileForm.courtName,
       });
-      setFileMsg({ type: "success", text: `Case filed! ID: ${res.data.case.caseId}` });
+      setFileMsg({ type: "success", text: `Request submitted! ID: ${res.data.case.caseId}` });
       setFileForm({ caseType: "Civil Dispute", title: "", description: "", district: "", courtName: "" });
+      setSupportingDocs([]);
       // Refresh dashboard
       try {
         const dashRes = await getDashboard();
@@ -310,7 +298,7 @@ const telanganaCourts = [
         if (data.activities) setActivitiesList(data.activities);
       } catch {}
     } catch (err: any) {
-      setFileMsg({ type: "error", text: err.response?.data?.message || "Failed to file case" });
+      setFileMsg({ type: "error", text: err.response?.data?.message || "Failed to submit request" });
     } finally { setFiling(false); }
   };
 
@@ -324,7 +312,7 @@ const telanganaCourts = [
   }, []);
 
   return (
-    <div style={{ ...DM, height: "100vh", color: "#fff", display: "flex", overflow: "hidden", position: "relative", background: "transparent" }}>
+    <CitizenLayout activeNav="dash">
 
       <div style={{ position: "fixed", inset: 0, zIndex: -1, background: "rgba(2,8,30,0.28)", pointerEvents: "none" }} />
 
@@ -341,35 +329,6 @@ const telanganaCourts = [
         ::-webkit-scrollbar { width:3px; }
         ::-webkit-scrollbar-thumb { background:rgba(30,95,255,.3); border-radius:3px; }
       `}</style>
-
-      {/* ══ SIDEBAR ══ */}
-      <aside style={{ ...GLASS, background: "rgba(10,20,60,0.18)", width: 244, minWidth: 244, height: "100vh", flexShrink: 0, position: "relative", zIndex: 20, borderRadius: 0, borderTop: "none", borderBottom: "none", borderLeft: "none", display: "flex", flexDirection: "column", overflowY: "auto", overflowX: "hidden" }}>
-        <div style={{ padding: "24px 20px 20px", borderBottom: "1px solid rgba(255,255,255,.06)", flexShrink: 0 }}>
-          <div style={{ width: 42, height: 42, borderRadius: 13, overflow: "hidden", position: "relative", marginBottom: 11, boxShadow: "0 0 22px rgba(30,95,255,.45)" }}>
-            <img src={scalesNavy} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: .22 }} />
-            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg,rgba(18,55,200,.95),rgba(60,120,255,.9))" }} />
-            <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>⚖</span>
-          </div>
-          <p style={{ ...PF, fontSize: 20, fontWeight: 700, background: "linear-gradient(135deg,#fff 30%,#a8c8ff)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>LegalMind</p>
-          <p style={{ ...DM, fontSize: 9, letterSpacing: "2.5px", textTransform: "uppercase", color: "rgba(255,255,255,.2)", marginTop: 2 }}>Citizen Portal</p>
-        </div>
-        <div style={{ flex: 1 }}>
-          <NavSec label="Main" items={NAV1_WITH_BADGES} active={nav} onNav={handleNav} />
-          <NavSec label="Resources" items={NAV2} active={nav} onNav={handleNav} />
-          <NavSec label="Support" items={NAV3} active={nav} onNav={handleNav} />
-        </div>
-        <div style={{ padding: 12, borderTop: "1px solid rgba(255,255,255,.06)", flexShrink: 0 }}>
-          <div onClick={() => navigate("/citizen/settings")} style={{ display: "flex", alignItems: "center", gap: 10, padding: 10, borderRadius: 13, background: "rgba(255,255,255,.03)", border: "1px solid rgba(30,95,255,.1)", cursor: "pointer", transition: "all .2s ease" }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,.06)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(30,95,255,.25)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,.03)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(30,95,255,.1)"; }}>
-            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg,#0a1840,#1e5fff)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0, ...DM }}>{userInitials}</div>
-            <div style={{ minWidth: 0 }}>
-              <p style={{ ...DM, fontSize: 13, fontWeight: 600 }}>{user?.name || "Guest"}</p>
-              <p style={{ ...DM, fontSize: 10, color: "rgba(255,255,255,.25)", marginTop: 1 }}>Citizen</p>
-            </div>
-          </div>
-        </div>
-      </aside>
 
       {/* ══ MAIN ══ */}
       <main ref={mainRef} style={{ flex: 1, minWidth: 0, height: "100vh", overflowY: "auto", overflowX: "hidden", position: "relative", zIndex: 10 }}>
@@ -440,15 +399,15 @@ const telanganaCourts = [
                     <p style={{ ...DM, fontSize: 9, letterSpacing: "2.5px", textTransform: "uppercase", color: "rgba(168,200,255,.6)", marginBottom: 10 }}>WELCOME BACK{user?.name ? `, ${user.name.split(" ")[0]}` : ""}</p>
                     <p style={{ ...DM, fontSize: 13, color: "rgba(255,255,255,.5)", lineHeight: 1.8, marginBottom: 20 }}>
                       {casesList.length > 0 ? (
-                        <>Your cases are being processed.{nextHearingDate && <> Hearing on <span style={{ color: ICEB, fontWeight: 600 }}>{nextHearingDate}</span></>}{pendingDocs > 0 && <> and {pendingDocs} doc{pendingDocs > 1 ? "s" : ""} await review</>}.</>
+                        <>Your legal requests are being processed.{nextHearingDate && <> Next consultation on <span style={{ color: ICEB, fontWeight: 600 }}>{nextHearingDate}</span></>}{pendingDocs > 0 && <> and {pendingDocs} doc{pendingDocs > 1 ? "s" : ""} await review</>}.</>
                       ) : (
-                        <>You have no active cases. File a new case to get started with your legal matters.</>
+                        <>You have no active requests. Submit a legal request to get started with your legal matters.</>
                       )}
                     </p>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button onClick={() => handleNav("file")} style={{ ...DM, background: BLUE, color: "#fff", fontSize: 11, fontWeight: 600, padding: "8px 16px", borderRadius: 9, border: "none", cursor: "pointer", boxShadow: SH_CARD, whiteSpace: "nowrap", transition: "transform .2s ease" }}
                         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-4px)"; }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; }}>+ File New Case</button>
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; }}>+ Submit Request</button>
                       <button onClick={() => navigate("/citizen/cases")} style={{ ...DM, background: "rgba(255,255,255,.05)", color: "rgba(255,255,255,.5)", fontSize: 11, fontWeight: 500, padding: "8px 16px", borderRadius: 9, border: "1px solid rgba(255,255,255,.1)", cursor: "pointer", whiteSpace: "nowrap", transition: "transform .2s ease", boxShadow: "3px 4px 12px rgba(0,0,0,.5)" }}
                         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-4px)"; }}
                         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; }}>View All →</button>
@@ -457,10 +416,10 @@ const telanganaCourts = [
                   <div style={{ flex: 1, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(16px)", border: "none", borderRadius: 14, padding: "24px 28px 44px 28px", display: "flex", flexDirection: "column", justifyContent: "center", boxShadow: SH_CARD, marginTop: -40, position: "relative" }}>
                     <p style={{ ...DM, fontSize: 9, letterSpacing: "2.5px", textTransform: "uppercase", color: "rgba(168,200,255,.5)", marginBottom: 14 }}>CASE STATUS</p>
                     <p style={{ ...DM, fontSize: 13, color: "rgba(255,255,255,.45)", lineHeight: 1.9 }}>
-                      You have {stats.total} total case{parseInt(stats.total) !== 1 ? "s" : ""} with {stats.active} active.{nextHearingDate && <> A hearing has been scheduled for <span style={{ color: ICEB, fontWeight: 600 }}>{nextHearingDate}</span>.</>}{pendingDocs > 0 && <> {pendingDocs} document{pendingDocs > 1 ? "s are" : " is"} pending verification.</>}
+                      You have {stats.total} total requests with {stats.active} active.{nextHearingDate && <> A consultation has been scheduled for <span style={{ color: ICEB, fontWeight: 600 }}>{nextHearingDate}</span>.</>}{pendingDocs > 0 && <> {pendingDocs} document{pendingDocs > 1 ? "s are" : " is"} pending verification.</>}
                     </p>
                     <div style={{ position: "absolute", bottom: -18, left: 0, right: 0, display: "flex", justifyContent: "center", gap: 28, zIndex: 30 }}>
-                      {([{ value: stats.total, label: "Total" }, { value: stats.active, label: "Active" }, { value: stats.hearings, label: "Hearings" }, { value: stats.resolved, label: "Resolved" }]).map(s => (
+                      {([{ value: stats.total, label: "Total" }, { value: stats.active, label: "Active" }, { value: stats.hearings, label: "Consultations" }, { value: stats.resolved, label: "Resolved" }]).map(s => (
                         <div key={s.label} style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(12px)", border: "1px solid rgba(60,110,255,0.15)", borderRadius: 10, padding: "8px 18px", position: "relative", overflow: "hidden", textAlign: "center", boxShadow: SH_CARD, width: 90, transition: "transform .2s ease" }}
                           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-4px)"; }}
                           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; }}>
@@ -476,14 +435,14 @@ const telanganaCourts = [
             </div>
 
             {/* BOX 2 — My Cases + Quick File */}
-            <div ref={sec1} style={{ marginLeft: 18 }}>
+            <div id="submit-request" ref={sec1} style={{ marginLeft: 18 }}>
               <Plate style={{ padding: "28px" }}>
                 <div style={{ display: "flex", gap: 20 }}>
-                  <div style={{ flex: 1, minWidth: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(16px)", borderRadius: 14, padding: "20px", border: "none", boxShadow: SH_CARD, transition: "transform .2s ease" }}
+                  <div id="my-requests" style={{ flex: 1, minWidth: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(16px)", borderRadius: 14, padding: "20px", border: "none", boxShadow: SH_CARD, transition: "transform .2s ease" }}
                     onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-4px)"; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                      <p style={{ ...DM, fontSize: 13, fontWeight: 600, color: "#fff" }}>My Cases</p>
+                      <p style={{ ...DM, fontSize: 13, fontWeight: 600, color: "#fff" }}>My Requests</p>
                       <span onClick={() => navigate("/citizen/cases")} style={{ ...DM, fontSize: 11, color: BLUEB, cursor: "pointer" }}>View all →</span>
                     </div>
                     <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
@@ -499,8 +458,8 @@ const telanganaCourts = [
                     <div style={{ maxHeight: 180, overflowY: "auto", paddingRight: 4 }}>
                       {filteredCases.length === 0 ? (
                         <div style={{ textAlign: "center", padding: 20 }}>
-                          <p style={{ ...DM, fontSize: 12, color: "rgba(255,255,255,.3)" }}>No cases found</p>
-                          <button onClick={() => handleNav("file")} style={{ ...DM, fontSize: 10, color: BLUEB, background: "none", border: "none", cursor: "pointer", marginTop: 8 }}>+ File your first case</button>
+                          <p style={{ ...DM, fontSize: 12, color: "rgba(255,255,255,.3)" }}>No requests found</p>
+                          <button onClick={() => handleNav("file")} style={{ ...DM, fontSize: 10, color: BLUEB, background: "none", border: "none", cursor: "pointer", marginTop: 8 }}>+ Submit your first request</button>
                         </div>
                       ) : filteredCases.map((r, i) => (
                         <div key={r._id || i} style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr 1fr", gap: 8, padding: "10px 10px", borderRadius: 10, background: i % 2 === 0 ? "rgba(255,255,255,.03)" : "transparent", alignItems: "center", marginBottom: 2 }}>
@@ -516,8 +475,8 @@ const telanganaCourts = [
                     onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-4px)"; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; }}>
                     <div>
-                      <p style={{ ...DM, fontSize: 13, fontWeight: 600, color: "#fff", marginBottom: 4 }}>Quick File</p>
-                      <p style={{ ...DM, fontSize: 11, color: "rgba(255,255,255,.3)" }}>Submit a new case instantly.</p>
+                      <p style={{ ...DM, fontSize: 13, fontWeight: 600, color: "#fff", marginBottom: 4 }}>Submit Legal Request</p>
+                      <p style={{ ...DM, fontSize: 11, color: "rgba(255,255,255,.3)" }}>Submit Request</p>
                     </div>
                     {fileMsg && (
                       <div style={{ ...DM, background: fileMsg.type === "success" ? "rgba(52,211,153,.15)" : "rgba(255,107,107,.15)", border: `1px solid ${fileMsg.type === "success" ? "rgba(52,211,153,.3)" : "rgba(255,107,107,.3)"}`, borderRadius: 8, padding: "8px 12px", fontSize: 11, color: fileMsg.type === "success" ? "#34d399" : "#ff6b6b" }}>
@@ -526,7 +485,7 @@ const telanganaCourts = [
                     )}
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                       <div>
-                        <p style={{ ...DM, fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "rgba(255,255,255,.25)", marginBottom: 6 }}>Case Type</p>
+                        <p style={{ ...DM, fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "rgba(255,255,255,.25)", marginBottom: 6 }}>Issue Type</p>
                         <select value={fileForm.caseType} onChange={e => setFileForm({ ...fileForm, caseType: e.target.value })} style={{ ...DM, width: "100%", background: "rgba(255,255,255,.04)", border: "1px solid rgba(30,95,255,.25)", borderRadius: 8, padding: "8px 12px", color: "rgba(255,255,255,.5)", fontSize: 12, outline: "none", cursor: "pointer" }}>
                           <option value="Civil Dispute">Civil Dispute</option><option value="Property">Property</option><option value="Criminal">Criminal</option><option value="Family">Family</option><option value="Contract">Contract</option><option value="Consumer">Consumer</option><option value="Employment">Employment</option>
                         </select>
@@ -541,7 +500,7 @@ const telanganaCourts = [
                         </select>
                       </div>
                       <div>
-                        <p style={{ ...DM, fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "rgba(255,255,255,.25)", marginBottom: 6 }}>Court</p>
+                        <p style={{ ...DM, fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "rgba(255,255,255,.25)", marginBottom: 6 }}>Relevant Court / Venue (Optional)</p>
                         <select value={fileForm.courtName} onChange={e => setFileForm({ ...fileForm, courtName: e.target.value })} style={{ ...DM, width: "100%", background: "rgba(255,255,255,.04)", border: "1px solid rgba(30,95,255,.25)", borderRadius: 8, padding: "8px 12px", color: "rgba(255,255,255,.5)", fontSize: 12, outline: "none", cursor: "pointer" }}>
                           <option value="">Select Court</option>
                           {telanganaCourts
@@ -550,16 +509,73 @@ const telanganaCourts = [
                         </select>
                       </div>
                       <div>
-                        <p style={{ ...DM, fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "rgba(255,255,255,.25)", marginBottom: 6 }}>Case Title</p>
+                        <p style={{ ...DM, fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "rgba(255,255,255,.25)", marginBottom: 6 }}>Issue Title</p>
                         <input placeholder="e.g. Property Dispute in Madhapur" value={fileForm.title} onChange={e => setFileForm({ ...fileForm, title: e.target.value })} style={{ ...DM, width: "100%", background: "rgba(255,255,255,.04)", border: "1px solid rgba(30,95,255,.25)", borderRadius: 8, padding: "8px 12px", color: "rgba(255,255,255,.5)", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
                       </div>
                       <div>
                         <p style={{ ...DM, fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "rgba(255,255,255,.25)", marginBottom: 6 }}>Brief Description</p>
-                        <textarea placeholder="Describe your case briefly..." rows={3} value={fileForm.description} onChange={e => setFileForm({ ...fileForm, description: e.target.value })} style={{ ...DM, width: "100%", background: "rgba(255,255,255,.04)", border: "1px solid rgba(30,95,255,.25)", borderRadius: 8, padding: "8px 12px", color: "rgba(255,255,255,.5)", fontSize: 12, outline: "none", resize: "none", boxSizing: "border-box" }} />
+                        <textarea placeholder="Describe your issue briefly..." rows={3} value={fileForm.description} onChange={e => setFileForm({ ...fileForm, description: e.target.value })} style={{ ...DM, width: "100%", background: "rgba(255,255,255,.04)", border: "1px solid rgba(30,95,255,.25)", borderRadius: 8, padding: "8px 12px", color: "rgba(255,255,255,.5)", fontSize: 12, outline: "none", resize: "none", boxSizing: "border-box" }} />
+                      </div>
+                      <div>
+                        <p
+                          style={{
+                            ...DM,
+                            fontSize: 9,
+                            letterSpacing: "1.5px",
+                            textTransform: "uppercase",
+                            color: "rgba(255,255,255,.25)",
+                            marginBottom: 6
+                          }}
+                        >
+                          Supporting Documents (Optional)
+                        </p>
+
+                        <input
+                          type="file"
+                          multiple
+                          onChange={(e) =>
+                            setSupportingDocs(
+                              Array.from(e.target.files || [])
+                            )
+                          }
+                          style={{
+                            width: "100%",
+                            color: "rgba(255,255,255,.5)"
+                          }}
+                        />
+
+                        <p
+                          style={{
+                            ...DM,
+                            fontSize: 10,
+                            color: "rgba(255,255,255,.3)",
+                            marginTop: 6
+                          }}
+                        >
+                          Upload proof only if available.
+                          You can upload more after request review.
+                        </p>
+
+                        {supportingDocs.length > 0 && (
+                          <div style={{ marginTop: 10 }}>
+                            {supportingDocs.map((f, i) => (
+                              <p
+                                key={i}
+                                style={{
+                                  ...DM,
+                                  fontSize: 10,
+                                  color: BLUEB
+                                }}
+                              >
+                                📄 {f.name}
+                              </p>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <button onClick={handleFileCase} disabled={filing} style={{ ...DM, background: filing ? "rgba(30,95,255,.5)" : BLUE, color: "#fff", fontSize: 12, fontWeight: 600, padding: "10px 16px", borderRadius: 9, border: "none", cursor: filing ? "not-allowed" : "pointer", boxShadow: SH_CARD, transition: "transform .2s ease" }}
                         onMouseEnter={e => { if (!filing) (e.currentTarget as HTMLElement).style.transform = "translateY(-3px)"; }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; }}>{filing ? "Submitting..." : "+ Submit Case"}</button>
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; }}>{filing ? "Submitting..." : "+ Submit Request"}</button>
                     </div>
                   </div>
                 </div>
@@ -570,7 +586,7 @@ const telanganaCourts = [
             <div ref={sec2} style={{ marginLeft: 18 }}>
 
               {/* AI Legal Assistant Banner */}
-              <Plate style={{ padding: "24px 28px", marginBottom: 28, cursor: "pointer", transition: "transform .2s ease" }}>
+              <Plate id="ai-section" style={{ padding: "24px 28px", marginBottom: 28, cursor: "pointer", transition: "transform .2s ease" }}>
                 <div
                   onClick={() => navigate("/citizen/legal-chatbot")}
                   style={{
@@ -606,7 +622,7 @@ const telanganaCourts = [
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", maxWidth: 340 }}>
-                      {["📄 Notice Explainer", "⏰ Deadlines", "📖 Legal Terms", "🚨 Scam Detector", "📝 Filing Guide", "✅ Doc Checklist"].map((pill) => (
+                      {["📄 Notice Explainer", "⏰ Deadlines", "📖 Legal Terms", "🚨 Scam Detector", "📝 Filing Guide", "✅ Doc Checklist", "🎯 Case Insights"].map((pill) => (
                         <span key={pill} style={{ ...DM, fontSize: 9, padding: "4px 10px", borderRadius: 20, background: "rgba(30,95,255,.12)", border: "1px solid rgba(30,95,255,.25)", color: ICEB, whiteSpace: "nowrap" }}>{pill}</span>
                       ))}
                     </div>
@@ -616,7 +632,7 @@ const telanganaCourts = [
               </Plate>
 
               {/* 3-Column Section */}
-              <Plate style={{ padding: "28px" }}>
+              <Plate id="find-lawyer" style={{ padding: "28px" }}>
                 <div style={{ display: "flex", gap: 16 }}>
                   
                   {/* Recent Activity */}
@@ -700,6 +716,6 @@ const telanganaCourts = [
           </div>
         )}
       </main>
-    </div>
-  );
+    </CitizenLayout>
+    );
 }

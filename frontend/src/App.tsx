@@ -23,7 +23,15 @@ function App() {
         {/* Main */}
         <Route path="/" element={<Home />} />
         
-        {/* AI Assistant - All AI features in one place */}
+        /*
+        AI Legal Assistant
+
+        Provides:
+        - legal information
+        - notice explanation
+        - legal aid guidance
+        - document checklist
+        */
         <Route path="/citizen/legal-chatbot" element={<LegalChatbot />} />
         <Route path="/citizen/ai-assistant" element={<LegalChatbot />} />
         
@@ -33,7 +41,15 @@ function App() {
         <Route path="/guide" element={<Navigate to="/citizen/legal-chatbot" replace />} />
         <Route path="/checklist" element={<Navigate to="/citizen/legal-chatbot" replace />} />
         
-        {/* Citizen Dashboard & Pages */}
+        /*
+        Citizen Legal Guidance Portal
+
+        Flow:
+        AI Assistant
+        → Submit Legal Request
+        → Lawyer Consultation
+        → Progress Tracking
+        */
         <Route path="/citizen" element={<Citizen />} />
         <Route path="/citizen/cases" element={<MyCases />} />
         <Route path="/citizen/cases/:id" element={<CaseDetail />} />
@@ -43,13 +59,38 @@ function App() {
         <Route path="/citizen/find-lawyer" element={<FindLawyer />} />
         <Route path="/citizen/notifications" element={<Notifications />} />
         <Route path="/citizen/help" element={<Help />} />
-        <Route path="/citizen/settings" element={<Settings />} />
+        <Route path="/citizen/account" element={<Settings />} />
 
         <Route path="/lawyer" element={<Lawyer />} />
-        <Route path="/court-staff" element={<CourtStaff />} />
+        <Route path="/legal-coordinator" element={<CourtStaff />} />
+
+        <Route
+          path="/court-staff"
+          element={<Navigate to="/legal-coordinator" replace />}
+        />
+
+        <Route
+          path="/citizen/requests"
+          element={<Navigate to="/citizen/cases" replace />}
+        />
+
+        <Route
+          path="/citizen/consultations"
+          element={<Navigate to="/citizen/hearings" replace />}
+        />
+
+        <Route
+          path="/citizen/progress"
+          element={<Navigate to="/citizen/track" replace />}
+        />
         
         {/* Admin */}
-        <Route path="/admin-panel" element={<AdminPanel />} />
+        <Route path="/platform-admin" element={<AdminPanel />} />
+
+        <Route
+          path="/admin-panel"
+          element={<Navigate to="/platform-admin" replace />}
+        />
         <Route path="/admin/import-lawyers" element={<AdminImportLawyers />} />
       </Routes>
     </BrowserRouter>

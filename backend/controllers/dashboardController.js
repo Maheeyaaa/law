@@ -34,7 +34,7 @@ export const getDashboardData = async (req, res) => {
       Hearing.countDocuments({
         citizen: citizenId,
         hearingDate: { $gte: now },
-        status: "Scheduled",
+        status: { $in: ["Scheduled", "Postponed"] },
       }),
       Case.find({ citizen: citizenId })
         .populate("assignedLawyer", "name specialization")

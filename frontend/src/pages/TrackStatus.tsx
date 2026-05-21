@@ -20,30 +20,57 @@ const GLASS = {
   boxShadow: "6px 10px 40px rgba(0,0,0,.55), 4px 8px 24px rgba(0,0,0,.4)",
 };
 
+// Maps backend status → color
 function statusColor(status: string): string {
   switch (status) {
-    case "Active": return "#34d399";
-    case "Pending": return "#fbbf24";
-    case "Resolved": return "#93c5fd";
-    case "Closed": return "#9ca3af";
-    default: return "#6aadff";
+    case "Draft":      return "#6B7280";
+    case "Filed":      return "#fbbf24";
+    case "Pending":    return "#60a5fa";
+    case "Active":     return "#34d399";
+    case "Resolved":   return "#93c5fd";
+    case "Closed":     return "#9ca3af";
+    case "Dismissed":  return "#ef4444";
+    default:           return "#6B7280";
   }
 }
 
+// Maps backend status → display label
+const STATUS_DISPLAY: Record<string, string> = {
+  "Draft":      "Draft",
+  "Filed":      "Submitted",
+  "Pending":    "Under Review",
+  "Active":     "Lawyer Assigned",
+  "Resolved":   "Guidance Provided",
+  "Closed":     "Closed",
+  "Dismissed":  "Cancelled",
+};
+
 function priorityColor(priority: string): string {
   switch (priority) {
-    case "High": return "#f87171";
+    case "High":   return "#f87171";
     case "Urgent": return "#ef4444";
     case "Medium": return "#fbbf24";
-    case "Low": return "#34d399";
-    default: return "#6aadff";
+    case "Low":    return "#34d399";
+    default:       return "#6aadff";
   }
 }
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  return new Date(dateStr).toLocaleDateString("en-US", {
+    month: "long", day: "numeric", year: "numeric",
+  });
 }
+
+// Maps backend timeline step types → display labels
+const STEP_LABELS: Record<string, string> = {
+  "case_filed":         "Request Submitted",
+  "under_review":       "Under Review",
+  "lawyer_assigned":    "Lawyer Assigned",
+  "hearing_scheduled":  "Consultation Scheduled",
+  "hearing_completed":  "Consultation Completed",
+  "resolved":           "Guidance Provided",
+};
 
 export default function TrackStatus() {
   const navigate = useNavigate();
@@ -56,7 +83,7 @@ export default function TrackStatus() {
   const handleTrack = async () => {
     const query = caseIdInput.trim();
     if (!query) {
-      setError("Please enter a Case ID");
+      setError("Please enter a Request ID");
       return;
     }
 
@@ -74,7 +101,10 @@ export default function TrackStatus() {
 
       setTrackingData(res.data);
     } catch (err: any) {
-      setError(err.response?.data?.message || "Case not found. Please check the Case ID and try again.");
+      setError(
+        err.response?.data?.message ||
+        "Request not found. Please check the Request ID and try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -94,8 +124,8 @@ export default function TrackStatus() {
 
         {/* Header */}
         <div>
-          <p style={{ ...DM, fontSize: 9, letterSpacing: "2.5px", textTransform: "uppercase", color: "rgba(168,200,255,.5)" }}>TRACK STATUS</p>
-          <p style={{ ...BN, fontSize: 32, color: "#fff", marginTop: 4 }}>Track Your Case</p>
+          <p style={{ ...DM, fontSize: 9, letterSpacing: "2.5px", textTransform: "uppercase", color: "rgba(168,200,255,.5)" }}>TRACK PROGRESS</p>
+          <p style={{ ...BN, fontSize: 32, color: "#fff", marginTop: 4 }}>Track Your Request</p>
         </div>
 
         {/* Search Box */}
@@ -104,7 +134,7 @@ export default function TrackStatus() {
 
           <div style={{ maxWidth: 600, margin: "0 auto", textAlign: "center" }}>
             <p style={{ ...DM, fontSize: 14, color: "rgba(255,255,255,.5)", marginBottom: 24, lineHeight: 1.6 }}>
-              Enter your Case ID to track the real-time status of your case through the court system.
+              Enter your Request ID to track the real-time progress of your legal request.
             </p>
 
             <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
@@ -112,15 +142,18 @@ export default function TrackStatus() {
                 value={caseIdInput}
                 onChange={e => setCaseIdInput(e.target.value)}
                 onKeyDown={handleKeyPress}
-                placeholder="Enter Case ID (e.g. #LM-2025-0001)"
+                placeholder="Enter Request ID (e.g. #TS-2025-0001)"
                 style={{ ...DM, flex: 1, background: "rgba(0,0,0,0.6)", border: "1px solid rgba(30,95,255,.3)", borderRadius: 12, padding: "14px 20px", color: "#fff", fontSize: 14, outline: "none", transition: "border-color .2s ease" }}
                 onFocus={e => (e.currentTarget as HTMLElement).style.borderColor = "rgba(30,95,255,.6)"}
                 onBlur={e => (e.currentTarget as HTMLElement).style.borderColor = "rgba(30,95,255,.3)"}
               />
-              <button onClick={handleTrack} disabled={loading} style={{ ...DM, background: loading ? "rgba(30,95,255,.4)" : BLUE, color: "#fff", fontSize: 13, fontWeight: 600, padding: "14px 28px", borderRadius: 12, border: "none", cursor: loading ? "not-allowed" : "pointer", boxShadow: SH_CARD, transition: "transform .2s ease", whiteSpace: "nowrap" }}
+              <button
+                onClick={handleTrack}
+                disabled={loading}
+                style={{ ...DM, background: loading ? "rgba(30,95,255,.4)" : BLUE, color: "#fff", fontSize: 13, fontWeight: 600, padding: "14px 28px", borderRadius: 12, border: "none", cursor: loading ? "not-allowed" : "pointer", boxShadow: SH_CARD, transition: "transform .2s ease", whiteSpace: "nowrap" }}
                 onMouseEnter={e => { if (!loading) (e.currentTarget as HTMLElement).style.transform = "translateY(-3px)"; }}
                 onMouseLeave={e => (e.currentTarget as HTMLElement).style.transform = "translateY(0)"}>
-                {loading ? "Searching..." : "🔍 Track Case"}
+                {loading ? "Searching..." : "🔍 Track Request"}
               </button>
             </div>
 
@@ -135,30 +168,42 @@ export default function TrackStatus() {
         {/* Tracking Results */}
         {trackingData && (
           <>
-            {/* Case Overview Card */}
+            {/* Request Overview Card */}
             <div style={{ ...GLASS, borderRadius: 20, padding: "28px", position: "relative", overflow: "hidden" }}>
               <div style={{ position: "absolute", top: 0, left: "8%", right: "8%", height: 1, background: "linear-gradient(90deg,transparent,rgba(150,200,255,0.6),transparent)", pointerEvents: "none" }} />
 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
                 <div>
-                  <p style={{ ...DM, fontSize: 11, color: ICEB, fontWeight: 600 }}>{trackingData.case.caseId}</p>
-                  <p style={{ ...DM, fontSize: 22, fontWeight: 700, color: "#fff", marginTop: 4 }}>{trackingData.case.title}</p>
-                  <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-                    <span style={{ ...DM, fontSize: 10, padding: "4px 12px", borderRadius: 99, background: `${statusColor(trackingData.case.status)}15`, border: `1px solid ${statusColor(trackingData.case.status)}44`, color: statusColor(trackingData.case.status), fontWeight: 600 }}>{trackingData.case.status}</span>
-                    <span style={{ ...DM, fontSize: 10, padding: "4px 12px", borderRadius: 99, background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.1)", color: "rgba(255,255,255,.5)" }}>{trackingData.case.caseType}</span>
-                    <span style={{ ...DM, fontSize: 10, padding: "4px 12px", borderRadius: 99, background: `${priorityColor(trackingData.case.priority)}15`, border: `1px solid ${priorityColor(trackingData.case.priority)}44`, color: priorityColor(trackingData.case.priority) }}>{trackingData.case.priority} Priority</span>
+                  <p style={{ ...DM, fontSize: 11, color: ICEB, fontWeight: 600 }}>
+                    {trackingData.case.caseId}
+                  </p>
+                  <p style={{ ...DM, fontSize: 22, fontWeight: 700, color: "#fff", marginTop: 4 }}>
+                    {trackingData.case.title}
+                  </p>
+                  <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+                    <span style={{ ...DM, fontSize: 10, padding: "4px 12px", borderRadius: 99, background: `${statusColor(trackingData.case.status)}15`, border: `1px solid ${statusColor(trackingData.case.status)}44`, color: statusColor(trackingData.case.status), fontWeight: 600 }}>
+                      {STATUS_DISPLAY[trackingData.case.status] || trackingData.case.status}
+                    </span>
+                    <span style={{ ...DM, fontSize: 10, padding: "4px 12px", borderRadius: 99, background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.1)", color: "rgba(255,255,255,.5)" }}>
+                      {trackingData.case.caseType}
+                    </span>
+                    <span style={{ ...DM, fontSize: 10, padding: "4px 12px", borderRadius: 99, background: `${priorityColor(trackingData.case.priority)}15`, border: `1px solid ${priorityColor(trackingData.case.priority)}44`, color: priorityColor(trackingData.case.priority) }}>
+                      {trackingData.case.priority} Priority
+                    </span>
                   </div>
                 </div>
                 <div style={{ textAlign: "right" }}>
-                  <p style={{ ...DM, fontSize: 9, color: "rgba(255,255,255,.3)", textTransform: "uppercase", letterSpacing: "1.5px" }}>Filed On</p>
-                  <p style={{ ...DM, fontSize: 13, color: "rgba(255,255,255,.6)", marginTop: 2 }}>{formatDate(trackingData.case.filingDate)}</p>
+                  <p style={{ ...DM, fontSize: 9, color: "rgba(255,255,255,.3)", textTransform: "uppercase", letterSpacing: "1.5px" }}>Submitted On</p>
+                  <p style={{ ...DM, fontSize: 13, color: "rgba(255,255,255,.6)", marginTop: 2 }}>
+                    {formatDate(trackingData.case.filingDate)}
+                  </p>
                 </div>
               </div>
 
               {/* Progress Bar */}
               <div style={{ marginBottom: 24 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                  <p style={{ ...DM, fontSize: 11, color: "rgba(255,255,255,.5)" }}>Case Progress</p>
+                  <p style={{ ...DM, fontSize: 11, color: "rgba(255,255,255,.5)" }}>Request Progress</p>
                   <p style={{ ...DM, fontSize: 11, color: BLUEB, fontWeight: 600 }}>{progressPercent}% Complete</p>
                 </div>
                 <div style={{ width: "100%", height: 8, borderRadius: 99, background: "rgba(255,255,255,.06)", overflow: "hidden" }}>
@@ -183,17 +228,21 @@ export default function TrackStatus() {
                   )}
                 </div>
                 <div style={{ background: "rgba(0,0,0,0.5)", borderRadius: 12, padding: "16px", border: "1px solid rgba(30,95,255,.15)" }}>
-                  <p style={{ ...DM, fontSize: 9, color: "rgba(255,255,255,.3)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 6 }}>Next Hearing</p>
+                  <p style={{ ...DM, fontSize: 9, color: "rgba(255,255,255,.3)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 6 }}>Next Consultation</p>
                   <p style={{ ...DM, fontSize: 13, color: "#fff", fontWeight: 600 }}>
-                    {trackingData.case.nextHearingDate ? formatDate(trackingData.case.nextHearingDate) : "Not scheduled"}
+                    {trackingData.case.nextHearingDate
+                      ? formatDate(trackingData.case.nextHearingDate)
+                      : "Not scheduled"}
                   </p>
                 </div>
                 <div style={{ background: "rgba(0,0,0,0.5)", borderRadius: 12, padding: "16px", border: "1px solid rgba(30,95,255,.15)" }}>
-                  <p style={{ ...DM, fontSize: 9, color: "rgba(255,255,255,.3)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 6 }}>Case Type</p>
-                  <p style={{ ...DM, fontSize: 13, color: "#fff", fontWeight: 600 }}>{trackingData.case.caseType}</p>
+                  <p style={{ ...DM, fontSize: 9, color: "rgba(255,255,255,.3)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 6 }}>Issue Type</p>
+                  <p style={{ ...DM, fontSize: 13, color: "#fff", fontWeight: 600 }}>
+                    {trackingData.case.caseType}
+                  </p>
                 </div>
                 <div style={{ background: "rgba(0,0,0,0.5)", borderRadius: 12, padding: "16px", border: "1px solid rgba(30,95,255,.15)" }}>
-                  <p style={{ ...DM, fontSize: 9, color: "rgba(255,255,255,.3)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 6 }}>Court & District</p>
+                  <p style={{ ...DM, fontSize: 9, color: "rgba(255,255,255,.3)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 6 }}>Venue / District</p>
                   <p style={{ ...DM, fontSize: 13, color: "#fff", fontWeight: 600 }}>
                     {trackingData.case.courtName || "Not assigned"}
                   </p>
@@ -209,16 +258,19 @@ export default function TrackStatus() {
             {/* Timeline */}
             <div style={{ ...GLASS, borderRadius: 20, padding: "28px", position: "relative", overflow: "hidden" }}>
               <div style={{ position: "absolute", top: 0, left: "8%", right: "8%", height: 1, background: "linear-gradient(90deg,transparent,rgba(150,200,255,0.6),transparent)", pointerEvents: "none" }} />
-              <p style={{ ...DM, fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 28 }}>📋 Case Progress Timeline</p>
+              <p style={{ ...DM, fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 28 }}>
+                📋 Request Progress Timeline
+              </p>
 
               <div style={{ position: "relative", maxWidth: 700, margin: "0 auto" }}>
                 {trackingData.trackingSteps.map((step: any, i: number) => {
                   const isLast = i === trackingData.trackingSteps.length - 1;
                   const isCurrent = step.step === trackingData.currentStep;
+                  const displayLabel = STEP_LABELS[step.type] || step.event;
 
                   return (
-                    <div key={step.type} style={{ display: "flex", gap: 20, position: "relative" }}>
-                      {/* Line + Dot */}
+                    <div key={step.type || i} style={{ display: "flex", gap: 20, position: "relative" }}>
+                      {/* Dot + Line */}
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 40, flexShrink: 0 }}>
                         <div style={{
                           width: isCurrent ? 40 : 32,
@@ -242,7 +294,9 @@ export default function TrackStatus() {
                             width: 3,
                             flex: 1,
                             minHeight: 50,
-                            background: step.completed ? `linear-gradient(180deg, ${BLUE}, ${trackingData.trackingSteps[i + 1]?.completed ? BLUE : "rgba(255,255,255,.08)"})` : "rgba(255,255,255,.08)",
+                            background: step.completed
+                              ? `linear-gradient(180deg, ${BLUE}, ${trackingData.trackingSteps[i + 1]?.completed ? BLUE : "rgba(255,255,255,.08)"})`
+                              : "rgba(255,255,255,.08)",
                             borderRadius: 99,
                           }} />
                         )}
@@ -251,24 +305,27 @@ export default function TrackStatus() {
                       {/* Content */}
                       <div style={{ paddingBottom: isLast ? 0 : 20, paddingTop: isCurrent ? 4 : 2, flex: 1 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                          <p style={{
-                            ...DM,
-                            fontSize: isCurrent ? 15 : 13,
-                            fontWeight: 700,
-                            color: step.completed ? "#fff" : isCurrent ? ICEB : "rgba(255,255,255,.3)",
-                          }}>
-                            Step {step.step}: {step.event}
+                          <p style={{ ...DM, fontSize: isCurrent ? 15 : 13, fontWeight: 700, color: step.completed ? "#fff" : isCurrent ? ICEB : "rgba(255,255,255,.3)" }}>
+                            Step {step.step}: {displayLabel}
                           </p>
                           {step.completed && (
-                            <span style={{ ...DM, fontSize: 9, padding: "3px 8px", borderRadius: 99, background: "rgba(52,211,153,.15)", color: "#34d399", fontWeight: 600 }}>Completed</span>
+                            <span style={{ ...DM, fontSize: 9, padding: "3px 8px", borderRadius: 99, background: "rgba(52,211,153,.15)", color: "#34d399", fontWeight: 600 }}>
+                              Completed
+                            </span>
                           )}
                           {isCurrent && !step.completed && (
-                            <span style={{ ...DM, fontSize: 9, padding: "3px 8px", borderRadius: 99, background: "rgba(30,95,255,.2)", color: BLUEB, fontWeight: 600 }}>In Progress</span>
+                            <span style={{ ...DM, fontSize: 9, padding: "3px 8px", borderRadius: 99, background: "rgba(30,95,255,.2)", color: BLUEB, fontWeight: 600 }}>
+                              In Progress
+                            </span>
                           )}
                         </div>
-                        <p style={{ ...DM, fontSize: 11, color: "rgba(255,255,255,.4)", lineHeight: 1.6 }}>{step.description}</p>
+                        <p style={{ ...DM, fontSize: 11, color: "rgba(255,255,255,.4)", lineHeight: 1.6 }}>
+                          {step.description}
+                        </p>
                         {step.date && (
-                          <p style={{ ...DM, fontSize: 10, color: "rgba(255,255,255,.2)", marginTop: 4 }}>📅 {formatDate(step.date)}</p>
+                          <p style={{ ...DM, fontSize: 10, color: "rgba(255,255,255,.2)", marginTop: 4 }}>
+                            📅 {formatDate(step.date)}
+                          </p>
                         )}
                       </div>
                     </div>
@@ -277,17 +334,21 @@ export default function TrackStatus() {
               </div>
             </div>
 
-            {/* Action Button */}
+            {/* Action Buttons */}
             <div style={{ display: "flex", justifyContent: "center", gap: 12 }}>
-              <button onClick={() => navigate(`/citizen/cases/${trackingData.case._id || ""}`)} style={{ ...DM, background: BLUE, color: "#fff", fontSize: 12, fontWeight: 600, padding: "12px 24px", borderRadius: 10, border: "none", cursor: "pointer", boxShadow: SH_CARD, transition: "transform .2s ease" }}
+              <button
+                onClick={() => navigate(`/citizen/cases/${trackingData.case._id || ""}`)}
+                style={{ ...DM, background: BLUE, color: "#fff", fontSize: 12, fontWeight: 600, padding: "12px 24px", borderRadius: 10, border: "none", cursor: "pointer", boxShadow: SH_CARD, transition: "transform .2s ease" }}
                 onMouseEnter={e => (e.currentTarget as HTMLElement).style.transform = "translateY(-3px)"}
                 onMouseLeave={e => (e.currentTarget as HTMLElement).style.transform = "translateY(0)"}>
-                View Full Case Details →
+                View Full Request Details →
               </button>
-              <button onClick={() => { setTrackingData(null); setCaseIdInput(""); }} style={{ ...DM, background: "rgba(255,255,255,.05)", color: "rgba(255,255,255,.5)", fontSize: 12, fontWeight: 500, padding: "12px 24px", borderRadius: 10, border: "1px solid rgba(255,255,255,.1)", cursor: "pointer", transition: "transform .2s ease" }}
+              <button
+                onClick={() => { setTrackingData(null); setCaseIdInput(""); }}
+                style={{ ...DM, background: "rgba(255,255,255,.05)", color: "rgba(255,255,255,.5)", fontSize: 12, fontWeight: 500, padding: "12px 24px", borderRadius: 10, border: "1px solid rgba(255,255,255,.1)", cursor: "pointer", transition: "transform .2s ease" }}
                 onMouseEnter={e => (e.currentTarget as HTMLElement).style.transform = "translateY(-3px)"}
                 onMouseLeave={e => (e.currentTarget as HTMLElement).style.transform = "translateY(0)"}>
-                Track Another Case
+                Track Another Request
               </button>
             </div>
           </>
