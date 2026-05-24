@@ -667,10 +667,52 @@ Keep it concise.`;
 
     const aiResponse = await askGroq(LEGAL_SYSTEM_PROMPT, aiPrompt, 800);
 
-    // ═══════════════════════════════════════════════════
     // STEP 3: Combine both analyses
-    // ═══════════════════════════════════════════════════
-    const finalScore = ruleBasedAnalysis.score;
+
+    const aiLower = aiResponse.toLowerCase();
+
+    // Check if AI thinks it's suspicious
+    const aiSaysFake =
+      aiLower.includes("assessment: fake") ||
+      aiLower.includes("assessment: suspicious/fake") ||
+      aiLower.includes("assessment: suspicious");
+
+    // Start with rule score
+    let finalScore = ruleBasedAnalysis.score;
+
+    // If AI says fake → reduce score
+    if (aiSaysFake) {
+      finalScore = Math.min(finalScore, 3);
+    }
+    else if (
+      aiLower.includes("requires verification") &&
+      finalScore > 7
+    ) {
+      finalScore = 7;
+    }
+
+    const aiSaysVerify =
+      aiLower.includes("verify") ||
+      aiLower.includes("consult") ||
+      aiLower.includes("check credentials");
+
+    if (!aiSaysFake && aiSaysVerify && finalScore >= 9) {
+      finalScore = 8;
+    }
+
+    // Decide final verdict
+    let finalVerdict;
+
+    if (finalScore <= 3) {
+      finalVerdict = "🚨 High Scam Risk";
+    }
+    else if (finalScore <= 7) {
+      finalVerdict = "⚠️ Needs Manual Verification";
+    }
+    else {
+      finalVerdict = "✅ Likely Genuine";
+    }
+
     const isScam = finalScore <= 5;
 
     await trackScamResult(req.user.id, isScam, finalScore);
@@ -692,13 +734,35 @@ Keep it concise.`;
       });
     }
 
+    let actionSection = "";
+
+    if (finalScore <= 5) {
+      actionSection = `
+    ## 🚨 If this is a SCAM:
+
+    - Do NOT respond
+    - Do NOT pay
+    - Report to Cyber Crime Portal
+    - Save this notice as evidence
+    `;
+    }
+    else {
+      actionSection = `
+    ## ✅ If this is GENUINE:
+
+    - Respond through proper legal channels
+    - Consult a lawyer if needed
+    - Keep all documentation
+    `;
+    }
+
     // Build final response
-    const finalResponse = `
+  const finalResponse = `
 # 🔍 SCAM DETECTION ANALYSIS
 
 ## 📊 Authenticity Score: ${finalScore}/10
 
-## ${ruleBasedAnalysis.verdict}
+## ${finalVerdict}
 
 ${redFlagsText}
 
@@ -713,40 +777,27 @@ ${aiResponse}
 ## ✅ VERIFICATION STEPS:
 
 1. **Check sender details**
-   - Verify the court/authority name
-   - Call the official landline (NOT the number in the notice)
-   - Visit official website (.gov.in domain)
+- Verify the court/authority name
+- Call the official landline (NOT the number in the notice)
+- Visit official website (.gov.in domain)
 
 2. **Verify case number**
-   - Search case number on official court website
-   - Contact court registrar office
+- Search case number on official court website
+- Contact court registrar office
 
 3. **Check for official seal/stamp**
-   - Genuine notices have court seal
-   - Signature of authorized officer
+- Genuine notices have court seal
+- Signature of authorized officer
 
 4. **Never pay immediately**
-   - Government never asks for urgent payments
-   - No personal bank accounts or UPI
-   - All payments through official portals
+- Government never asks for urgent payments
+- No personal bank accounts or UPI
+- All payments through official portals
 
-## 🚨 If this is a SCAM:
-
-- **Do NOT respond** to the sender
-- **Do NOT pay** any amount
-- **Report** to Cyber Crime Portal: cybercrime.gov.in
-- **Save** this notice as evidence
-- Call **National Cyber Crime Helpline: 1930**
-
-## ✅ If this is GENUINE:
-
-- Respond through proper legal channels
-- Consult a lawyer if needed
-- Follow official court procedures
-- Keep all documentation
+${actionSection}
 
 ${isOCR ? "\n📸 *Note: This was a scanned document processed via OCR*" : ""}
-    `.trim();
+  `.trim();
 
     // ═══════════════════════════════════════════════════
     // STEP 4: Save to database for learning
@@ -757,7 +808,7 @@ ${isOCR ? "\n📸 *Note: This was a scanned document processed via OCR*" : ""}
         noticeText: noticeText.trim().substring(0, 5000),
         noticeFile: req.file ? req.file.filename : null,
         isScam,
-        scamType: isScam ? "fake_legal_threat" : null,
+        scamType: isScam ? "fake_notice" : undefined,
         detectedPatterns: ruleBasedAnalysis.redFlags.map((f) => f.type),
         authenticityScore: finalScore,
         aiAnalysis: aiResponse.substring(0, 2000),
@@ -782,7 +833,7 @@ ${isOCR ? "\n📸 *Note: This was a scanned document processed via OCR*" : ""}
       sessionId: session,
       analysis: {
         score: finalScore,
-        verdict: ruleBasedAnalysis.verdict,
+        verdict: finalVerdict,
         isScam,
         totalRedFlags: ruleBasedAnalysis.totalRedFlags,
         criticalFlags: ruleBasedAnalysis.criticalFlags,

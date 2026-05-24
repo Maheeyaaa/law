@@ -116,7 +116,7 @@ export class ScamDetector {
   checkOfficialFormat(text) {
     const checks = {
       header:
-        /government|court|ministry/i.test(text),
+        /government|court|ministry|advocate|legal notice|law office/i.test(text),
 
       reference:
         /ref|notice|case/i.test(text),
@@ -151,10 +151,8 @@ export class ScamDetector {
 
     const suspicious =
       urls.filter(
-        (u) =>
-          !/\.(gov\.in|nic\.in)$/i.test(
-            u
-          )
+        (u)=>
+          /bit\.ly|tinyurl|shorturl/i.test(u)
       );
 
     if (suspicious.length) {
@@ -173,19 +171,25 @@ export class ScamDetector {
         /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi
       ) || [];
 
+    const suspiciousDomains = [
+      "tempmail",
+      "10minutemail",
+      "mailinator",
+      "guerrillamail",
+    ];
+
     const suspicious =
-      emails.filter(
-        (e) =>
-          !/@(gov\.in|nic\.in)$/i.test(
-            e
-          )
+      emails.filter((e) =>
+        suspiciousDomains.some((d) =>
+          e.toLowerCase().includes(d)
+        )
       );
 
     if (suspicious.length) {
       this.addFlag(
         "emails",
-        "Email domains should be verified.",
-        "medium",
+        "Temporary or suspicious email domains detected.",
+        "high",
         { emails: suspicious }
       );
     }
@@ -255,6 +259,15 @@ export class ScamDetector {
     await this.checkDatabasePatterns(
       text
     );
+
+    if (
+      this.redFlags.length === 0
+    ) {
+      this.score = Math.min(
+        10,
+        this.score + 1
+      );
+    }
 
     this.score =
       Math.max(

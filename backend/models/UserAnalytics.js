@@ -210,14 +210,6 @@ new mongoose.Schema(
 }
 );
 
-// Faster lookup
-
-userAnalyticsSchema.index(
-{
-  user: 1,
-}
-);
-
 export default mongoose.model(
   "UserAnalytics",
   userAnalyticsSchema
