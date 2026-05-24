@@ -2,7 +2,6 @@
 
 import mongoose from "mongoose";
 
-// Telangana districts - easy to expand later for multi-state
 const TELANGANA_DISTRICTS = [
   "Hyderabad",
   "Rangareddy",
@@ -42,12 +41,17 @@ const TELANGANA_DISTRICTS = [
 
 const userSchema = new mongoose.Schema(
   {
+    // ── Core Fields ─────────────────────────────────────────
     name: { type: String, required: true, trim: true },
     email: { type: String, unique: true, required: true, lowercase: true },
     password: { type: String, required: true },
-    role: { type: String, enum: ["citizen", "lawyer", "court_Staff"], required: true },
+    role: {
+      type: String,
+      enum: ["citizen", "admin"],
+      required: true,
+    },
 
-    // Location fields
+    // ── Location Fields ──────────────────────────────────────
     state: {
       type: String,
       default: "Telangana",
@@ -56,22 +60,93 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-    courtName: {
+
+    // ── Profile Fields ───────────────────────────────────────
+    phone: {
       type: String,
       default: "",
     },
+    address: {
+      type: String,
+      default: "",
+    },
+    avatar: {
+      type: String,
+      default: "",
+    },
+    bio: {
+      type: String,
+      default: "",
+    },
+    isProfileComplete: {
+      type: Boolean,
+      default: false,
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
 
-    // Lawyer-specific fields
+    // ── Lawyer Directory Fields (read-only for citizens) ─────
+    // These fields exist only for lawyer accounts
+    // imported from DoJ Pro Bono / CSV
+    // Citizens can VIEW these but cannot interact via platform
     barCouncilNumber: String,
     specialization: String,
     experience: Number,
     licenseDocument: String,
-
     languages: {
       type: [String],
       default: [],
     },
-
+    education: {
+      type: [String],
+      default: [],
+    },
+    courtsPracticing: {
+      type: [String],
+      default: [],
+    },
+    availability: {
+      type: String,
+      enum: ["available", "busy", "unavailable"],
+      default: "available",
+    },
+    availableDays: {
+      type: [String],
+      enum: [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+      ],
+      default: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+    },
+    consultationFee: {
+      type: Number,
+      default: 0,
+    },
+    rating: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5,
+    },
+    totalReviews: {
+      type: Number,
+      default: 0,
+    },
+    casesHandled: {
+      type: Number,
+      default: 0,
+    },
+    casesWon: {
+      type: Number,
+      default: 0,
+    },
     verificationStatus: {
       type: String,
       enum: ["pending", "approved", "rejected"],
@@ -92,82 +167,6 @@ const userSchema = new mongoose.Schema(
     proBonoRegistrationNo: {
       type: String,
       default: null,
-    },
-
-    // Profile fields
-    phone: {
-      type: String,
-      default: "",
-    },
-    address: {
-      type: String,
-      default: "",
-    },
-    avatar: {
-      type: String,
-      default: "",
-    },
-    bio: {
-      type: String,
-      default: "",
-    },
-
-    // 🆕 Additional lawyer fields for enhanced functionality
-    education: {
-      type: [String],
-      default: [],
-    },
-    courtsPracticing: {
-      type: [String],
-      default: [],
-    },
-    
-    // Availability
-    availability: {
-      type: String,
-      enum: ["available", "busy", "unavailable"],
-      default: "available",
-    },
-    availableDays: {
-      type: [String],
-      enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
-      default: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-    },
-    consultationFee: {
-      type: Number,
-      default: 0,
-    },
-    
-    // Rating system
-    rating: {
-      type: Number,
-      default: 0,
-      min: 0,
-      max: 5,
-    },
-    totalReviews: {
-      type: Number,
-      default: 0,
-    },
-    
-    // Profile completion
-    isProfileComplete: {
-      type: Boolean,
-      default: false,
-    },
-    isVerified: {
-      type: Boolean,
-      default: false,
-    },
-    
-    // Cases statistics
-    casesHandled: {
-      type: Number,
-      default: 0,
-    },
-    casesWon: {
-      type: Number,
-      default: 0,
     },
   },
   { timestamps: true }

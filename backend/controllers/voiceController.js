@@ -1,126 +1,256 @@
-// backend/controllers/voiceController.js
-
 import Groq from "groq-sdk";
 import UserAnalytics from "../models/UserAnalytics.js";
 import ChatMessage from "../models/ChatMessage.js";
 
-const LEGAL_SYSTEM_PROMPT = `You are LegalMind AI, a helpful legal assistant for Indian citizens. Your role is to:
+const SYSTEM_PROMPT = `
+You are LegalAssist AI.
 
-1. Explain legal concepts in simple, easy-to-understand language
-2. Help citizens understand their legal rights
-3. Explain legal procedures (filing cases, court processes, etc.)
-4. Clarify legal notices and documents
-5. Provide general legal guidance about Indian law
+Purpose:
+Help Indian citizens understand legal information using simple spoken language.
 
-Important rules:
-- Always clarify that you provide general legal information, NOT legal advice
-- Recommend consulting a qualified lawyer for specific legal matters
-- Be empathetic and patient with users who may be stressed about legal issues
-- Use simple language, avoid excessive legal jargon
-- When explaining legal terms, provide the meaning in plain English
-- Focus on Indian law and legal system
-- Keep responses concise but thorough (especially for voice - max 200 words)
-- If you don't know something, say so honestly
+Capabilities:
+- Explain legal notices
+- Explain uploaded documents
+- Help identify possible scams
+- Explain legal terms
+- Guide users through legal procedures
+- Support voice-based interaction
 
-You must NOT:
-- Provide specific legal advice for individual cases
-- Guarantee outcomes of legal proceedings
-- Encourage any illegal activities
-- Provide information about how to evade law`;
+Rules:
+- Provide general legal information only
+- Never claim to provide legal advice
+- Recommend consulting professionals when needed
+- Use short, conversational responses
+- Avoid complex legal language
+- Keep responses under 150 words
+- If uncertain, say so clearly
 
-// ═══════════════════════════════════════════════════
-// VOICE CHAT (Text input → AI response optimized for voice)
-// ═══════════════════════════════════════════════════
+Voice Rules:
+- Speak naturally
+- Use short sentences
+- Avoid lists unless necessary
+`;
 
-export const voiceChat = async (req, res) => {
+// ======================
+// Voice Chat
+// ======================
+
+export const voiceChat =
+async (req, res) => {
   try {
-    const { message, sessionId } = req.body;
+    const {
+      message,
+      sessionId,
+    } =
+      req.body;
 
-    if (!message || !message.trim()) {
-      return res.status(400).json({ 
-        message: "Message is required",
-        audioResponse: "I didn't hear anything. Please try again."
-      });
+    if (
+      !message?.trim()
+    ) {
+      return res
+        .status(400)
+        .json({
+          reply:
+            "I didn't hear anything.",
+
+          audioResponse:
+            "I didn't hear anything. Please try again.",
+        });
     }
 
-    // Track voice usage
+    // Analytics
+
     try {
-      let analytics = await UserAnalytics.findOne({ user: req.user.id });
-      if (!analytics) {
-        analytics = await UserAnalytics.create({ user: req.user.id });
+      let analytics =
+        await UserAnalytics.findOne(
+          {
+            user:
+              req.user.id,
+          }
+        );
+
+      if (
+        !analytics
+      ) {
+        analytics =
+          await UserAnalytics.create(
+            {
+              user:
+                req.user.id,
+            }
+          );
       }
-      analytics.featureUsage.voiceInput = (analytics.featureUsage.voiceInput || 0) + 1;
-      analytics.totalMessages += 1;
-      analytics.lastActive = new Date();
-      analytics.lastFeatureUsed = "voiceInput";
+
+      analytics.featureUsage.voiceInput =
+        (
+          analytics.featureUsage
+            .voiceInput ||
+          0
+        ) +
+        1;
+
+      analytics.totalMessages +=
+        1;
+
+      analytics.lastActive =
+        new Date();
+
+      analytics.lastFeatureUsed =
+        "voice";
+
       await analytics.save();
-    } catch (trackError) {
-      console.error("Tracking error:", trackError);
+    } catch (
+      e
+    ) {
+      console.error(
+        e
+      );
     }
 
-    const session = sessionId || `voice_${req.user.id}_${Date.now()}`;
+    const session =
+      sessionId ||
+      `voice_${req.user.id}_${Date.now()}`;
 
     // Save user message
-    await ChatMessage.create({
-      user: req.user.id,
-      role: "user",
-      message: message.trim(),
-      sessionId: session,
-    });
 
-    // Get conversation history
-    const history = await ChatMessage.find({
-      user: req.user.id,
-      sessionId: session,
-    })
-      .sort({ createdAt: -1 })
-      .limit(6); // Limit for voice (shorter context)
+    await ChatMessage.create(
+      {
+        user:
+          req.user.id,
 
-    const chronological = history.reverse();
+        role:
+          "user",
 
-    const messages = [
-      { 
-        role: "system", 
-        content: LEGAL_SYSTEM_PROMPT + "\n\nIMPORTANT: Keep your response SHORT and CONCISE for voice output. Maximum 150 words. Use simple sentences."
-      },
-      ...chronological.map((msg) => ({
-        role: msg.role === "user" ? "user" : "assistant",
-        content: msg.message,
-      })),
-    ];
+        message:
+          message.trim(),
 
-    // Get AI response
-    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-    
-    const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      messages: messages,
-      max_tokens: 300, // Shorter for voice
-      temperature: 0.7,
-    });
+        sessionId:
+          session,
+      }
+    );
 
-    const reply = completion.choices[0].message.content;
+    // History
 
-    // Save AI response
-    await ChatMessage.create({
-      user: req.user.id,
-      role: "assistant",
-      message: reply,
-      sessionId: session,
-    });
+    const history =
+      await ChatMessage.find(
+        {
+          user:
+            req.user.id,
 
-    res.json({ 
+          sessionId:
+            session,
+        }
+      )
+        .sort({
+          createdAt:
+            -1,
+        })
+        .limit(
+          6
+        );
+
+    const messages =
+      [
+        {
+          role:
+            "system",
+
+          content:
+            SYSTEM_PROMPT,
+        },
+
+        ...history
+          .reverse()
+          .map(
+            (
+              msg
+            ) => ({
+              role:
+                msg.role ===
+                "user"
+                  ? "user"
+                  : "assistant",
+
+              content:
+                msg.message,
+            })
+          ),
+      ];
+
+    const groq =
+      new Groq(
+        {
+          apiKey:
+            process.env
+              .GROQ_API_KEY,
+        }
+      );
+
+    const completion =
+      await groq.chat.completions.create(
+        {
+          model:
+            "llama-3.3-70b-versatile",
+
+          messages,
+
+          max_tokens:
+            250,
+
+          temperature:
+            0.5,
+        }
+      );
+
+    const reply =
+      completion
+        .choices?.[0]
+        ?.message
+        ?.content ||
+      "Sorry, I couldn't generate a response.";
+
+    await ChatMessage.create(
+      {
+        user:
+          req.user.id,
+
+        role:
+          "assistant",
+
+        message:
+          reply,
+
+        sessionId:
+          session,
+      }
+    );
+
+    res.json({
       reply,
-      audioResponse: reply, // Same text, will be converted to speech on frontend
-      sessionId: session 
-    });
 
-  } catch (error) {
-    console.error("VOICE CHAT ERROR:", error);
-    res.status(500).json({
-      error: error.message,
-      reply: "Sorry, I encountered an error. Please try again.",
-      audioResponse: "Sorry, I encountered an error. Please try speaking again."
+      audioResponse:
+        reply,
+
+      sessionId:
+        session,
     });
+  } catch (
+    error
+  ) {
+    console.error(
+      error
+    );
+
+    res
+      .status(
+        500
+      )
+      .json({
+        reply:
+          "Something went wrong.",
+
+        audioResponse:
+          "Something went wrong. Please try again.",
+      });
   }
 };

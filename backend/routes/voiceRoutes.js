@@ -1,14 +1,22 @@
-// backend/routes/voiceRoutes.js
-
 import express from "express";
+
 import protect from "../middleware/authMiddleware.js";
-import { voiceChat } from "../controllers/voiceController.js";
 
-const router = express.Router();
+import {
+  voiceChat,
+} from "../controllers/voiceController.js";
 
-router.use(protect);
+const router =
+  express.Router();
 
-// Voice chat endpoint
-router.post("/chat", voiceChat);
+router.use(
+  protect
+);
+
+router.post(
+  "/chat",
+
+  voiceChat
+);
 
 export default router;

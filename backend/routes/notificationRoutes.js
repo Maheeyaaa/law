@@ -1,7 +1,7 @@
-// backend/routes/notificationRoutes.js
-
 import express from "express";
+
 import protect from "../middleware/authMiddleware.js";
+
 import {
   getMyNotifications,
   markAsRead,
@@ -10,14 +10,41 @@ import {
   clearAllRead,
 } from "../controllers/notificationController.js";
 
-const router = express.Router();
+const router =
+  express.Router();
 
-router.use(protect);
+router.use(
+  protect
+);
 
-router.get("/", getMyNotifications);
-router.patch("/read-all", markAllAsRead);
-router.delete("/clear-read", clearAllRead);
-router.patch("/:id/read", markAsRead);
-router.delete("/:id", deleteNotification);
+router.get(
+  "/",
+
+  getMyNotifications
+);
+
+router.patch(
+  "/read-all",
+
+  markAllAsRead
+);
+
+router.patch(
+  "/:id/read",
+
+  markAsRead
+);
+
+router.delete(
+  "/clear-read",
+
+  clearAllRead
+);
+
+router.delete(
+  "/:id",
+
+  deleteNotification
+);
 
 export default router;

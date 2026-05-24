@@ -1,72 +1,124 @@
-// backend/models/ScamReport.js
-
 import mongoose from "mongoose";
 
-const scamReportSchema = new mongoose.Schema(
-  {
-    reportedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
+const scamReportSchema =
+new mongoose.Schema(
+{
+  reportedBy: {
+    type:
+      mongoose.Schema.Types.ObjectId,
 
-    noticeText: {
-      type: String,
-      required: true,
-    },
+    ref:
+      "User",
 
-    noticeFile: String,
-
-    isScam: {
-      type: Boolean,
-      required: true,
-    },
-
-    scamType: {
-      type: String,
-      enum: [
-        "fake_court_notice",
-        "fake_police_notice",
-        "fake_tax_notice",
-        "fake_legal_threat",
-        "impersonation",
-        "payment_fraud",
-        "other",
-      ],
-    },
-
-    detectedPatterns: [
-      {
-        type: String,
-      },
-    ],
-
-    authenticityScore: {
-      type: Number,
-      min: 1,
-      max: 10,
-    },
-
-    aiAnalysis: String,
-
-    redFlags: [String],
-
-    verifiedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    },
-
-    verificationStatus: {
-      type: String,
-      enum: ["pending", "verified_scam", "verified_genuine", "disputed"],
-      default: "pending",
-    },
-
-    actionTaken: String,
-
-    notes: String,
+    required:
+      true,
   },
-  { timestamps: true }
+
+  noticeText: {
+    type:
+      String,
+
+    required:
+      true,
+  },
+
+  noticeFile: {
+    type:
+      String,
+
+    default:
+      null,
+  },
+
+  isScam: {
+    type:
+      Boolean,
+
+    required:
+      true,
+  },
+
+  scamType: {
+    type:
+      String,
+
+    enum: [
+      "fake_notice",
+
+      "fake_identity",
+
+      "fake_authority",
+
+      "payment_fraud",
+
+      "impersonation",
+
+      "other",
+    ],
+  },
+
+  detectedPatterns:
+  [
+    String,
+  ],
+
+  authenticityScore:
+  {
+    type:
+      Number,
+
+    min:
+      1,
+
+    max:
+      10,
+  },
+
+  aiAnalysis:
+  {
+    type:
+      String,
+
+      default:
+      "",
+  },
+
+  redFlags:
+  [
+    String,
+  ],
+
+  reviewed:
+  {
+    type:
+      Boolean,
+
+      default:
+      false,
+  },
+
+  adminNote:
+  {
+    type:
+      String,
+
+      default:
+      "",
+  },
+},
+{
+  timestamps:
+    true,
+}
 );
 
-export default mongoose.model("ScamReport", scamReportSchema);
+scamReportSchema.index({
+  reportedBy: 1,
+
+  createdAt: -1,
+});
+
+export default mongoose.model(
+  "ScamReport",
+  scamReportSchema
+);

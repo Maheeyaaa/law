@@ -2,16 +2,13 @@
 
 import express from "express";
 import protect from "../middleware/authMiddleware.js";
-import { restrictTo } from "../middleware/roleMiddleware.js";
-import upload from "../middleware/uploadMiddleware.js";
 import {
-  createCase,
+  registerCaseId,
   getMyCases,
   getCaseById,
   updateCase,
   getCaseStats,
-  getCaseTimeline,
-  updateCNR,
+  deleteCase,
 } from "../controllers/caseController.js";
 import {
   trackCase,
@@ -22,22 +19,22 @@ const router = express.Router();
 
 router.use(protect);
 
-// ── Static/specific routes FIRST ──────────────────────────
+// ── Stats ──────────────────────────────────────────────────
 router.get("/stats", getCaseStats);
-router.get("/track/:caseId", trackCase);      // e.g. /cases/track/%23TS-2025-0001
 
-// ── Collection routes ─────────────────────────────────────
-router.post(
-  "/",
-  upload.array("documents"),
-  createCase
-);
+// ── Track by Case ID string ────────────────────────────────
+router.get("/track/:caseId", trackCase);
+
+// ── Register & List ────────────────────────────────────────
+router.post("/", registerCaseId);
 router.get("/", getMyCases);
 
-// ── Dynamic :id routes LAST ───────────────────────────────
+// ── Single Case ────────────────────────────────────────────
 router.get("/:id", getCaseById);
-router.get("/:id/timeline", getCaseTimeline);
 router.patch("/:id", updateCase);
-router.patch("/:id/cnr", restrictTo("court_staff"), updateCNR);
+router.delete("/:id", deleteCase);
+
+// ── Track by MongoDB ID ────────────────────────────────────
+router.get("/:id/track", trackCaseById);
 
 export default router;

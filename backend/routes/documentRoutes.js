@@ -1,7 +1,9 @@
-// backend/routes/documentRoutes.js
 import express from "express";
+
 import protect from "../middleware/authMiddleware.js";
+
 import upload from "../middleware/uploadMiddleware.js";
+
 import {
   uploadDocument,
   getMyDocuments,
@@ -10,14 +12,55 @@ import {
   downloadDocument,
 } from "../controllers/documentController.js";
 
-const router = express.Router();
+const router =
+  express.Router();
 
-router.use(protect);
+router.use(
+  protect
+);
 
-router.post("/upload", upload.single("document"), uploadDocument);
-router.get("/", getMyDocuments);
-router.get("/:id", getDocumentById);
-router.get("/:id/download", downloadDocument);
-router.delete("/:id", deleteDocument);
+// Upload
+
+router.post(
+  "/upload",
+
+  upload.single(
+    "document"
+  ),
+
+  uploadDocument
+);
+
+// List
+
+router.get(
+  "/",
+
+  getMyDocuments
+);
+
+// Download BEFORE :id
+
+router.get(
+  "/:id/download",
+
+  downloadDocument
+);
+
+// Get one
+
+router.get(
+  "/:id",
+
+  getDocumentById
+);
+
+// Delete
+
+router.delete(
+  "/:id",
+
+  deleteDocument
+);
 
 export default router;

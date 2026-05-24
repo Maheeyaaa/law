@@ -203,46 +203,6 @@ function UnifiedRoleCard({ onSignIn, onRegister }) {
             loginLabel: "Login",
             note: null,
         },
-        Lawyer: {
-            text: "Register with your Bar Council enrollment number, specialization, and license. Your account will be reviewed by court staff before activation. Once verified, you'll appear in the Find Lawyers directory for citizens.",
-            badge: "Verification Required",
-            badgeColor: "rgba(255,190,50,0.15)",
-            badgeBorder: "rgba(255,190,50,0.4)",
-            badgeText: "#FFD166",
-            icon: (
-                <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
-                    <path d="M20 12h24M20 24h24M20 36h14" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" strokeLinecap="round" />
-                    <rect x="10" y="6" width="44" height="52" rx="4" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" />
-                    <circle cx="46" cy="46" r="8" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" />
-                    <path d="M52 52l5 5" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-            ),
-            showRegister: true,
-            registerLabel: "Apply as Lawyer",
-            loginLabel: "Lawyer Login",
-            note: "New accounts require admin approval before activation.",
-        },
-        "court_staff": {
-            text: "Court staff accounts are created exclusively by the administrator to protect sensitive court operations. Staff members manage lawyer verifications, case assignments, and administrative actions.",
-            badge: "Admin Access Only",
-            badgeColor: "rgba(255,80,80,0.12)",
-            badgeBorder: "rgba(255,100,100,0.4)",
-            badgeText: "#FF6B6B",
-            icon: (
-                <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
-                    <path d="M32 8L10 22v4h44v-4L32 8z" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" strokeLinejoin="round" />
-                    <rect x="16" y="26" width="6" height="22" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" />
-                    <rect x="29" y="26" width="6" height="22" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" />
-                    <rect x="42" y="26" width="6" height="22" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" />
-                    <path d="M8 48h48" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" strokeLinecap="round" />
-                    <path d="M4 56h56" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-            ),
-            showRegister: false,
-            registerLabel: null,
-            loginLabel: "Staff Login",
-            note: "Account creation is restricted to administrators only.",
-        },
     };
 
     const active = roles[activeTab];
@@ -396,7 +356,6 @@ function UnifiedRoleCard({ onSignIn, onRegister }) {
 /* ─── SIGN IN PAGE ─── */
 function SignInPage({ role, onRegister, onBack }) {
     const isCourtStaff = role === "court_staff";
-    const isLawyer = role === "Lawyer";
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
 
@@ -423,14 +382,10 @@ function SignInPage({ role, onRegister, onBack }) {
                 // ✅ Redirect based on role
                 const userRole = data.user.role;
                 
-                if (userRole === "citizen") {
-                    window.location.href = "/citizen";
-                } else if (userRole === "lawyer") {
-                    window.location.href = "/lawyer";  // when you build lawyer dashboard
-                } else if (userRole === "court_staff") {
-                    window.location.href = "/court-staff";  // when you build court_staff dashboard
+                if (userRole === "admin") {
+                    window.location.href = "/admin";
                 } else {
-                    window.location.href = "/";  // fallback
+                    window.location.href = "/citizen";
                 }
             } else {
                 alert(data.message || "Login failed");
@@ -464,12 +419,6 @@ function SignInPage({ role, onRegister, onBack }) {
                     </div>
                 )}
 
-                {isLawyer && (
-                    <div style={infoBox("#FFD166", "rgba(255,190,50,0.08)", "rgba(255,190,50,0.25)")}>
-                        ⚠️ Pending verification accounts cannot log in until approved by court staff.
-                    </div>
-                )}
-
                 <div style={fieldLabel}>EMAIL</div>
                 <input
                     type="email"
@@ -499,9 +448,9 @@ function SignInPage({ role, onRegister, onBack }) {
 
                 {!isCourtStaff && (
                     <p style={authFooterText}>
-                        {isLawyer ? "Want to apply? " : "Don't have an account? "}
+                        Don't have an account?{" "}
                         <span style={authLink} onClick={onRegister}>
-                            {isLawyer ? "Apply as Lawyer" : "Register"}
+                            Register
                         </span>
                     </p>
                 )}
@@ -513,27 +462,15 @@ function SignInPage({ role, onRegister, onBack }) {
 
 /* ─── REGISTER PAGE ─── */
 function RegisterPage({ role, onSignIn, onBack }) {
-    const isCitizen = role === "Citizens";
-    const isLawyer = role === "Lawyer";
-    const [fileName, setFileName] = useState(null);
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
 
     const [district, setDistrict] = useState("");
-    const [barCouncilNumber, setBarCouncilNumber] = useState("");
-    const [specialization, setSpecialization] = useState("");
-    const [experience, setExperience] = useState("");
 
     const handleRegister = async () => {
         try {
-            const backendRole =
-                role === "Citizens"
-                    ? "citizen"
-                    : role === "Lawyer"
-                    ? "lawyer"
-                    : "court_staff";
-
+            const backendRole = "citizen";
             const data = {
             name,
             email,
@@ -541,12 +478,6 @@ function RegisterPage({ role, onSignIn, onBack }) {
             role: backendRole,
             district,
             };
-
-            if (backendRole === "lawyer") {
-            data.barCouncilNumber = barCouncilNumber;
-            data.specialization = specialization;
-            data.experience = experience;
-            }
 
             const res = await fetch("http://localhost:8000/api/auth/register", {
             method: "POST",
@@ -568,43 +499,9 @@ function RegisterPage({ role, onSignIn, onBack }) {
         }
         };
 
-    const handleFile = (e) => {
-        const f = e.target.files[0];
-        setFileName(f ? f.name : null);
-    };
-
-    if (!isCitizen && !isLawyer) {
-        // Court Staff — no public registration
-        return (
-            <div style={authPageWrapper}>
-                <div style={authCard}>
-                    <button onClick={onBack} style={backButton}>← Back</button>
-                    <div style={authLogo}>
-                        <span style={{ fontSize: "28px" }}>⚖️</span>
-                        <span style={{ fontSize: "22px", fontWeight: "bold", color: "white" }}>LegalMind</span>
-                    </div>
-                    <div style={{ textAlign: "center", padding: "20px 0" }}>
-                        <div style={{ fontSize: "48px", marginBottom: "16px" }}>🔒</div>
-                        <h2 style={{ ...authTitle, marginBottom: "12px" }}>Access Restricted</h2>
-                        <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "14px", lineHeight: "1.7", marginBottom: "28px" }}>
-                            Court Staff accounts are created exclusively by the platform administrator.
-                            Public registration is not available for this role to protect sensitive court operations.
-                        </p>
-                        <div style={infoBox("#FF6B6B", "rgba(255,80,80,0.1)", "rgba(255,100,100,0.25)")}>
-                            Please contact your court administrator to request account access.
-                        </div>
-                        <button style={{ ...authPrimaryButton, marginTop: "24px" }} onClick={onSignIn}>
-                            Go to Staff Login
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
     return (
         <div style={authPageWrapper}>
-            <div style={{ ...authCard, maxWidth: isLawyer ? "500px" : "440px" }}>
+            <div style={{ ...authCard, maxWidth: "440px" }}>
                 <button onClick={onBack} style={backButton}>← Back</button>
 
                 <div style={authLogo}>
@@ -613,19 +510,14 @@ function RegisterPage({ role, onSignIn, onBack }) {
                 </div>
 
                 <h2 style={authTitle}>
-                    {isCitizen ? "Create Account" : "Apply as Lawyer"}
+                    Create Account
                 </h2>
                 <p style={authSubtitle}>
-                    {isCitizen ? "Join the digital legal platform" : "Submit your credentials for verification"}
+                    Join the digital legal platform
                 </p>
 
                 {role && <RoleBadge role={role} />}
 
-                {isLawyer && (
-                    <div style={infoBox("#FFD166", "rgba(255,190,50,0.08)", "rgba(255,190,50,0.25)")}>
-                        ⏳ Your account will be <strong style={{ color: "#FFD166" }}>pending verification</strong> after submission. Court staff will review your documents and activate your account if approved.
-                    </div>
-                )}
 
                 {/* Common fields */}
                 <div style={fieldLabel}>FULL NAME</div>
@@ -677,91 +569,12 @@ function RegisterPage({ role, onSignIn, onBack }) {
                         ))}
                     </select>
 
-                {/* Lawyer-only fields */}
-                {isLawyer && (
-                    <>
-                        <div style={sectionDivider}>Professional Details</div>
-
-                        <div style={fieldLabel}>BAR COUNCIL ENROLLMENT NUMBER</div>
-                        <input
-                            type="text"
-                            placeholder="e.g. AP/1234/2018"
-                            style={authInput}
-                            value={barCouncilNumber}
-                            onChange={(e) => setBarCouncilNumber(e.target.value)}
-                        />
-
-                        <div style={fieldLabel}>YEARS OF EXPERIENCE</div>
-                        <input
-                            type="number"
-                            placeholder="e.g. 5"
-                            min="0"
-                            max="60"
-                            style={authInput}
-                            value={experience}
-                            onChange={(e) => setExperience(e.target.value)}
-                        />
-
-                        <div style={fieldLabel}>SPECIALIZATION</div>
-                        <select
-                            style={{ ...authInput, cursor: "pointer" }}
-                            value={specialization}
-                            onChange={(e) => setSpecialization(e.target.value)}
-                        >
-                            <option value="" style={{ backgroundColor: "#1a1a2e" }}>Select specialization…</option>
-                            <option value="Criminal Law" style={{ backgroundColor: "#1a1a2e" }}>Criminal Law</option>
-                            <option value="Civil Law" style={{ backgroundColor: "#1a1a2e" }}>Civil Law</option>
-                            <option value="Corporate Law" style={{ backgroundColor: "#1a1a2e" }}>Corporate Law</option>
-                            <option value="Family Law" style={{ backgroundColor: "#1a1a2e" }}>Family Law</option>
-                            <option value="Property Law" style={{ backgroundColor: "#1a1a2e" }}>Property Law</option>
-                            <option value="Consumer Law" style={{ backgroundColor: "#1a1a2e" }}>Consumer Law</option>
-                            <option value="Employment Law" style={{ backgroundColor: "#1a1a2e" }}>Employment Law</option>
-                            <option value="Tax Law" style={{ backgroundColor: "#1a1a2e" }}>Tax Law</option>
-                            <option value="Constitutional Law" style={{ backgroundColor: "#1a1a2e" }}>Constitutional Law</option>
-                            <option value="Intellectual Property" style={{ backgroundColor: "#1a1a2e" }}>Intellectual Property</option>
-                            <option value="Land & Real Estate" style={{ backgroundColor: "#1a1a2e" }}>Land & Real Estate</option>
-                            <option value="Revenue Law" style={{ backgroundColor: "#1a1a2e" }}>Revenue Law</option>
-                            <option value="Cyber Law" style={{ backgroundColor: "#1a1a2e" }}>Cyber Law</option>
-                            <option value="Environmental Law" style={{ backgroundColor: "#1a1a2e" }}>Environmental Law</option>
-                            <option value="Motor Accident Claims" style={{ backgroundColor: "#1a1a2e" }}>Motor Accident Claims</option>
-                            <option value="Other" style={{ backgroundColor: "#1a1a2e" }}>Other</option>
-                            </select>
-
-                        <div style={sectionDivider}>License Document</div>
-
-                        <div style={fieldLabel}>UPLOAD BAR COUNCIL CERTIFICATE</div>
-                        <label style={fileUploadLabel}>
-                            <input
-                                type="file"
-                                accept=".pdf,.jpg,.jpeg,.png"
-                                style={{ display: "none" }}
-                                onChange={handleFile}
-                            />
-                            <div style={fileUploadInner}>
-                                <span style={{ fontSize: "24px" }}>📄</span>
-                                <span style={{ color: fileName ? "white" : "rgba(255,255,255,0.4)", fontSize: "13px" }}>
-                                    {fileName || "Click to upload PDF, JPG, or PNG"}
-                                </span>
-                            </div>
-                        </label>
-                        <p style={{ color: "rgba(255,255,255,0.3)", fontSize: "11px", marginTop: "6px" }}>
-                            Max file size: 5MB. Accepted formats: PDF, JPG, PNG.
-                        </p>
-                    </>
-                )}
-
                 <button
                     style={authPrimaryButton}
                     onClick={handleRegister}
                     >
-                    {isCitizen ? "Create Account" : "Submit Application"}
+                    Create Account
                 </button>
-
-                {isLawyer && (
-                    <p style={{ ...authFooterText, color: "rgba(255,255,255,0.35)", fontSize: "12px", marginTop: "8px" }}>
-                        You'll receive an email once your account has been reviewed.
-                    </p>
-                )}
 
                 <p style={{ ...authFooterText, marginTop: "12px" }}>
                     Already have an account?{" "}
@@ -991,23 +804,4 @@ const backButton = {
     background: "none", border: "none", color: "rgba(255,255,255,0.45)",
     cursor: "pointer", fontSize: "14px", padding: "0", marginBottom: "20px",
     alignSelf: "flex-start",
-};
-
-const sectionDivider = {
-    color: "rgba(255,255,255,0.35)", fontSize: "11px", fontWeight: "700",
-    letterSpacing: "1.5px", textTransform: "uppercase",
-    borderTop: "1px solid rgba(255,255,255,0.08)",
-    paddingTop: "20px", marginTop: "20px",
-};
-
-const fileUploadLabel = {
-    cursor: "pointer", display: "block",
-};
-
-const fileUploadInner = {
-    display: "flex", flexDirection: "column", alignItems: "center",
-    gap: "10px", padding: "20px",
-    backgroundColor: "rgba(255,255,255,0.03)",
-    border: "1px dashed rgba(255,255,255,0.2)",
-    borderRadius: "8px", transition: "border-color 0.2s",
 };

@@ -13,8 +13,6 @@ import Help from "./pages/Help";
 import Settings from "./pages/Settings";
 import AdminPanel from "./pages/AdminPanel";
 import AdminImportLawyers from "./pages/AdminImportLawyers";
-import Lawyer from "./pages/Lawyer";
-import CourtStaff from "./pages/CourtStaff";
 
 function App() {
   return (
@@ -61,14 +59,6 @@ function App() {
         <Route path="/citizen/help" element={<Help />} />
         <Route path="/citizen/account" element={<Settings />} />
 
-        <Route path="/lawyer" element={<Lawyer />} />
-        <Route path="/legal-coordinator" element={<CourtStaff />} />
-
-        <Route
-          path="/court-staff"
-          element={<Navigate to="/legal-coordinator" replace />}
-        />
-
         <Route
           path="/citizen/requests"
           element={<Navigate to="/citizen/cases" replace />}
@@ -85,7 +75,7 @@ function App() {
         />
         
         {/* Admin */}
-        <Route path="/platform-admin" element={<AdminPanel />} />
+        <Route path="/admin" element={<AdminPanel />} />
 
         <Route
           path="/admin-panel"

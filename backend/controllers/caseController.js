@@ -1,87 +1,73 @@
+// backend/controllers/caseController.js
+
 import Case from "../models/Case.js";
-import CaseTimeline from "../models/CaseTimeline.js";
 import Activity from "../models/Activity.js";
 import Notification from "../models/Notification.js";
 import Document from "../models/Document.js";
-import Hearing from "../models/Hearing.js"; 
-import { addTimelineEvent } from "../helpers/timelineHelper.js";
 
-export const createCase = async (req, res) => {
+// Register a case ID (citizen enters their existing court case ID)
+export const registerCaseId = async (req, res) => {
   try {
-    
-    const { title, description, caseType, priority, notes, district, courtName } = req.body;
+    const { caseId, title, caseType, district, description } = req.body;
 
-    if (!title || !description || !caseType) {
-      console.log("❌ Validation failed - missing fields");
+    if (!caseId || !title || !caseType) {
       return res.status(400).json({
-        message: "Title, description, and case type are required",
+        success: false,
+        message: "Case ID, title, and case type are required",
+      });
+    }
+
+    // Check if case ID already registered by this citizen
+    const existing = await Case.findOne({
+      caseId: caseId,
+      citizen: req.user.id,
+    });
+
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        message: "This Case ID is already registered in your account",
       });
     }
 
     const newCase = new Case({
       citizen: req.user.id,
+      caseId,
       title,
-      description,
+      description: description || "",
       caseType,
-      priority: priority || "Medium",
-      notes: notes || "",
       state: "Telangana",
       district: district || "",
-      courtName: courtName || "",
-      status: "Draft",
-      cnrNumber: null,
+      status: "Pending",
     });
 
     await newCase.save();
-    if (req.files?.length) {
-      const docs = req.files.map((file) => ({
-        citizen: req.user.id,
-        case: newCase._id,
-
-        name: file.originalname,
-        originalName: file.originalname,
-
-        filePath: file.path,
-        fileType: file.mimetype,
-        fileSize: file.size,
-
-        status: "Pending",
-      }));
-
-      await Document.insertMany(docs);
-    }
-    await addTimelineEvent({
-      caseId: newCase._id,
-      citizenId: req.user.id,
-      event: "Case Created",
-      description: `Case "${title}" has been created and is awaiting court filing.`,
-      type: "case_created",
-    });
 
     await Activity.create({
       citizen: req.user.id,
       case: newCase._id,
-      text: `New case created: ${title}`,
-      type: "case_created",
+      text: `Case ID registered: ${caseId}`,
+      type: "case_registered",
     });
 
     await Notification.create({
       citizen: req.user.id,
-      title: "Case Created Successfully",
-      message: `Your case "${title}" has been created and is awaiting court filing.`,
+      title: "Case ID Registered",
+      message: `Your case "${title}" has been registered for tracking.`,
       type: "case",
     });
 
     res.status(201).json({
-      message: "Case filed successfully",
+      success: true,
+      message: "Case ID registered successfully",
       case: newCase,
     });
   } catch (error) {
-    console.log("❌ ERROR in createCase:", error);  // ← This will show the real error
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
+// Get all cases for citizen
 export const getMyCases = async (req, res) => {
   try {
     const { status, search, page = 1, limit = 10 } = req.query;
@@ -103,7 +89,6 @@ export const getMyCases = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const cases = await Case.find(filter)
-      .populate("assignedLawyer", "name email specialization")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -111,51 +96,48 @@ export const getMyCases = async (req, res) => {
     const total = await Case.countDocuments(filter);
 
     res.json({
+      success: true,
       cases,
       total,
       page: parseInt(page),
       totalPages: Math.ceil(total / parseInt(limit)),
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
+// Get single case by MongoDB ID
 export const getCaseById = async (req, res) => {
   try {
     const caseDoc = await Case.findOne({
       _id: req.params.id,
       citizen: req.user.id,
-    }).populate("assignedLawyer", "name email specialization experience phone");
+    });
 
     if (!caseDoc) {
-      return res.status(404).json({ message: "Case not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Case not found",
+      });
     }
-
-    const timeline = await CaseTimeline.find({ case: caseDoc._id })
-      .sort({ completedAt: 1 });
 
     const documents = await Document.find({
       case: caseDoc._id,
       citizen: req.user.id,
     }).sort({ createdAt: -1 });
 
-    const hearings = await Hearing.find({
-      case: caseDoc._id,
-      citizen: req.user.id,
-    }).sort({ hearingDate: -1 });
-
     res.json({
+      success: true,
       case: caseDoc,
-      timeline,
       documents,
-      hearings,
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
+// Update case notes/description (citizen only)
 export const updateCase = async (req, res) => {
   try {
     const { description, notes } = req.body;
@@ -166,11 +148,15 @@ export const updateCase = async (req, res) => {
     });
 
     if (!caseDoc) {
-      return res.status(404).json({ message: "Case not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Case not found",
+      });
     }
 
     if (caseDoc.status === "Resolved" || caseDoc.status === "Closed") {
       return res.status(400).json({
+        success: false,
         message: "Cannot update a resolved or closed case",
       });
     }
@@ -188,46 +174,43 @@ export const updateCase = async (req, res) => {
     });
 
     res.json({
+      success: true,
       message: "Case updated successfully",
       case: caseDoc,
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
+// Get case stats for citizen dashboard
 export const getCaseStats = async (req, res) => {
   try {
     const citizenId = req.user.id;
 
-    const [total, draft, filed, active, pending, resolved, hearings] = await Promise.all([
+    const [total, active, pending, resolved, closed] = await Promise.all([
       Case.countDocuments({ citizen: citizenId }),
-      Case.countDocuments({ citizen: citizenId, status: "Draft" }),
-      Case.countDocuments({ citizen: citizenId, status: "Filed" }),
       Case.countDocuments({ citizen: citizenId, status: "Active" }),
       Case.countDocuments({ citizen: citizenId, status: "Pending" }),
       Case.countDocuments({ citizen: citizenId, status: "Resolved" }),
-      Case.countDocuments({
-        citizen: citizenId,
-        nextHearingDate: { $gte: new Date() },
-      }),
+      Case.countDocuments({ citizen: citizenId, status: "Closed" }),
     ]);
 
     res.json({
+      success: true,
       total,
-      draft,
-      filed,
       active,
       pending,
       resolved,
-      hearings,
+      closed,
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
-export const getCaseTimeline = async (req, res) => {
+// Delete a case (citizen removes tracking)
+export const deleteCase = async (req, res) => {
   try {
     const caseDoc = await Case.findOne({
       _id: req.params.id,
@@ -235,129 +218,25 @@ export const getCaseTimeline = async (req, res) => {
     });
 
     if (!caseDoc) {
-      return res.status(404).json({ message: "Case not found" });
-    }
-
-    const timeline = await CaseTimeline.find({ case: req.params.id })
-      .sort({ completedAt: 1 });
-
-    const expectedSteps = [
-      { type: "case_filed", event: "Case Filed" },
-      { type: "under_review", event: "Under Review" },
-      { type: "lawyer_assigned", event: "Lawyer Assigned" },
-      { type: "hearing_scheduled", event: "Hearing Scheduled" },
-      { type: "hearing_completed", event: "Hearing Completed" },
-      { type: "resolved", event: "Case Resolved" },
-    ];
-
-    const completedTypes = timeline.map((t) => t.type);
-
-    const fullTimeline = expectedSteps.map((step) => {
-      const found = timeline.find((t) => t.type === step.type);
-      return {
-        event: step.event,
-        type: step.type,
-        completed: completedTypes.includes(step.type),
-        description: found ? found.description : "",
-        completedAt: found ? found.completedAt : null,
-      };
-    });
-
-    const extraEvents = timeline.filter(
-      (t) => !expectedSteps.find((s) => s.type === t.type)
-    );
-
-    res.json({
-      caseId: caseDoc.caseId,
-      title: caseDoc.title,
-      status: caseDoc.status,
-      timeline: fullTimeline,
-      extraEvents,
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-export const updateCNR = async (req, res) => {
-  try {
-    if (req.user.role !== "court_staff") {
-      return res.status(403).json({
-        message: "Access denied. Only court_staff can file cases in court.",
+      return res.status(404).json({
+        success: false,
+        message: "Case not found",
       });
     }
 
-    const { cnrNumber } = req.body;
-
-    if (!cnrNumber) {
-      return res.status(400).json({
-        message: "CNR number is required",
-      });
-    }
-
-    const cnrRegex = /^[A-Z]{4}\d{12}$/;
-    if (!cnrRegex.test(cnrNumber)) {
-      return res.status(400).json({
-        message: "Invalid CNR number format",
-        format: "Must be 4 letters + 12 digits (e.g., TSHY012345678901)",
-      });
-    }
-
-    const existingCase = await Case.findOne({ cnrNumber });
-    if (existingCase) {
-      return res.status(400).json({
-        message: "This CNR number is already assigned to another case",
-        existingCaseId: existingCase.caseId,
-      });
-    }
-
-    const caseDoc = await Case.findById(req.params.id);
-
-    if (!caseDoc) {
-      return res.status(404).json({ message: "Case not found" });
-    }
-
-    if (caseDoc.cnrNumber) {
-      return res.status(400).json({
-        message: "Case already has CNR number assigned",
-        cnrNumber: caseDoc.cnrNumber,
-      });
-    }
-
-    caseDoc.cnrNumber = cnrNumber;
-    caseDoc.status = "Filed";
-    caseDoc.courtFilingDate = new Date();
-
-    await caseDoc.save();
-
-    await addTimelineEvent({
-      caseId: caseDoc._id,
-      citizenId: caseDoc.citizen,
-      event: "Case Filed in Court",
-      description: `Case officially filed in court with CNR: ${cnrNumber}`,
-      type: "case_filed",
-    });
+    await Case.findByIdAndDelete(req.params.id);
 
     await Activity.create({
-      citizen: caseDoc.citizen,
-      case: caseDoc._id,
-      text: `Case filed in court with CNR: ${cnrNumber}`,
-      type: "case_filed",
-    });
-
-    await Notification.create({
-      citizen: caseDoc.citizen,
-      title: "Case Filed in Court",
-      message: `Your case "${caseDoc.title}" has been officially filed in court. CNR: ${cnrNumber}`,
-      type: "case",
+      citizen: req.user.id,
+      text: `Case removed from tracking: ${caseDoc.title}`,
+      type: "general",
     });
 
     res.json({
-      message: "Case filed successfully in court",
-      case: caseDoc,
+      success: true,
+      message: "Case removed from tracking successfully",
     });
-
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 };

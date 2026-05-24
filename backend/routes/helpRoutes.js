@@ -1,8 +1,11 @@
-// backend/routes/helpRoutes.js
-
 import express from "express";
+
 import protect from "../middleware/authMiddleware.js";
-import { restrictTo } from "../middleware/roleMiddleware.js";
+
+import {
+  restrictTo,
+} from "../middleware/roleMiddleware.js";
+
 import {
   getFAQs,
   submitSupportMessage,
@@ -11,21 +14,60 @@ import {
   updateSupportStatus,
 } from "../controllers/helpController.js";
 
-const router = express.Router();
+const router =
+  express.Router();
 
-// ── Public ─────────────────────────────────────────────────
-router.get("/faqs", getFAQs);
+// ======================
+// Public
+// ======================
 
-// ── Citizen ────────────────────────────────────────────────
-router.post("/contact", protect, submitSupportMessage);
-router.get("/my-messages", protect, getMySupportMessages);
-router.get("/my-messages/:id", protect, getSupportMessageById);
+router.get(
+  "/faqs",
 
-// ── Court Staff ────────────────────────────────────────────
+  getFAQs
+);
+
+// ======================
+// Citizen
+// ======================
+
+router.post(
+  "/contact",
+
+  protect,
+
+  submitSupportMessage
+);
+
+router.get(
+  "/my-messages",
+
+  protect,
+
+  getMySupportMessages
+);
+
+router.get(
+  "/my-messages/:id",
+
+  protect,
+
+  getSupportMessageById
+);
+
+// ======================
+// Admin
+// ======================
+
 router.patch(
   "/messages/:id/status",
+
   protect,
-  restrictTo("court_staff"),
+
+  restrictTo(
+    "admin"
+  ),
+
   updateSupportStatus
 );
 

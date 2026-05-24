@@ -1,49 +1,112 @@
-// backend/middleware/authMiddleware.js
-
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
-const protect = async (req, res, next) => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "Not authorized — no token" });
-  }
-
+const protect = async (
+  req,
+  res,
+  next
+) => {
   try {
-    if (!process.env.JWT_SECRET) {
-      throw new Error("JWT_SECRET is not defined in environment variables");
+    const auth =
+      req.headers.authorization;
+
+    if (
+      !auth ||
+      !auth.startsWith(
+        "Bearer "
+      )
+    ) {
+      return res
+        .status(401)
+        .json({
+          message:
+            "Authentication required",
+        });
     }
 
-    const token = authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    const user = await User.findById(decoded.id).select("-password");
-
-    if (!user) {
-      return res.status(401).json({ message: "User no longer exists" });
+    if (
+      !process.env.JWT_SECRET
+    ) {
+      throw new Error(
+        "JWT secret missing"
+      );
     }
 
-    req.user = user;
+    const token =
+      auth.split(
+        " "
+      )[1];
+
+    const decoded =
+      jwt.verify(
+        token,
+        process.env
+          .JWT_SECRET
+      );
+
+    const user =
+      await User.findById(
+        decoded.id
+      ).select(
+        "-password"
+      );
+
+    if (
+      !user
+    ) {
+      return res
+        .status(401)
+        .json({
+          message:
+            "User not found",
+        });
+    }
+
+    req.user =
+      user;
+
     next();
+  } catch (
+    error
+  ) {
+    console.error(
+      "Auth:",
+      error.message
+    );
 
-  } catch (error) {
-    // ← Give specific messages for different JWT errors
-    if (error.name === "TokenExpiredError") {
-      return res.status(401).json({ 
-        message: "Token expired — please login again",
-        expired: true  // ← frontend can use this to auto-redirect to login
-      });
-    }
-    
-    if (error.name === "JsonWebTokenError") {
-      return res.status(401).json({ 
-        message: "Invalid token — please login again" 
-      });
+    if (
+      error.name ===
+      "TokenExpiredError"
+    ) {
+      return res
+        .status(401)
+        .json({
+          message:
+            "Session expired",
+
+          expired:
+            true,
+        });
     }
 
-    console.error("Auth error:", error.message);
-    return res.status(401).json({ message: "Authentication failed" });
+    if (
+      error.name ===
+      "JsonWebTokenError"
+    ) {
+      return res
+        .status(401)
+        .json({
+          message:
+            "Invalid token",
+        });
+    }
+
+    return res
+      .status(401)
+      .json({
+        message:
+          "Authentication failed",
+      });
   }
 };
 

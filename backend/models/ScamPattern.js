@@ -1,58 +1,117 @@
-// backend/models/ScamPattern.js
-
 import mongoose from "mongoose";
 
-const scamPatternSchema = new mongoose.Schema(
-  {
-    type: {
-      type: String,
-      enum: [
-        "phone_number",
-        "bank_account",
-        "url",
-        "email",
-        "keyword",
-        "threat_pattern",
-        "payment_pattern",
-        "impersonation",
-      ],
-      required: true,
-    },
+const scamPatternSchema =
+new mongoose.Schema(
+{
+  type: {
+    type:
+      String,
 
-    pattern: {
-      type: String,
-      required: true,
-    },
+    enum: [
+      "phone_number",
 
-    description: {
-      type: String,
-      required: true,
-    },
+      "bank_account",
 
-    severity: {
-      type: String,
-      enum: ["low", "medium", "high", "critical"],
-      default: "medium",
-    },
+      "url",
 
-    isRegex: {
-      type: Boolean,
-      default: false,
-    },
+      "email",
 
-    isActive: {
-      type: Boolean,
-      default: true,
-    },
+      "keyword",
 
-    reportCount: {
-      type: Number,
-      default: 0,
-    },
+      "threat_pattern",
 
-    lastReported: Date,
+      "payment_pattern",
+
+      "impersonation",
+    ],
+
+    required:
+      true,
   },
-  { timestamps: true }
+
+  pattern: {
+    type:
+      String,
+
+    required:
+      true,
+
+    trim:
+      true,
+  },
+
+  description: {
+    type:
+      String,
+
+    required:
+      true,
+  },
+
+  severity: {
+    type:
+      String,
+
+    enum: [
+      "low",
+
+      "medium",
+
+      "high",
+
+      "critical",
+    ],
+
+    default:
+      "medium",
+  },
+
+  isRegex: {
+    type:
+      Boolean,
+
+    default:
+      false,
+  },
+
+  isActive: {
+    type:
+      Boolean,
+
+    default:
+      true,
+  },
+
+  reportCount: {
+    type:
+      Number,
+
+    default:
+      0,
+  },
+
+  lastReported:
+  {
+    type:
+      Date,
+
+      default:
+      null,
+  },
+},
+{
+  timestamps:
+    true,
+}
 );
 
-export default mongoose.model("ScamPattern", scamPatternSchema);
+scamPatternSchema.index({
+  type: 1,
+
+  severity: 1,
+});
+
+export default mongoose.model(
+  "ScamPattern",
+  scamPatternSchema
+);

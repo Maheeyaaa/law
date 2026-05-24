@@ -6,9 +6,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import dns from "dns";
 
-import authRoutes from "./routes/authRoutes.js";        // ← replaces userRoutes
 import caseRoutes from "./routes/caseRoutes.js";
-import hearingRoutes from "./routes/hearingRoutes.js";
 import documentRoutes from "./routes/documentRoutes.js";
 import activityRoutes from "./routes/activityRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
@@ -19,12 +17,10 @@ import helpRoutes from "./routes/helpRoutes.js";
 import locationRoutes from "./routes/locationRoutes.js";
 import scamRoutes from "./routes/scamRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
-import predictionRoutes from "./routes/predictionRoutes.js";
 import voiceRoutes from "./routes/voiceRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
-import lawyerPanelRoutes from "./routes/lawyerPanelRoutes.js";
-import aiRoutes from "./routes/aiRoutes.js";      // ← static import now
-import courtStaffRoutes from "./routes/courtStaffRoutes.js";
+import aiRoutes from "./routes/aiRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 import { seedScamPatterns } from "./utils/scamDetector.js";
 
 dns.setServers(["1.1.1.1", "8.8.8.8"]);
@@ -44,9 +40,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static("uploads"));
 
 // ── Routes ─────────────────────────────────────────────────
-app.use("/api/auth", authRoutes);
 app.use("/api/cases", caseRoutes);
-app.use("/api/hearings", hearingRoutes);
 app.use("/api/documents", documentRoutes);
 app.use("/api/activity", activityRoutes);
 app.use("/api/notifications", notificationRoutes);
@@ -57,12 +51,10 @@ app.use("/api/help", helpRoutes);
 app.use("/api/locations", locationRoutes);
 app.use("/api/scam", scamRoutes);
 app.use("/api/analytics", analyticsRoutes);
-app.use("/api/prediction", predictionRoutes);
 app.use("/api/voice", voiceRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/ai", aiRoutes);
-app.use("/api/lawyer", lawyerPanelRoutes);
-app.use("/api/court-staff", courtStaffRoutes);
+app.use("/api/auth", userRoutes);
 
 // ── Health check ───────────────────────────────────────────
 app.get("/", (req, res) => {
@@ -99,9 +91,9 @@ mongoose
     try {
       const User = (await import("./models/User.js")).default;
       const totalLawyers = await User.countDocuments({ role: "lawyer" });
-      const proBonoLawyers = await User.countDocuments({ 
-        role: "lawyer", 
-        importedFrom: "DoJ Pro Bono" 
+      const proBonoLawyers = await User.countDocuments({
+        role: "lawyer",
+        importedFrom: "DoJ Pro Bono",
       });
       const csvLawyers = await User.countDocuments({
         role: "lawyer",

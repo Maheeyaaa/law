@@ -1,41 +1,83 @@
 import express from "express";
-import { 
-  registerUser, 
-  loginUser, 
-  getPendingLawyers, 
-  approveLawyer, 
-  getApprovedLawyers 
-} from "../controllers/userController.js";
-import protect from "../middleware/authMiddleware.js";
-import upload from "../middleware/uploadMiddleware.js";
-import { validateUserLocation } from "../middleware/telanganaValidation.js";
-import { createCourtStaff } from "../controllers/userController.js";
 
-const router = express.Router();
+import {
+  registerUser,
+  loginUser,
+} from "../controllers/userController.js";
+
+import protect from "../middleware/authMiddleware.js";
+
+import upload from "../middleware/uploadMiddleware.js";
+
+import {
+  validateUserLocation,
+} from "../middleware/telanganaValidation.js";
+
+const router =
+  express.Router();
+
+// ======================
+// Auth
+// ======================
 
 router.post(
-  "/register", 
-  upload.single("licenseDocument"),
-  validateUserLocation, // ✅ Add Telangana validation
+  "/register",
+
+  upload.single(
+    "avatar"
+  ),
+
+  validateUserLocation,
+
   registerUser
 );
 
-router.post("/login", loginUser);
+router.post(
+  "/login",
 
+  (req, res) => {
+    req.body.allowedRole =
+      "citizen";
 
+    loginUser(
+      req,
+      res
+    );
+  }
+);
 
-router.get("/lawyers", getApprovedLawyers);
+router.post(
+  "/admin/login",
 
-router.get("/profile", protect, (req, res) => {
-  res.json({
-    message: "Profile accessed successfully",
-    user: req.user
-  });
-});
+  (req, res) => {
+    req.body.allowedRole =
+      "admin";
 
-router.get("/pending-lawyers", protect, restrictTo("court_staff"), getPendingLawyers);
-router.patch("/approve-lawyer/:id", protect, restrictTo("court_staff"), approveLawyer);
-router.post("/create-court-staff", protect, restrictTo("court_staff"), createCourtStaff);
+    loginUser(
+      req,
+      res
+    );
+  }
+);
 
+// ======================
+// Profile
+// ======================
+
+router.get(
+  "/profile",
+
+  protect,
+
+  (
+    req,
+    res
+  ) => {
+    res.json({
+      user:
+        req.user,
+    });
+  }
+);
 
 export default router;

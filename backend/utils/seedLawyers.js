@@ -1,298 +1,137 @@
 // backend/utils/seedLawyers.js
 
-import User from "../models/User.js";
 import bcrypt from "bcryptjs";
+import User from "../models/User.js";
 
-const sampleLawyers = [
+const SAMPLE_LAWYERS = [
   {
     name: "Adv. Rajesh Kumar",
-    email: "rajesh.kumar@lawfirm.com",
-    password: "lawyer123",
-    role: "lawyer",
-    state: "Telangana",
     district: "Hyderabad",
-    phone: "+91 9876543210",
     specialization: "Criminal Law",
-    experience: 15,
-    barCouncilNumber: "TS/12345/2008",
-    languages: ["English", "Telugu", "Hindi"],
-    bio: "Experienced criminal lawyer with 15+ years of practice. Specialized in handling high-profile criminal cases.",
-    education: ["LLB from Osmania University", "LLM in Criminal Law"],
-    courtsPracticing: ["High Court", "District Court", "Sessions Court"],
-    availability: "available",
-    availableDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-    consultationFee: 5000,
-    rating: 4.8,
-    totalReviews: 127,
-    verificationStatus: "approved",
-    isVerified: true,
-    isProfileComplete: true,
-    casesHandled: 245,
-    casesWon: 198,
   },
+
   {
     name: "Adv. Priya Sharma",
-    email: "priya.sharma@advocates.in",
-    password: "lawyer123",
-    role: "lawyer",
-    state: "Telangana",
     district: "Hyderabad",
-    phone: "+91 9876543211",
     specialization: "Family Law",
-    experience: 8,
-    barCouncilNumber: "TS/23456/2015",
-    languages: ["English", "Telugu"],
-    bio: "Compassionate family lawyer specializing in divorce, custody, and matrimonial disputes.",
-    education: ["LLB from Nalsar University"],
-    courtsPracticing: ["Family Court", "District Court"],
-    availability: "available",
-    availableDays: ["Monday", "Wednesday", "Friday"],
-    consultationFee: 3500,
-    rating: 4.9,
-    totalReviews: 89,
-    verificationStatus: "approved",
-    isVerified: true,
-    isProfileComplete: true,
-    casesHandled: 156,
-    casesWon: 142,
   },
+
   {
     name: "Adv. Mohammed Ali",
-    email: "ali.advocate@gmail.com",
-    password: "lawyer123",
-    role: "lawyer",
-    state: "Telangana",
     district: "Warangal Urban",
-    phone: "+91 9876543212",
     specialization: "Civil Law",
-    experience: 12,
-    barCouncilNumber: "TS/34567/2011",
-    languages: ["English", "Telugu", "Urdu"],
-    bio: "Expert in civil litigation, property disputes, and contract law.",
-    education: ["LLB from Kakatiya University", "Diploma in Arbitration"],
-    courtsPracticing: ["High Court", "District Court"],
-    availability: "busy",
-    availableDays: ["Tuesday", "Thursday"],
-    consultationFee: 4000,
-    rating: 4.6,
-    totalReviews: 73,
-    verificationStatus: "approved",
-    isVerified: true,
-    isProfileComplete: true,
-    casesHandled: 189,
-    casesWon: 156,
-  },
-  {
-    name: "Adv. Lakshmi Devi",
-    email: "lakshmi.law@lawchambers.in",
-    password: "lawyer123",
-    role: "lawyer",
-    state: "Telangana",
-    district: "Rangareddy",
-    phone: "+91 9876543213",
-    specialization: "Consumer Law",
-    experience: 6,
-    barCouncilNumber: "TS/45678/2017",
-    languages: ["English", "Telugu"],
-    bio: "Dedicated to protecting consumer rights and handling consumer court cases.",
-    education: ["LLB from Osmania University"],
-    courtsPracticing: ["Consumer Court", "District Court"],
-    availability: "available",
-    availableDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-    consultationFee: 2500,
-    rating: 4.7,
-    totalReviews: 54,
-    verificationStatus: "approved",
-    isVerified: true,
-    isProfileComplete: true,
-    casesHandled: 98,
-    casesWon: 87,
-  },
-  {
-    name: "Adv. Venkat Rao",
-    email: "venkat.rao@advocates.com",
-    password: "lawyer123",
-    role: "lawyer",
-    state: "Telangana",
-    district: "Hyderabad",
-    phone: "+91 9876543214",
-    specialization: "Corporate Law",
-    experience: 10,
-    barCouncilNumber: "TS/56789/2013",
-    languages: ["English", "Telugu", "Hindi"],
-    bio: "Corporate lawyer with expertise in mergers, acquisitions, and company law matters.",
-    education: ["LLB from Nalsar University", "Company Secretary (CS)"],
-    courtsPracticing: ["High Court", "NCLT"],
-    availability: "available",
-    availableDays: ["Monday", "Wednesday", "Friday"],
-    consultationFee: 8000,
-    rating: 4.5,
-    totalReviews: 41,
-    verificationStatus: "approved",
-    isVerified: true,
-    isProfileComplete: true,
-    casesHandled: 124,
-    casesWon: 108,
-  },
-  {
-    name: "Adv. Srinivas Reddy",
-    email: "srinivas.reddy@lawfirm.in",
-    password: "lawyer123",
-    role: "lawyer",
-    state: "Telangana",
-    district: "Karimnagar",
-    phone: "+91 9876543215",
-    specialization: "Property Law",
-    experience: 18,
-    barCouncilNumber: "TS/67890/2005",
-    languages: ["Telugu", "English"],
-    bio: "Senior advocate specializing in property disputes, land acquisition, and real estate matters.",
-    education: ["LLB from Delhi University", "Master's in Property Law"],
-    courtsPracticing: ["High Court", "District Court", "Revenue Court"],
-    availability: "available",
-    availableDays: ["Monday", "Tuesday", "Thursday", "Friday"],
-    consultationFee: 6000,
-    rating: 4.9,
-    totalReviews: 156,
-    verificationStatus: "approved",
-    isVerified: true,
-    isProfileComplete: true,
-    casesHandled: 312,
-    casesWon: 278,
-  },
-  {
-    name: "Adv. Anjali Menon",
-    email: "anjali.menon@advocates.in",
-    password: "lawyer123",
-    role: "lawyer",
-    state: "Telangana",
-    district: "Khammam",
-    phone: "+91 9876543216",
-    specialization: "Labour Law",
-    experience: 7,
-    barCouncilNumber: "TS/78901/2016",
-    languages: ["English", "Telugu", "Malayalam"],
-    bio: "Passionate about workers' rights and employment law. Handles cases related to workplace disputes.",
-    education: ["LLB from Kerala University", "Diploma in Labour Laws"],
-    courtsPracticing: ["Labour Court", "District Court"],
-    availability: "available",
-    availableDays: ["Tuesday", "Wednesday", "Thursday", "Friday"],
-    consultationFee: 3000,
-    rating: 4.4,
-    totalReviews: 62,
-    verificationStatus: "approved",
-    isVerified: true,
-    isProfileComplete: true,
-    casesHandled: 134,
-    casesWon: 112,
-  },
-  {
-    name: "Adv. Karthik Chandra",
-    email: "karthik.law@gmail.com",
-    password: "lawyer123",
-    role: "lawyer",
-    state: "Telangana",
-    district: "Nalgonda",
-    phone: "+91 9876543217",
-    specialization: "Constitutional Law",
-    experience: 14,
-    barCouncilNumber: "TS/89012/2009",
-    languages: ["English", "Telugu", "Hindi"],
-    bio: "Constitutional law expert with experience in public interest litigations and fundamental rights cases.",
-    education: ["LLB from Nalsar University", "LLM in Constitutional Law"],
-    courtsPracticing: ["Supreme Court", "High Court"],
-    availability: "busy",
-    availableDays: ["Monday", "Wednesday"],
-    consultationFee: 10000,
-    rating: 4.8,
-    totalReviews: 94,
-    verificationStatus: "approved",
-    isVerified: true,
-    isProfileComplete: true,
-    casesHandled: 187,
-    casesWon: 165,
-  },
-  {
-    name: "Adv. Divya Rani",
-    email: "divya.rani@lawchambers.in",
-    password: "lawyer123",
-    role: "lawyer",
-    state: "Telangana",
-    district: "Medchal-Malkajgiri",
-    phone: "+91 9876543218",
-    specialization: "Cyber Law",
-    experience: 5,
-    barCouncilNumber: "TS/90123/2018",
-    languages: ["English", "Telugu"],
-    bio: "Tech-savvy lawyer specializing in cybercrime, data protection, and IT-related legal issues.",
-    education: ["LLB from NALSAR", "Certificate in Cyber Law & Cybersecurity"],
-    courtsPracticing: ["Cyber Crime Court", "District Court"],
-    availability: "available",
-    availableDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-    consultationFee: 4500,
-    rating: 4.6,
-    totalReviews: 38,
-    verificationStatus: "approved",
-    isVerified: true,
-    isProfileComplete: true,
-    casesHandled: 76,
-    casesWon: 68,
-  },
-  {
-    name: "Adv. Ramesh Babu",
-    email: "ramesh.babu@advocates.com",
-    password: "lawyer123",
-    role: "lawyer",
-    state: "Telangana",
-    district: "Nizamabad",
-    phone: "+91 9876543219",
-    specialization: "Tax Law",
-    experience: 11,
-    barCouncilNumber: "TS/01234/2012",
-    languages: ["Telugu", "English", "Hindi"],
-    bio: "Expert in income tax, GST, and corporate taxation matters. Handles tax appeals and audits.",
-    education: ["LLB from Osmania University", "CA (Chartered Accountant)"],
-    courtsPracticing: ["Income Tax Tribunal", "High Court"],
-    availability: "available",
-    availableDays: ["Monday", "Wednesday", "Thursday"],
-    consultationFee: 7000,
-    rating: 4.7,
-    totalReviews: 81,
-    verificationStatus: "approved",
-    isVerified: true,
-    isProfileComplete: true,
-    casesHandled: 203,
-    casesWon: 184,
   },
 ];
 
-export const seedLawyers = async () => {
+const DEFAULT_PASSWORD =
+  "lawyer@123";
+
+function buildLawyer(
+  lawyer,
+  index,
+  password
+) {
+  return {
+    name:
+      lawyer.name,
+
+    email:
+      `seed.${index}@advocate.in`,
+
+    password,
+
+    role:
+      "lawyer",
+
+    state:
+      "Telangana",
+
+    district:
+      lawyer.district,
+
+    specialization:
+      lawyer.specialization,
+
+    verificationStatus:
+      "approved",
+
+    isVerified:
+      true,
+
+    importedFrom:
+      "Seed",
+
+    availability:
+      "available",
+
+    languages: [
+      "English",
+      "Telugu",
+    ],
+
+    rating: 0,
+
+    totalReviews: 0,
+
+    casesHandled: 0,
+
+    casesWon: 0,
+  };
+}
+
+export async function seedLawyers() {
   try {
-    // Check if lawyers already exist
-    const count = await User.countDocuments({ role: "lawyer" });
-    if (count >= sampleLawyers.length) {
-      console.log("✅ Lawyers already seeded");
+    const existing =
+      await User.countDocuments({
+        importedFrom:
+          "Seed",
+      });
+
+    if (
+      existing > 0
+    ) {
+      console.log(
+        "Seed already exists"
+      );
+
       return;
     }
 
-    // Delete existing sample lawyers to avoid duplicates
-    await User.deleteMany({ 
-      email: { 
-        $in: sampleLawyers.map(l => l.email) 
-      } 
-    });
+    const password =
+      await bcrypt.hash(
+        DEFAULT_PASSWORD,
+        10
+      );
 
-    // Hash passwords and create lawyers
-    const lawyersWithHashedPasswords = await Promise.all(
-      sampleLawyers.map(async (lawyer) => ({
-        ...lawyer,
-        password: await bcrypt.hash(lawyer.password, 10),
-      }))
+    const lawyers =
+      SAMPLE_LAWYERS.map(
+        (
+          lawyer,
+          index
+        ) =>
+          buildLawyer(
+            lawyer,
+            index,
+            password
+          )
+      );
+
+    await User.insertMany(
+      lawyers
     );
 
-    await User.insertMany(lawyersWithHashedPasswords);
-    console.log(`✅ ${sampleLawyers.length} sample lawyers seeded successfully!`);
-  } catch (error) {
-    console.error("❌ Error seeding lawyers:", error.message);
+    console.log(
+      `Seeded ${lawyers.length} lawyers`
+    );
+  } catch (
+    error
+  ) {
+    console.error(
+      "Seed failed:",
+      error.message
+    );
   }
-};
+}
+
+export default
+  seedLawyers;

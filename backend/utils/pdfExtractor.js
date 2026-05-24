@@ -1,207 +1,247 @@
 // backend/utils/pdfExtractor.js
 
-import fs from "fs";
+import fs from "fs/promises";
 import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
 
-// Set to true only when debugging PDF issues
 const DEBUG = false;
-const log = (...args) => { if (DEBUG) console.log(...args); };
 
-export async function extractTextFromPDF(filePath) {
-  const dataBuffer = fs.readFileSync(filePath);
-  log(`[PDF Extractor] File size: ${dataBuffer.length} bytes`);
+const log = (...args) => {
+  if (DEBUG) console.log(...args);
+};
 
-  let text = "";
+const MIN_TEXT = 10;
+const MAX_OCR_PAGES = 5;
+const MAX_TEXT_LENGTH = 50000;
 
-  // Method 1: pdf-parse
+const trimOutput = (text = "") =>
+  text.trim().slice(0, MAX_TEXT_LENGTH);
+
+async function extractUsingPdfParse(dataBuffer) {
   try {
-    const pdfParse = require("pdf-parse/lib/pdf-parse.js");
+    const pdfParse =
+      require("pdf-parse/lib/pdf-parse.js");
 
-    const options = {
-      pagerender: function (pageData) {
-        return pageData.getTextContent().then(function (textContent) {
-          let lastY = null;
-          let pageText = "";
+    const result =
+      await pdfParse(dataBuffer);
 
-          for (const item of textContent.items) {
-            if (item.str === undefined) continue;
+    return trimOutput(
+      result.text
+    );
+  } catch {
+    return "";
+  }
+}
 
-            if (lastY !== null && Math.abs(lastY - item.transform[5]) > 2) {
-              pageText += "\n";
-            }
-            pageText += item.str + " ";
-            lastY = item.transform[5];
-          }
+async function loadPdfJS() {
+  try {
+    return await import(
+      "pdfjs-dist/legacy/build/pdf.mjs"
+    );
+  } catch {
+    return await import(
+      "pdfjs-dist"
+    );
+  }
+}
 
-          return pageText;
+async function extractUsingPdfJS(
+  dataBuffer
+) {
+  try {
+    const pdfjs =
+      await loadPdfJS();
+
+    const pdf =
+      await pdfjs
+        .getDocument({
+          data:
+            new Uint8Array(
+              dataBuffer
+            ),
+        })
+        .promise;
+
+    let text = "";
+
+    for (
+      let pageNum = 1;
+      pageNum <=
+      pdf.numPages;
+      pageNum++
+    ) {
+      const page =
+        await pdf.getPage(
+          pageNum
+        );
+
+      const content =
+        await page.getTextContent();
+
+      text +=
+        content.items
+          .map(
+            (i) =>
+              i.str || ""
+          )
+          .join(
+            " "
+          ) + "\n";
+    }
+
+    return trimOutput(
+      text
+    );
+  } catch {
+    return "";
+  }
+}
+
+async function extractUsingOCR(
+  dataBuffer
+) {
+  try {
+    const pdfjs =
+      await loadPdfJS();
+
+    const canvasLib =
+      await import(
+        "@napi-rs/canvas"
+      );
+
+    const tesseractModule =
+      await import(
+        "tesseract.js"
+      );
+
+    const Tesseract =
+      tesseractModule.default ||
+      tesseractModule;
+
+    const pdf =
+      await pdfjs
+        .getDocument({
+          data:
+            new Uint8Array(
+              dataBuffer
+            ),
+        })
+        .promise;
+
+    const pages =
+      Math.min(
+        pdf.numPages,
+        MAX_OCR_PAGES
+      );
+
+    const worker =
+      await Tesseract.createWorker(
+        "eng"
+      );
+
+    let text = "";
+
+    for (
+      let i = 1;
+      i <= pages;
+      i++
+    ) {
+      const page =
+        await pdf.getPage(
+          i
+        );
+
+      const viewport =
+        page.getViewport({
+          scale: 2,
         });
-      },
-    };
 
-    const result = await pdfParse(dataBuffer, options);
-    text = result.text || "";
+      const canvas =
+        canvasLib.createCanvas(
+          viewport.width,
+          viewport.height
+        );
 
-    log(`[PDF Extractor] Method 1 (pdf-parse): ${text.trim().length} chars`);
-
-    if (text.trim().length > 10) {
-      log(`[PDF Extractor] ✅ Text extracted via pdf-parse`);
-      return text.trim();
-    }
-  } catch (err) {
-    log(`[PDF Extractor] Method 1 failed: ${err.message}`);
-  }
-
-  // Method 2: pdfjs-dist
-  let pdfjsLib = null;
-
-  try {
-    try {
-      pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
-    } catch {
-      pdfjsLib = await import("pdfjs-dist");
-    }
-
-    const data = new Uint8Array(dataBuffer);
-    const pdf = await pdfjsLib.getDocument({
-      data,
-      useSystemFonts: true,
-      disableFontFace: true,
-    }).promise;
-
-    log(`[PDF Extractor] Method 2: ${pdf.numPages} pages found`);
-
-    let fullText = "";
-
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-
-      let lastY = null;
-      let lineText = "";
-
-      for (const item of textContent.items) {
-        if (item.str === undefined) continue;
-
-        if (lastY !== null && Math.abs(lastY - item.transform[5]) > 2) {
-          fullText += lineText.trim() + "\n";
-          lineText = "";
-        }
-        lineText += item.str + " ";
-        lastY = item.transform[5];
-      }
-
-      fullText += lineText.trim() + "\n\n";
-    }
-
-    text = fullText;
-    log(`[PDF Extractor] Method 2 (pdfjs-dist): ${text.trim().length} chars`);
-
-    if (text.trim().length > 10) {
-      log(`[PDF Extractor] ✅ Text extracted via pdfjs-dist`);
-      return text.trim();
-    }
-  } catch (err) {
-    log(`[PDF Extractor] Method 2 failed: ${err.message}`);
-  }
-
-  // Method 3: OCR
-  log(`[PDF Extractor] ⚠️ Minimal text found. Starting OCR...`);
-
-  try {
-    const napiCanvas = await import("@napi-rs/canvas");
-    const TesseractModule = await import("tesseract.js");
-    const Tesseract = TesseractModule.default || TesseractModule;
-
-    if (!pdfjsLib) {
-      try {
-        pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
-      } catch {
-        pdfjsLib = await import("pdfjs-dist");
-      }
-    }
-
-    const data = new Uint8Array(dataBuffer);
-    const pdf = await pdfjsLib.getDocument({
-      data,
-      useSystemFonts: true,
-      disableFontFace: true,
-    }).promise;
-
-    const totalPages = pdf.numPages;
-    const maxPages = Math.min(totalPages, 15);
-
-    log(`[PDF Extractor] OCR: Processing ${maxPages}/${totalPages} pages...`);
-
-    const worker = await Tesseract.createWorker("eng", 1);
-
-    let ocrText = "";
-
-    for (let i = 1; i <= maxPages; i++) {
-      log(`[PDF Extractor] OCR: Page ${i}/${maxPages}...`);
-
-      const page = await pdf.getPage(i);
-      const scale = 2.0;
-      const viewport = page.getViewport({ scale });
-
-      const width = Math.floor(viewport.width);
-      const height = Math.floor(viewport.height);
-
-      const canvas = napiCanvas.createCanvas(width, height);
-      const context = canvas.getContext("2d");
-
-      context.fillStyle = "white";
-      context.fillRect(0, 0, width, height);
-
-      const canvasFactory = {
-        create(w, h) {
-          const c = napiCanvas.createCanvas(w, h);
-          return { canvas: c, context: c.getContext("2d") };
-        },
-        reset(canvasPair, w, h) {
-          canvasPair.canvas.width = w;
-          canvasPair.canvas.height = h;
-        },
-        destroy(canvasPair) {
-          canvasPair.canvas = null;
-          canvasPair.context = null;
-        },
-      };
+      const ctx =
+        canvas.getContext(
+          "2d"
+        );
 
       await page.render({
-        canvasContext: context,
+        canvasContext:
+          ctx,
+
         viewport,
-        canvasFactory,
       }).promise;
 
-      const pngBuffer = canvas.toBuffer("image/png");
-
       const {
-        data: { text: pageText },
-      } = await worker.recognize(pngBuffer);
+        data,
+      } =
+        await worker.recognize(
+          canvas.toBuffer(
+            "image/png"
+          )
+        );
 
-      if (pageText && pageText.trim()) {
-        ocrText += `--- Page ${i} ---\n${pageText.trim()}\n\n`;
-      }
+      text +=
+        data.text +
+        "\n";
     }
 
     await worker.terminate();
 
-    text = ocrText;
+    return trimOutput(
+      text
+    );
+  } catch {
+    return "";
+  }
+}
 
-    log(`[PDF Extractor] ✅ OCR complete: ${text.trim().length} chars`);
+export async function extractTextFromPDF(
+  filePath
+) {
+  const dataBuffer =
+    await fs.readFile(
+      filePath
+    );
 
-    if (totalPages > maxPages) {
-      text += `\n\n[Note: OCR processed ${maxPages} of ${totalPages} pages.]`;
-    }
+  log(
+    "PDF size:",
+    dataBuffer.length
+  );
 
-    if (text.trim().length > 10) {
-      return text.trim();
-    }
-  } catch (err) {
-    log(`[PDF Extractor] ❌ OCR failed: ${err.message}`);
+  let text =
+    await extractUsingPdfParse(
+      dataBuffer
+    );
+
+  if (
+    text.length >
+    MIN_TEXT
+  ) {
+    return text;
   }
 
-  return text.trim();
+  text =
+    await extractUsingPdfJS(
+      dataBuffer
+    );
+
+  if (
+    text.length >
+    MIN_TEXT
+  ) {
+    return text;
+  }
+
+  text =
+    await extractUsingOCR(
+      dataBuffer
+    );
+
+  return trimOutput(
+    text
+  );
 }
