@@ -11,15 +11,14 @@ const BLUE = "#1e5fff";
 const BLUEB = "#4d8aff";
 const SH_CARD = "0 8px 32px rgba(0,0,0,.7), 0 2px 8px rgba(0,0,0,.5)";
 
-const GLASS = {
-  background: "rgba(10,20,60,0.18)",
-  backdropFilter: "blur(2px)",
-  WebkitBackdropFilter: "blur(2px)",
-  border: "1px solid rgba(90,130,220,0.2)",
-  boxShadow: "6px 10px 40px rgba(0,0,0,.55), 4px 8px 24px rgba(0,0,0,.4)",
+const GLASS: CSSProperties = {
+  background: "rgba(0,0,0,0.45)",
+  backdropFilter: "blur(16px)",
+  WebkitBackdropFilter: "blur(16px)",
+  border: "1px solid rgba(255,255,255,0.06)",
+  boxShadow: "0 8px 32px rgba(0,0,0,.6), 0 2px 8px rgba(0,0,0,.4)",
 };
 
-// ── Maps backend status → display color ───────────────────
 function statusColor(status: string): string {
   switch (status) {
     case "Draft":      return "#6B7280";
@@ -33,7 +32,6 @@ function statusColor(status: string): string {
   }
 }
 
-// ── Maps backend status → human-readable label ────────────
 const STATUS_DISPLAY: Record<string, string> = {
   "Draft":      "Draft",
   "Filed":      "Submitted",
@@ -44,7 +42,6 @@ const STATUS_DISPLAY: Record<string, string> = {
   "Dismissed":  "Cancelled",
 };
 
-// ── Maps filter button label → backend status value ───────
 const FILTER_TO_STATUS: Record<string, string> = {
   "All":               "",
   "Draft":             "Draft",
@@ -95,7 +92,6 @@ export default function MyCases() {
       setLoading(true);
       const params: any = { page, limit: 10 };
 
-      // Map filter label to backend status value
       if (filter !== "All") {
         params.status = FILTER_TO_STATUS[filter] || filter;
       }
@@ -112,7 +108,6 @@ export default function MyCases() {
       setTotal(casesRes.data.total);
       setTotalPages(casesRes.data.totalPages);
 
-      // Use getCaseStats for accurate counts
       const s = statsRes.data;
       setStats({
         total: s.total || 0,
@@ -139,7 +134,21 @@ export default function MyCases() {
           </div>
           <button
             onClick={() => navigate("/citizen")}
-            style={{ ...DM, background: BLUE, color: "#fff", fontSize: 12, fontWeight: 600, padding: "10px 20px", borderRadius: 10, border: "none", cursor: "pointer", boxShadow: SH_CARD, transition: "transform .2s ease" }}
+            style={{
+              ...DM,
+              background: "rgba(0,0,0,0.55)",
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+              color: BLUEB,
+              fontSize: 12,
+              fontWeight: 600,
+              padding: "10px 20px",
+              borderRadius: 10,
+              border: "1px solid rgba(255,255,255,0.08)",
+              cursor: "pointer",
+              boxShadow: "0 6px 24px rgba(0,0,0,.5)",
+              transition: "transform .2s ease",
+            }}
             onMouseEnter={e => (e.currentTarget as HTMLElement).style.transform = "translateY(-3px)"}
             onMouseLeave={e => (e.currentTarget as HTMLElement).style.transform = "translateY(0)"}>
             + Submit Legal Request
@@ -150,12 +159,19 @@ export default function MyCases() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
           {[
             { label: "Total Requests",   value: stats.total,    color: BLUEB },
-            { label: "Lawyer Assigned",  value: stats.active,   color: "#34d399" },
-            { label: "Under Review",     value: stats.pending,  color: "#fbbf24" },
-            { label: "Guidance Provided",value: stats.resolved, color: "#93c5fd" },
+            { label: "Lawyer Assigned",  value: stats.active,   color: BLUEB },
+            { label: "Under Review",     value: stats.pending,  color: BLUEB },
+            { label: "Guidance Provided",value: stats.resolved, color: BLUEB },
           ].map((stat, i) => (
             <div key={i}
-              style={{ ...GLASS, borderRadius: 16, padding: "20px 24px", position: "relative", overflow: "hidden", transition: "transform .2s ease" }}
+              style={{
+                ...GLASS,
+                borderRadius: 16,
+                padding: "20px 24px",
+                position: "relative",
+                overflow: "hidden",
+                transition: "transform .2s ease",
+              }}
               onMouseEnter={e => (e.currentTarget as HTMLElement).style.transform = "translateY(-4px)"}
               onMouseLeave={e => (e.currentTarget as HTMLElement).style.transform = "translateY(0)"}>
               <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: stat.color, boxShadow: `0 0 10px ${stat.color}` }} />
@@ -166,11 +182,31 @@ export default function MyCases() {
         </div>
 
         {/* Filters + Search */}
-        <div style={{ ...GLASS, borderRadius: 16, padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+        <div style={{
+          ...GLASS,
+          borderRadius: 16,
+          padding: "20px 24px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 16,
+        }}>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {FILTER_OPTIONS.map((f) => (
               <button key={f} onClick={() => { setFilter(f); setPage(1); }}
-                style={{ ...DM, fontSize: 11, fontWeight: 600, padding: "8px 16px", borderRadius: 99, cursor: "pointer", background: filter === f ? BLUE : "rgba(30,95,255,0.15)", color: "#fff", border: filter === f ? "none" : "1px solid rgba(30,95,255,0.4)", transition: "all .2s ease" }}>
+                style={{
+                  ...DM,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: "8px 16px",
+                  borderRadius: 99,
+                  cursor: "pointer",
+                  background: filter === f ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.35)",
+                  color: filter === f ? "#fff" : "rgba(255,255,255,.5)",
+                  border: filter === f ? "1px solid rgba(255,255,255,0.15)" : "1px solid rgba(255,255,255,0.06)",
+                  transition: "all .2s ease",
+                  backdropFilter: "blur(8px)",
+                }}>
                 {f}
               </button>
             ))}
@@ -179,7 +215,17 @@ export default function MyCases() {
             placeholder="Search requests..."
             value={searchQuery}
             onChange={e => { setSearchQuery(e.target.value); setPage(1); }}
-            style={{ ...DM, background: "rgba(0,0,0,0.6)", border: "1px solid rgba(30,95,255,.25)", borderRadius: 10, padding: "10px 16px", color: "rgba(255,255,255,.6)", fontSize: 12, outline: "none", width: 280 }}
+            style={{
+              ...DM,
+              background: "rgba(0,0,0,0.5)",
+              border: "1px solid rgba(255,255,255,.08)",
+              borderRadius: 10,
+              padding: "10px 16px",
+              color: "rgba(255,255,255,.6)",
+              fontSize: 12,
+              outline: "none",
+              width: 280,
+            }}
           />
         </div>
 
@@ -188,12 +234,18 @@ export default function MyCases() {
         </p>
 
         {/* Requests Table */}
-        <div style={{ ...GLASS, borderRadius: 16, padding: "24px", position: "relative", overflow: "hidden" }}>
-          <div style={{ position: "absolute", top: 0, left: "8%", right: "8%", height: 1, background: "linear-gradient(90deg,transparent,rgba(150,200,255,0.6),transparent)", pointerEvents: "none" }} />
+        <div style={{
+          ...GLASS,
+          borderRadius: 16,
+          padding: "24px",
+          position: "relative",
+          overflow: "hidden",
+        }}>
+          <div style={{ position: "absolute", top: 0, left: "8%", right: "8%", height: 1, background: "linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)", pointerEvents: "none" }} />
 
           {loading ? (
             <div style={{ textAlign: "center", padding: 40 }}>
-              <div style={{ width: 40, height: 40, border: "3px solid rgba(30,95,255,.3)", borderTop: "3px solid #1e5fff", borderRadius: "50%", animation: "spin 1s linear infinite", margin: "0 auto 16px" }} />
+              <div style={{ width: 40, height: 40, border: "3px solid rgba(255,255,255,.1)", borderTop: "3px solid rgba(255,255,255,.4)", borderRadius: "50%", animation: "spin 1s linear infinite", margin: "0 auto 16px" }} />
               <p style={{ ...DM, fontSize: 14, color: "rgba(255,255,255,.5)" }}>Loading requests...</p>
               <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
             </div>
@@ -202,14 +254,33 @@ export default function MyCases() {
               <p style={{ ...DM, fontSize: 16, color: "rgba(255,255,255,.3)" }}>No requests found</p>
               <button
                 onClick={() => navigate("/citizen")}
-                style={{ ...DM, background: BLUE, color: "#fff", fontSize: 12, fontWeight: 600, padding: "10px 20px", borderRadius: 10, border: "none", cursor: "pointer", marginTop: 16 }}>
+                style={{
+                  ...DM,
+                  background: "rgba(0,0,0,0.55)",
+                  backdropFilter: "blur(12px)",
+                  color: "#fff",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  padding: "10px 20px",
+                  borderRadius: 10,
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  cursor: "pointer",
+                  marginTop: 16,
+                }}>
                 + Submit Your First Request
               </button>
             </div>
           ) : (
             <>
-              {/* Table Header — 6 columns */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 0.8fr 1fr 1fr 0.6fr", gap: 12, padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,.06)", marginBottom: 8 }}>
+              {/* Table Header */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 2fr 0.8fr 1fr 1fr 0.6fr",
+                gap: 12,
+                padding: "12px 16px",
+                borderBottom: "1px solid rgba(255,255,255,.06)",
+                marginBottom: 8,
+              }}>
                 {["Request ID", "Issue Title", "Category", "District", "Status", "Manage"].map(h => (
                   <p key={h} style={{ ...DM, fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "rgba(255,255,255,.3)" }}>{h}</p>
                 ))}
@@ -219,7 +290,6 @@ export default function MyCases() {
               <div style={{ maxHeight: 500, overflowY: "auto" }}>
                 {cases.map((c, i) => (
                   <div key={c._id}>
-
                     <div
                       style={{
                         display: "grid",
@@ -229,23 +299,25 @@ export default function MyCases() {
                         borderRadius: 10,
                         background:
                           i % 2 === 0
-                            ? "rgba(0,0,0,0.3)"
-                            : "rgba(255,255,255,.02)",
+                            ? "rgba(0,0,0,0.35)"
+                            : "rgba(0,0,0,0.2)",
+                        border: "1px solid rgba(255,255,255,0.03)",
                         alignItems: "center",
                         marginBottom: 4,
                         transition: "all .2s ease",
-                        cursor: "pointer"
+                        cursor: "pointer",
                       }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget as HTMLElement).style.background =
-                          "rgba(30,95,255,.08)"
-                      }
-                      onMouseLeave={(e) =>
+                      onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.5)";
+                        (e.currentTarget as HTMLElement).style.border = "1px solid rgba(255,255,255,0.08)";
+                      }}
+                      onMouseLeave={(e) => {
                         (e.currentTarget as HTMLElement).style.background =
                           i % 2 === 0
-                            ? "rgba(0,0,0,0.3)"
-                            : "rgba(255,255,255,.02)"
-                      }
+                            ? "rgba(0,0,0,0.35)"
+                            : "rgba(0,0,0,0.2)";
+                        (e.currentTarget as HTMLElement).style.border = "1px solid rgba(255,255,255,0.03)";
+                      }}
                       onClick={() => navigate(`/citizen/cases/${c._id}`)}
                     >
                       <p style={{ ...DM, fontSize: 11, color: BLUEB }}>
@@ -272,7 +344,7 @@ export default function MyCases() {
                           borderRadius: 99,
                           background: `${statusColor(c.status)}15`,
                           border: `1px solid ${statusColor(c.status)}44`,
-                          color: statusColor(c.status)
+                          color: statusColor(c.status),
                         }}
                       >
                         {STATUS_DISPLAY[c.status] || c.status}
@@ -282,24 +354,41 @@ export default function MyCases() {
                         style={{
                           ...DM,
                           fontSize: 11,
-                          color: BLUEB
+                          color: BLUEB,
                         }}
                       >
                         View →
                       </span>
                     </div>
-
                   </div>
                 ))}
               </div>
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 12, marginTop: 20, paddingTop: 20, borderTop: "1px solid rgba(255,255,255,.06)" }}>
+                <div style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  gap: 12,
+                  marginTop: 20,
+                  paddingTop: 20,
+                  borderTop: "1px solid rgba(255,255,255,.06)",
+                }}>
                   <button
                     onClick={() => setPage(p => Math.max(1, p - 1))}
                     disabled={page === 1}
-                    style={{ ...DM, background: page === 1 ? "rgba(255,255,255,.05)" : "rgba(30,95,255,.2)", color: page === 1 ? "rgba(255,255,255,.2)" : "#fff", fontSize: 11, fontWeight: 600, padding: "8px 16px", borderRadius: 8, border: "1px solid rgba(30,95,255,.3)", cursor: page === 1 ? "not-allowed" : "pointer" }}>
+                    style={{
+                      ...DM,
+                      background: page === 1 ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.45)",
+                      color: page === 1 ? "rgba(255,255,255,.2)" : "#fff",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      padding: "8px 16px",
+                      borderRadius: 8,
+                      border: "1px solid rgba(255,255,255,.06)",
+                      cursor: page === 1 ? "not-allowed" : "pointer",
+                    }}>
                     ← Prev
                   </button>
                   <p style={{ ...DM, fontSize: 12, color: "rgba(255,255,255,.5)" }}>
@@ -308,7 +397,17 @@ export default function MyCases() {
                   <button
                     onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                     disabled={page === totalPages}
-                    style={{ ...DM, background: page === totalPages ? "rgba(255,255,255,.05)" : "rgba(30,95,255,.2)", color: page === totalPages ? "rgba(255,255,255,.2)" : "#fff", fontSize: 11, fontWeight: 600, padding: "8px 16px", borderRadius: 8, border: "1px solid rgba(30,95,255,.3)", cursor: page === totalPages ? "not-allowed" : "pointer" }}>
+                    style={{
+                      ...DM,
+                      background: page === totalPages ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.45)",
+                      color: page === totalPages ? "rgba(255,255,255,.2)" : "#fff",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      padding: "8px 16px",
+                      borderRadius: 8,
+                      border: "1px solid rgba(255,255,255,.06)",
+                      cursor: page === totalPages ? "not-allowed" : "pointer",
+                    }}>
                     Next →
                   </button>
                 </div>
