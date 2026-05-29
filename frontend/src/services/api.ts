@@ -376,4 +376,11 @@ export const downloadCSVTemplate = () =>
 export const assignCNR = (id: string, data: { cnrNumber: string }) =>
   API.patch(`/cases/${id}/cnr`, data);
 
+// Add in Profile section
+export const updateLanguage = (language: string) =>
+  API.patch("/profile/language", { language });
+
+export const getLanguage = () =>
+  API.get("/profile/language");
+
 export default API;

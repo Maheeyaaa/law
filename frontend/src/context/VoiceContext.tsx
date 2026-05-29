@@ -5,7 +5,11 @@ import React, {
   useContext,
   useState,
   useCallback,
+  useEffect,
 } from "react";
+import { getLanguage } from "../services/api";
+
+export type Language = "english" | "telugu" | "hindi";
 
 export interface Message {
   role: "user" | "assistant";
@@ -24,6 +28,8 @@ interface VoiceContextType {
   messages: Message[];
   lastSpoken: string;
   isFirstVisit: boolean;
+  language: Language | null;
+  languageLoaded: boolean;
 
   // Actions
   enableVoice: () => void;
@@ -35,11 +41,19 @@ interface VoiceContextType {
   addMessage: (msg: Message) => void;
   clearMessages: () => void;
   setIsFirstVisit: (val: boolean) => void;
-  speak: (text: string) => Promise<void>;
+  setLanguage: (lang: Language) => void;
+  speak: (text: string, lang?: Language) => Promise<void>;
   stopSpeaking: () => void;
 }
 
 const VoiceContext = createContext<VoiceContextType | null>(null);
+
+// Speech language codes
+const SPEECH_LANG_MAP: Record<Language, string> = {
+  english: "en-IN",
+  telugu: "te-IN",
+  hindi: "hi-IN",
+};
 
 export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -53,31 +67,73 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({
   const [messages, setMessages] = useState<Message[]>([]);
   const [lastSpoken, setLastSpoken] = useState("");
   const [isFirstVisit, setIsFirstVisit] = useState(true);
+  const [language, setLanguageState] = useState<Language | null>(null);
+  const [languageLoaded, setLanguageLoaded] = useState(false);
 
-  const speak = useCallback((text: string): Promise<void> => {
-    return new Promise((resolve) => {
-      window.speechSynthesis.cancel();
+  // Load language from backend on mount
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setLanguageLoaded(true);
+      return;
+    }
 
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "en-IN";
-      utterance.rate = 0.88; // Slightly slower for non-tech users
-      utterance.pitch = 1;
-      utterance.volume = 1;
+    const loadLanguage = async () => {
+      try {
+        const res = await getLanguage();
+        if (res.data.language) {
+          setLanguageState(res.data.language);
+          setIsFirstVisit(false);
+        }
+      } catch (err) {
+        // No language set yet - first time user
+        console.log("No language preference found - first time user");
+      } finally {
+        setLanguageLoaded(true);
+      }
+    };
 
-      utterance.onstart = () => setIsSpeaking(true);
-      utterance.onend = () => {
-        setIsSpeaking(false);
-        setLastSpoken(text);
-        resolve();
-      };
-      utterance.onerror = () => {
-        setIsSpeaking(false);
-        resolve();
-      };
-
-      window.speechSynthesis.speak(utterance);
-    });
+    loadLanguage();
   }, []);
+
+  const setLanguage = useCallback((lang: Language) => {
+    setLanguageState(lang);
+  }, []);
+
+  const speak = useCallback(
+    (text: string, lang?: Language): Promise<void> => {
+      return new Promise((resolve) => {
+        // Cancel any ongoing speech first
+        window.speechSynthesis.cancel();
+
+        // 🆕 Small gap after cancel before starting new utterance
+        setTimeout(() => {
+          const utterance = new SpeechSynthesisUtterance(text);
+          const speechLang = lang || language || "english";
+          utterance.lang = SPEECH_LANG_MAP[speechLang];
+          utterance.rate = speechLang === "english" ? 0.88 : 0.85;
+          utterance.pitch = 1;
+          utterance.volume = 1;
+
+          utterance.onstart = () => setIsSpeaking(true);
+          utterance.onend = () => {
+            setIsSpeaking(false);
+            setLastSpoken(text);
+            // 🆕 Extra delay after speech ends before resolving
+            // This ensures mic doesn't catch the tail end of audio
+            setTimeout(resolve, 800);
+          };
+          utterance.onerror = () => {
+            setIsSpeaking(false);
+            setTimeout(resolve, 800);
+          };
+
+          window.speechSynthesis.speak(utterance);
+        }, 100);
+      });
+    },
+    [language]
+  );
 
   const stopSpeaking = useCallback(() => {
     window.speechSynthesis.cancel();
@@ -97,10 +153,7 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const addMessage = useCallback((msg: Message) => {
-    setMessages((prev) => [
-      ...prev,
-      { ...msg, timestamp: new Date() },
-    ]);
+    setMessages((prev) => [...prev, { ...msg, timestamp: new Date() }]);
   }, []);
 
   const clearMessages = useCallback(() => {
@@ -120,6 +173,8 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({
         messages,
         lastSpoken,
         isFirstVisit,
+        language,
+        languageLoaded,
         enableVoice,
         disableVoice,
         setIsListening,
@@ -129,6 +184,7 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({
         addMessage,
         clearMessages,
         setIsFirstVisit,
+        setLanguage,
         speak,
         stopSpeaking,
       }}

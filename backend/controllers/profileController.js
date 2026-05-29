@@ -340,3 +340,72 @@ async (
       });
   }
 };
+
+// ======================
+// Update Preferred Language
+// ======================
+
+export const updateLanguage = async (req, res) => {
+  try {
+    const { language } = req.body;
+
+    const validLanguages = ["english", "telugu", "hindi"];
+
+    if (!language || !validLanguages.includes(language.toLowerCase())) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid language. Choose english, telugu, or hindi.",
+      });
+    }
+
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    user.preferredLanguage = language.toLowerCase();
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "Language preference saved",
+      language: user.preferredLanguage,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ======================
+// Get Preferred Language
+// ======================
+
+export const getLanguage = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("preferredLanguage");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      language: user.preferredLanguage,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};

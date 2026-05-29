@@ -2,37 +2,14 @@
 
 import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { useVoice } from "../../context/VoiceContext";
+import { useVoice, Language } from "../../context/VoiceContext";
 import { useVoiceAssistant } from "../../hooks/useVoiceAssistant";
+import { t, getRecognitionLang } from "../../utils/voiceTranslations";
+import { updateLanguage as updateLanguageAPI } from "../../services/api";
 
 const SpeechRecognition =
   (window as any).SpeechRecognition ||
   (window as any).webkitSpeechRecognition;
-
-// Guided welcome message - like a knowledgeable person
-const WELCOME_MESSAGE = `Welcome to LegalMind! I am your legal guide. 
-I can help you with your legal matters in simple steps.
-Would you like me to guide you? Say yes or no.`;
-
-const YES_RESPONSE = `Great! I am here to help you. 
-Here is what I can do for you.
-
-One. If you received a legal notice and want to understand it, tap the microphone and say, I got a notice.
-
-Two. If you need to find a lawyer near you, say, Find me a lawyer.
-
-Three. If you already have a case and want to check its progress, say, Track my case.
-
-Four. If you have any legal question, say, I have a question.
-
-Five. If you think something might be a scam, say, Check this scam.
-
-Whenever you need me, just tap the blue microphone button at the bottom of the screen and speak. I am always here to help you.`;
-
-const NO_RESPONSE = `No problem at all. 
-You can see the blue microphone button at the bottom right of your screen. 
-Tap it anytime you need help or have a question. 
-I am always here for you.`;
 
 const VoiceAssistant: React.FC = () => {
   const location = useLocation();
@@ -43,6 +20,9 @@ const VoiceAssistant: React.FC = () => {
     speak,
     isFirstVisit,
     setIsFirstVisit,
+    language,
+    setLanguage,
+    languageLoaded,
   } = useVoice();
 
   const { isBrowserSupported } = useVoiceAssistant();
@@ -50,13 +30,13 @@ const VoiceAssistant: React.FC = () => {
   const retryCount = useRef(0);
   const MAX_RETRIES = 3;
 
-  // Only trigger on /citizen dashboard
   const isCitizenDashboard = location.pathname === "/citizen";
 
   useEffect(() => {
     if (!isCitizenDashboard) return;
     if (voicePromptDone || promptStarted.current) return;
     if (!isBrowserSupported) return;
+    if (!languageLoaded) return;
 
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -65,37 +45,25 @@ const VoiceAssistant: React.FC = () => {
     retryCount.current = 0;
 
     const start = async () => {
-      // Wait for page to fully load
       await new Promise((r) => setTimeout(r, 2500));
-      askAndListen();
+      if (!language) {
+        askLanguage();
+      } else {
+        askVoicePrompt();
+      }
     };
 
     start();
-  }, [isCitizenDashboard]);
+  }, [isCitizenDashboard, languageLoaded]);
 
-  const askAndListen = async () => {
-    if (retryCount.current >= MAX_RETRIES) {
-      await speak(
-        "No response detected. You can tap the blue microphone button at the bottom of your screen anytime you need help."
-      );
-      setVoicePromptDone(true);
-      return;
-    }
-
-    retryCount.current += 1;
-
-    // First time - full welcome, retry - shorter
-    if (retryCount.current === 1) {
-      await speak(WELCOME_MESSAGE);
-    } else {
-      await speak("Would you like voice guidance? Please say yes or no.");
-    }
-
+  // ── Step 1: Language Selection ────────────────────────
+  const askLanguage = async () => {
+    await speak(t("welcome_choose_language", null), "english");
     await new Promise((r) => setTimeout(r, 400));
-    listenForResponse();
+    listenForLanguage();
   };
 
-  const listenForResponse = () => {
+  const listenForLanguage = () => {
     if (!SpeechRecognition) return;
 
     const recognition = new SpeechRecognition();
@@ -104,12 +72,108 @@ const VoiceAssistant: React.FC = () => {
     recognition.interimResults = false;
 
     let responded = false;
-
-    // 8 second timeout
     const timeout = setTimeout(() => {
       if (!responded) {
         recognition.stop();
-        askAndListen();
+        askLanguage();
+      }
+    }, 10000);
+
+    recognition.onresult = async (event: any) => {
+      responded = true;
+      clearTimeout(timeout);
+
+      const answer = event.results[0][0].transcript.toLowerCase().trim();
+      console.log("Language choice:", answer);
+
+      let chosenLang: Language = "english";
+
+      if (answer.includes("telugu") || answer.includes("తెలుగు")) {
+        chosenLang = "telugu";
+      } else if (
+        answer.includes("hindi") ||
+        answer.includes("हिंदी") ||
+        answer.includes("हिन्दी")
+      ) {
+        chosenLang = "hindi";
+      } else if (
+        answer.includes("english") ||
+        answer.includes("అంగ్లం")
+      ) {
+        chosenLang = "english";
+      } else {
+        await speak(t("language_not_understood", null), "english");
+        await new Promise((r) => setTimeout(r, 400));
+        listenForLanguage();
+        return;
+      }
+
+      setLanguage(chosenLang);
+      setIsFirstVisit(false);
+
+      try {
+        await updateLanguageAPI(chosenLang);
+      } catch (e) {
+        console.error("Failed to save language:", e);
+      }
+
+      await speak(t("language_selected", chosenLang), chosenLang);
+      await new Promise((r) => setTimeout(r, 400));
+      askVoicePrompt(chosenLang);
+    };
+
+    recognition.onerror = (event: any) => {
+      responded = true;
+      clearTimeout(timeout);
+      if (event.error === "no-speech") askLanguage();
+      else if (event.error === "not-allowed") setVoicePromptDone(true);
+    };
+
+    try {
+      recognition.start();
+    } catch (e) {
+      clearTimeout(timeout);
+    }
+  };
+
+  // ── Step 2: Yes/No Voice Prompt ───────────────────────
+  const askVoicePrompt = async (lang?: Language) => {
+    const currentLang = lang || language || "english";
+
+    if (retryCount.current >= MAX_RETRIES) {
+      await speak(t("no_response_detected", currentLang), currentLang);
+      setVoicePromptDone(true);
+      return;
+    }
+
+    retryCount.current += 1;
+
+    if (retryCount.current === 1) {
+      const key = isFirstVisit
+        ? "welcome_voice_prompt"
+        : "returning_voice_prompt";
+      await speak(t(key, currentLang), currentLang);
+    } else {
+      await speak(t("did_not_understand_yes_no", currentLang), currentLang);
+    }
+
+    await new Promise((r) => setTimeout(r, 400));
+    listenForYesNo(currentLang);
+  };
+
+  const listenForYesNo = (lang: Language) => {
+    if (!SpeechRecognition) return;
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = getRecognitionLang(lang);
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    let responded = false;
+    const timeout = setTimeout(() => {
+      if (!responded) {
+        recognition.stop();
+        askVoicePrompt(lang);
       }
     }, 8000);
 
@@ -118,71 +182,53 @@ const VoiceAssistant: React.FC = () => {
       clearTimeout(timeout);
 
       const answer = event.results[0][0].transcript.toLowerCase().trim();
-      console.log("User answered:", answer);
+      console.log("Yes/No answer:", answer);
 
-      const isYes =
-        answer.includes("yes") ||
-        answer.includes("yeah") ||
-        answer.includes("sure") ||
-        answer.includes("ok") ||
-        answer.includes("okay") ||
-        answer.includes("please") ||
-        answer.includes("yep") ||
-        answer.includes("haan") || // Hindi yes
-        answer.includes("ha") ||
-        answer.includes("avunu"); // Telugu yes
+      const yesWords = [
+        "yes", "yeah", "sure", "ok", "okay", "yep",
+        "haan", "ha", "ji", "हां", "हाँ", "जी",
+        "avunu", "అవును",
+      ];
 
-      const isNo =
-        answer.includes("no") ||
-        answer.includes("nah") ||
-        answer.includes("nope") ||
-        answer.includes("cancel") ||
-        answer.includes("nahi") || // Hindi no
-        answer.includes("kadu"); // Telugu no
+      const noWords = [
+        "no", "nah", "nope", "cancel",
+        "nahi", "na", "नहीं", "ना",
+        "kadu", "వద్దు",
+      ];
+
+      const isYes = yesWords.some((w) => answer.includes(w));
+      const isNo = noWords.some((w) => answer.includes(w));
 
       if (isYes) {
         setVoicePromptDone(true);
-        setIsFirstVisit(false);
         enableVoice();
-        await speak(YES_RESPONSE);
-      } else if (isNo) {
+        await speak(t("yes_response", lang), lang);
+        await new Promise((r) => setTimeout(r, 300));
+        await speak(t("main_menu", lang), lang);
+      }else if (isNo) {
         setVoicePromptDone(true);
-        setIsFirstVisit(false);
-        await speak(NO_RESPONSE);
+        await speak(t("no_response", lang), lang);
       } else {
-        // Didn't understand
-        await speak(
-          "Sorry, I did not understand. Please say yes if you want my help, or no if you want to use the app on your own."
-        );
+        await speak(t("did_not_understand_yes_no", lang), lang);
         await new Promise((r) => setTimeout(r, 400));
-        askAndListen();
+        askVoicePrompt(lang);
       }
     };
 
     recognition.onerror = (event: any) => {
       responded = true;
       clearTimeout(timeout);
-
-      if (event.error === "no-speech") {
-        // Re-ask silently
-        askAndListen();
-      } else if (event.error === "not-allowed") {
-        console.log("Microphone blocked by browser");
-        setVoicePromptDone(true);
-      } else {
-        askAndListen();
-      }
+      if (event.error === "no-speech") askVoicePrompt(lang);
+      else if (event.error === "not-allowed") setVoicePromptDone(true);
     };
 
     try {
       recognition.start();
     } catch (e) {
       clearTimeout(timeout);
-      askAndListen();
     }
   };
 
-  // Renders nothing - purely voice driven
   return null;
 };
 

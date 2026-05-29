@@ -78,6 +78,12 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+     // ── Voice & Language Preferences ─────────────────────────
+    preferredLanguage: {
+      type: String,
+      enum: ["english", "telugu", "hindi"],
+      default: null, // null means not set yet (first time user)
+    },
     isProfileComplete: {
       type: Boolean,
       default: false,
