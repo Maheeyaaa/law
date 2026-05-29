@@ -399,51 +399,6 @@ export default function CitizenDashboard() {
         select option { background:#0a0f2c; color:#fff; }
       `}</style>
 
-      {/* ══ STICKY USER PROFILE AT BOTTOM-RIGHT ══ */}
-      <div
-        onClick={() => navigate("/citizen/settings")}
-        style={{
-          position: "fixed",
-          bottom: 20,
-          right: 20,
-          background: "#060a1c",
-          border: "none",
-          borderRadius: 16,
-          padding: "10px 16px",
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          zIndex: 9999,
-          boxShadow: "0 10px 30px rgba(0,0,0,0.65)",
-          cursor: "pointer",
-        }}
-      >
-        <div style={{
-          width: 38,
-          height: 38,
-          borderRadius: "50%",
-          background: "linear-gradient(135deg, #1e5fff, #4d8aff)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: 12,
-          fontWeight: 700,
-          color: "#fff",
-          ...DM,
-          flexShrink: 0,
-        }}>
-          {userInitials}
-        </div>
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <p style={{ ...DM, fontSize: 13, fontWeight: 600, color: "#fff", margin: 0, lineHeight: 1.2 }}>
-            {user?.name || "Guest Citizen"}
-          </p>
-          <p style={{ ...DM, fontSize: 10, color: "rgba(255,255,255,0.45)", margin: "2px 0 0 0", lineHeight: 1 }}>
-            ID: {user?._id || user?.id || "CITIZEN_GUEST_ID"}
-          </p>
-        </div>
-      </div>
-
       {/* ══ MAIN ══ */}
       <main
         ref={mainRef}
@@ -484,13 +439,15 @@ export default function CitizenDashboard() {
                 marginBottom: 20,
               }}
             >
-              <div style={{
-                display: "flex",
-                flexWrap: "wrap",
-                justifyContent: "center",
-                gap: 10,
-                rowGap: 10,
-              }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 10,
+                  flexWrap: "wrap",
+                }}
+              >
                 {NAV_ITEMS.map((item) => (
                   <NavPill
                     key={item.id}
@@ -499,6 +456,57 @@ export default function CitizenDashboard() {
                     onClick={() => handleNav(item.id)}
                   />
                 ))}
+
+                {/* Small Account Icon */}
+                <button
+                  onClick={() => navigate("/citizen/account")}
+                  title="My Account"
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: "50%",
+                    border: "1px solid rgba(30,95,255,0.3)",
+                    background: "rgba(0,0,0,0.85)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    padding: 0,
+                    transition: "all .2s ease",
+                    backdropFilter: "blur(30px)",
+                    WebkitBackdropFilter: "blur(30px)",
+                    boxShadow: "0 6px 18px rgba(0,0,0,.45)",
+                    flexShrink: 0,
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
+                    (e.currentTarget as HTMLElement).style.borderColor = "rgba(30,95,255,0.6)";
+                    (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.95)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+                    (e.currentTarget as HTMLElement).style.borderColor = "rgba(30,95,255,0.3)";
+                    (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.85)";
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 30,
+                      height: 30,
+                      borderRadius: "50%",
+                      background: "linear-gradient(135deg, #1e5fff, #4d8aff)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "#fff",
+                      ...DM,
+                    }}
+                  >
+                    {userInitials}
+                  </div>
+                </button>
               </div>
             </nav>
 

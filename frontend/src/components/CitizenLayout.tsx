@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, CSSProperties, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import scalesNavy from "../assets/scales-navy.png";
+import VoiceMicButton from "./voice/VoiceMicButton";
 
 const PF: CSSProperties = { fontFamily: "'Playfair Display',serif" };
 const DM: CSSProperties = { fontFamily: "'DM Sans',sans-serif" };
@@ -247,6 +248,7 @@ export default function CitizenLayout({ children, activeNav }: { children: React
       </div>
       {children}
       </main>
+      <VoiceMicButton />
     </div>
   );
 }

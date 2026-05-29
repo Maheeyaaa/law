@@ -254,3 +254,59 @@ async (req, res) => {
       });
   }
 };
+
+// ======================
+// Get Voice History
+// ======================
+
+export const getVoiceHistory = async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    const history = await ChatMessage.find({
+      user: req.user.id,
+      sessionId: sessionId,
+    })
+      .sort({ createdAt: 1 })
+      .limit(50);
+
+    res.json({
+      success: true,
+      history,
+      sessionId,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get history",
+    });
+  }
+};
+
+// ======================
+// Clear Voice Session
+// ======================
+
+export const clearVoiceSession = async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    await ChatMessage.deleteMany({
+      user: req.user.id,
+      sessionId: sessionId,
+    });
+
+    res.json({
+      success: true,
+      message: "Session cleared",
+      newSessionId: `voice_${req.user.id}_${Date.now()}`,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to clear session",
+    });
+  }
+};
