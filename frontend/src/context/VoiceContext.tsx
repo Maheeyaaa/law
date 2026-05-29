@@ -8,6 +8,7 @@ import React, {
   useEffect,
 } from "react";
 import { getLanguage } from "../services/api";
+import { rvSpeak, rvCancel } from "../utils/responsiveVoice";
 
 export type Language = "english" | "telugu" | "hindi";
 
@@ -48,13 +49,6 @@ interface VoiceContextType {
 
 const VoiceContext = createContext<VoiceContextType | null>(null);
 
-// Speech language codes
-const SPEECH_LANG_MAP: Record<Language, string> = {
-  english: "en-IN",
-  telugu: "te-IN",
-  hindi: "hi-IN",
-};
-
 export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -86,7 +80,6 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({
           setIsFirstVisit(false);
         }
       } catch (err) {
-        // No language set yet - first time user
         console.log("No language preference found - first time user");
       } finally {
         setLanguageLoaded(true);
@@ -102,41 +95,32 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const speak = useCallback(
     (text: string, lang?: Language): Promise<void> => {
-      return new Promise((resolve) => {
-        // Cancel any ongoing speech first
+      return new Promise(async (resolve) => {
+        const speechLang = lang || language || "english";
+
+        // Cancel any browser TTS first
         window.speechSynthesis.cancel();
 
-        // 🆕 Small gap after cancel before starting new utterance
-        setTimeout(() => {
-          const utterance = new SpeechSynthesisUtterance(text);
-          const speechLang = lang || language || "english";
-          utterance.lang = SPEECH_LANG_MAP[speechLang];
-          utterance.rate = speechLang === "english" ? 0.88 : 0.85;
-          utterance.pitch = 1;
-          utterance.volume = 1;
+        setIsSpeaking(true);
 
-          utterance.onstart = () => setIsSpeaking(true);
-          utterance.onend = () => {
-            setIsSpeaking(false);
-            setLastSpoken(text);
-            // 🆕 Extra delay after speech ends before resolving
-            // This ensures mic doesn't catch the tail end of audio
-            setTimeout(resolve, 800);
-          };
-          utterance.onerror = () => {
-            setIsSpeaking(false);
-            setTimeout(resolve, 800);
-          };
-
-          window.speechSynthesis.speak(utterance);
-        }, 100);
+        try {
+          // Use ResponsiveVoice for all languages
+          await rvSpeak(text, speechLang);
+          setLastSpoken(text);
+        } catch (e) {
+          console.error("Speech error:", e);
+        } finally {
+          setIsSpeaking(false);
+          resolve();
+        }
       });
     },
     [language]
   );
 
   const stopSpeaking = useCallback(() => {
-    window.speechSynthesis.cancel();
+    window.speechSynthesis.cancel(); // cancel browser TTS
+    rvCancel();                       // cancel ResponsiveVoice
     setIsSpeaking(false);
   }, []);
 
@@ -150,6 +134,7 @@ export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({
     setIsSpeaking(false);
     setTranscript("");
     window.speechSynthesis.cancel();
+    rvCancel();
   }, []);
 
   const addMessage = useCallback((msg: Message) => {

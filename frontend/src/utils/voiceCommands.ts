@@ -14,6 +14,16 @@ export const VOICE_COMMANDS: VoiceCommand[] = [
     action: "SHOW_MENU",
   },
   {
+    keywords: ["change language", "switch language", "language change"],
+    related: [
+      "bhasha badlo", "language badlo",
+      "dusri bhasha", "change to hindi",
+      "change to english", "change to telugu",
+      "bhasha maarpu",
+    ],
+    action: "CHANGE_LANGUAGE",
+  },
+  {
     keywords: ["repeat", "again", "dobara", "phir"],
     related: ["once more", "ek baar", "sunao", "bolo", "malli"],
     action: "REPEAT",

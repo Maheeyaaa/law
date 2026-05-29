@@ -46,20 +46,30 @@ const VoiceAssistant: React.FC = () => {
 
     const start = async () => {
       await new Promise((r) => setTimeout(r, 2500));
+
       if (!language) {
         askLanguage();
       } else {
-        askVoicePrompt();
+        askVoicePrompt(language);
       }
     };
 
     start();
   }, [isCitizenDashboard, languageLoaded]);
 
-  // ── Step 1: Language Selection ────────────────────────
+  // ── Step 1: Language Selection ─────────────────────
   const askLanguage = async () => {
-    await speak(t("welcome_choose_language", null), "english");
-    await new Promise((r) => setTimeout(r, 400));
+    window.speechSynthesis.cancel();
+
+    await speak(
+      "Welcome to LegalMind! Please choose your language. " +
+      "For English, say English. " +
+      "For Hindi, say Hindi. " +
+      "For Telugu, say Telugu.",
+      "english"
+    );
+
+    await new Promise((r) => setTimeout(r, 600));
     listenForLanguage();
   };
 
@@ -84,11 +94,15 @@ const VoiceAssistant: React.FC = () => {
       clearTimeout(timeout);
 
       const answer = event.results[0][0].transcript.toLowerCase().trim();
-      console.log("Language choice:", answer);
 
       let chosenLang: Language = "english";
 
-      if (answer.includes("telugu") || answer.includes("తెలుగు")) {
+      if (
+        answer.includes("telugu") ||
+        answer.includes("telug") ||
+        answer.includes("telgu") ||
+        answer.includes("తెలుగు")
+      ) {
         chosenLang = "telugu";
       } else if (
         answer.includes("hindi") ||
@@ -117,6 +131,7 @@ const VoiceAssistant: React.FC = () => {
         console.error("Failed to save language:", e);
       }
 
+      // Now speaks in chosen language via ResponsiveVoice ✅
       await speak(t("language_selected", chosenLang), chosenLang);
       await new Promise((r) => setTimeout(r, 400));
       askVoicePrompt(chosenLang);
@@ -136,7 +151,7 @@ const VoiceAssistant: React.FC = () => {
     }
   };
 
-  // ── Step 2: Yes/No Voice Prompt ───────────────────────
+  // ── Step 2: Yes/No Voice Prompt ────────────────────
   const askVoicePrompt = async (lang?: Language) => {
     const currentLang = lang || language || "english";
 
@@ -165,7 +180,7 @@ const VoiceAssistant: React.FC = () => {
     if (!SpeechRecognition) return;
 
     const recognition = new SpeechRecognition();
-    recognition.lang = getRecognitionLang(lang);
+    recognition.lang = "en-IN"; // always en-IN for listening
     recognition.continuous = false;
     recognition.interimResults = false;
 
@@ -182,7 +197,6 @@ const VoiceAssistant: React.FC = () => {
       clearTimeout(timeout);
 
       const answer = event.results[0][0].transcript.toLowerCase().trim();
-      console.log("Yes/No answer:", answer);
 
       const yesWords = [
         "yes", "yeah", "sure", "ok", "okay", "yep",
@@ -202,10 +216,11 @@ const VoiceAssistant: React.FC = () => {
       if (isYes) {
         setVoicePromptDone(true);
         enableVoice();
+        // Speaks in user's language via ResponsiveVoice ✅
         await speak(t("yes_response", lang), lang);
         await new Promise((r) => setTimeout(r, 300));
         await speak(t("main_menu", lang), lang);
-      }else if (isNo) {
+      } else if (isNo) {
         setVoicePromptDone(true);
         await speak(t("no_response", lang), lang);
       } else {

@@ -5,12 +5,74 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useVoice, Language } from "../context/VoiceContext";
 import { matchCommand } from "../utils/voiceCommands";
 import { t } from "../utils/voiceTranslations";
+import { updateLanguage as updateLanguageAPI } from "../services/api";
+
+// ── Action to route mapping ────────────────────────
+const ACTION_ROUTE_MAP: Record<string, string> = {
+  NOTICE: "/citizen/ai-assistant",
+  QUESTION: "/citizen/ai-assistant",
+  SCAM: "/citizen/ai-assistant",
+  LAWYER: "/citizen/find-lawyer",
+  CASE: "/citizen/track",
+  CASES: "/citizen/cases",
+  DOCUMENTS: "/citizen/documents",
+  NOTIFICATIONS: "/citizen/notifications",
+  HELP: "/citizen/help",
+  ACCOUNT: "/citizen/account",
+  HOME: "/citizen",
+};
+
+// ── Already on page messages ───────────────────────
+const ALREADY_HERE: Record<Language, string> = {
+  english: "You are already on this page.",
+  hindi: "आप पहले से इस पेज पर हैं।",
+  telugu: "మీరు ఇప్పటికే ఈ పేజీలో ఉన్నారు.",
+};
+
+// ── Language change messages ───────────────────────
+const LANGUAGE_ASK: Record<Language, string> = {
+  english: "Which language would you like? Say English, Hindi, or Telugu.",
+  hindi: "कौन सी भाषा चाहिए? English, Hindi, या Telugu बोलें।",
+  telugu: "ఏ భాష కావాలి? English, Hindi, లేదా Telugu అని చెప్పండి.",
+};
+
+// 🆕 Speak switching message in CURRENT language first
+// So user always hears confirmation regardless of new language TTS support
+const LANGUAGE_SWITCHING: Record<Language, Record<Language, string>> = {
+  english: {
+    english: "Switching language to English.",
+    hindi: "Switching language to Hindi.",
+    telugu: "Switching language to Telugu.",
+  },
+  hindi: {
+    english: "भाषा English में बदली जा रही है।",
+    hindi: "भाषा Hindi में बदली जा रही है।",
+    telugu: "भाषा Telugu में बदली जा रही है।",
+  },
+  telugu: {
+    english: "భాషను English కు మారుస్తున్నాను.",
+    hindi: "భాషను Hindi కు మారుస్తున్నాను.",
+    telugu: "భాషను Telugu కు మారుస్తున్నాను.",
+  },
+};
+
+const LANGUAGE_CHANGED: Record<Language, string> = {
+  english: "Language changed to English.",
+  hindi: "भाषा हिंदी में बदल दी गई।",
+  telugu: "భాష తెలుగుకు మార్చబడింది.",
+};
+
+const LANGUAGE_NOT_UNDERSTOOD: Record<Language, string> = {
+  english: "Sorry, I did not understand. Please say English, Hindi, or Telugu.",
+  hindi: "माफ करें, समझ नहीं आया। English, Hindi, या Telugu बोलें।",
+  telugu: "క్షమించండి, అర్థం కాలేదు. English, Hindi, లేదా Telugu అనండి.",
+};
 
 const SpeechRecognition =
   (window as any).SpeechRecognition ||
   (window as any).webkitSpeechRecognition;
 
-// 🆕 Page context messages
+// ── Page context messages ──────────────────────────
 const PAGE_CONTEXT: Record<string, Record<Language, string>> = {
   "/citizen": {
     english: "You are on the dashboard.",
@@ -59,12 +121,9 @@ const PAGE_CONTEXT: Record<string, Record<Language, string>> = {
   },
 };
 
-// 🆕 Get context for current page
 const getPageContext = (pathname: string, lang: Language): string => {
   const context = PAGE_CONTEXT[pathname];
   if (context) return context[lang] || context.english;
-
-  // Default for unknown pages
   const defaults: Record<Language, string> = {
     english: "You can say a command to navigate or say menu for options.",
     hindi: "नेविगेट करने के लिए कमांड बोलें या विकल्प के लिए मेनू बोलें।",
@@ -73,7 +132,6 @@ const getPageContext = (pathname: string, lang: Language): string => {
   return defaults[lang];
 };
 
-// 🆕 Navigate prompt based on language
 const getNavPrompt = (lang: Language): string => {
   const prompts: Record<Language, string> = {
     english: "Say a command to navigate or say menu for all options.",
@@ -94,6 +152,7 @@ export const useVoiceAssistant = () => {
     disableVoice,
     lastSpoken,
     language,
+    setLanguage,
   } = useVoice();
 
   const recognitionRef = useRef<any>(null);
@@ -105,6 +164,7 @@ export const useVoiceAssistant = () => {
   const languageRef = useRef(language);
   const isBrowserSupported = !!SpeechRecognition;
   const pendingActionRef = useRef<string | null>(null);
+  const pendingLanguageChangeRef = useRef(false);
 
   useEffect(() => {
     voiceEnabledRef.current = isVoiceEnabled;
@@ -114,6 +174,7 @@ export const useVoiceAssistant = () => {
     languageRef.current = language;
   }, [language]);
 
+  // ── Safe speak ─────────────────────────────────────
   const safeSpeak = useCallback(
     async (text: string, lang: Language) => {
       isSpeakingRef.current = true;
@@ -130,6 +191,7 @@ export const useVoiceAssistant = () => {
     [speak]
   );
 
+  // ── Stop listening ─────────────────────────────────
   const stopListening = useCallback(() => {
     if (recognitionRef.current) {
       recognitionRef.current.abort();
@@ -204,8 +266,7 @@ export const useVoiceAssistant = () => {
     const lower = text.toLowerCase().trim();
     const yesWords = [
       "yes", "yeah", "yep", "sure", "ok", "okay", "confirm",
-      "haan", "ha", "ji", "han", "theek",
-      "avunu",
+      "haan", "ha", "ji", "han", "theek", "avunu",
     ];
     return yesWords.some((w) => lower.includes(w));
   };
@@ -214,8 +275,7 @@ export const useVoiceAssistant = () => {
     const lower = text.toLowerCase().trim();
     const noWords = [
       "no", "nah", "nope", "cancel", "stop",
-      "nahi", "na", "mat", "nako",
-      "kadu", "vaddu",
+      "nahi", "na", "mat", "nako", "kadu", "vaddu",
     ];
     return noWords.some((w) => lower.includes(w));
   };
@@ -232,9 +292,17 @@ export const useVoiceAssistant = () => {
     []
   );
 
+  // ── Execute confirmed action ───────────────────────
   const executeAction = useCallback(
     async (action: string) => {
       const l = languageRef.current || "english";
+      const targetRoute = ACTION_ROUTE_MAP[action];
+
+      if (targetRoute && location.pathname === targetRoute) {
+        await safeSpeak(ALREADY_HERE[l], l);
+        return;
+      }
+
       switch (action) {
         case "HOME":
           await safeSpeak(t("opening_home", l), l);
@@ -282,9 +350,10 @@ export const useVoiceAssistant = () => {
           break;
       }
     },
-    [safeSpeak, navigate]
+    [safeSpeak, navigate, location.pathname]
   );
 
+  // ── Process command ────────────────────────────────
   const processAction = useCallback(
     async (action: string) => {
       if (isProcessingRef.current) return;
@@ -327,6 +396,22 @@ export const useVoiceAssistant = () => {
             navigate("/");
             isProcessingRef.current = false;
             return;
+
+          case "CHANGE_LANGUAGE":
+            pendingLanguageChangeRef.current = true;
+            await safeSpeak(LANGUAGE_ASK[l], l);
+            isProcessingRef.current = false;
+            setTimeout(() => {
+              if (canListen()) startListeningRef.current();
+            }, 1200);
+            return;
+        }
+
+        const targetRoute = ACTION_ROUTE_MAP[action];
+        if (targetRoute && location.pathname === targetRoute) {
+          await safeSpeak(ALREADY_HERE[l], l);
+          isProcessingRef.current = false;
+          return;
         }
 
         const confirmMsg = getConfirmationMessage(action, l);
@@ -347,6 +432,7 @@ export const useVoiceAssistant = () => {
     [
       safeSpeak, navigate, disableVoice, lastSpoken,
       stopListening, canListen, getConfirmationMessage,
+      location.pathname,
     ]
   );
 
@@ -364,6 +450,7 @@ export const useVoiceAssistant = () => {
         isListeningRef.current = false;
         setIsListening(false);
         pendingActionRef.current = null;
+        pendingLanguageChangeRef.current = false;
 
         const l = languageRef.current || "english";
         safeSpeak(t("could_not_hear", l), l);
@@ -401,7 +488,76 @@ export const useVoiceAssistant = () => {
 
         const l = languageRef.current || "english";
 
-        // Check if waiting for yes/no
+        // ── Language selection ─────────────────────
+        if (pendingLanguageChangeRef.current) {
+          pendingLanguageChangeRef.current = false;
+
+          let newLang: Language | null = null;
+
+          for (const alt of alternatives) {
+            const altLower = (alt as string).toLowerCase().trim();
+
+            if (
+              altLower.includes("english") ||
+              altLower.includes("inglish")
+            ) {
+              newLang = "english";
+              break;
+            } else if (
+              altLower.includes("hindi") ||
+              altLower.includes("hind")
+            ) {
+              newLang = "hindi";
+              break;
+            } else if (
+              altLower.includes("telugu") ||
+              altLower.includes("telug") ||
+              altLower.includes("telgu") ||
+              altLower.includes("talugu")
+            ) {
+              newLang = "telugu";
+              break;
+            }
+          }
+
+          if (newLang) {
+            const currentLang = languageRef.current || "english";
+
+            // 🆕 Step 1: Say "Switching to X" in CURRENT language
+            // User always hears this regardless of new language support
+            await safeSpeak(
+              LANGUAGE_SWITCHING[currentLang][newLang],
+              currentLang
+            );
+
+            // 🆕 Step 2: Switch language internally
+            setLanguage(newLang);
+            languageRef.current = newLang;
+
+            // 🆕 Step 3: Save to backend
+            try {
+              await updateLanguageAPI(newLang);
+              console.log("✅ Language saved to backend:", newLang);
+            } catch (e) {
+              console.error("❌ Failed to save language:", e);
+            }
+
+            // 🆕 Step 4: Try confirmation in NEW language
+            // If browser supports it user hears it, otherwise silent is ok
+            // because step 1 already told them
+            await safeSpeak(LANGUAGE_CHANGED[newLang], newLang);
+
+          } else {
+            pendingLanguageChangeRef.current = true;
+            await safeSpeak(LANGUAGE_NOT_UNDERSTOOD[l], l);
+            setTimeout(() => {
+              if (canListen()) startListeningRef.current();
+            }, 1200);
+          }
+          return;
+        }
+
+        // ── Yes/No confirmation ────────────────────
         if (pendingActionRef.current) {
           const action = pendingActionRef.current;
           pendingActionRef.current = null;
@@ -420,7 +576,7 @@ export const useVoiceAssistant = () => {
           return;
         }
 
-        // Normal command matching
+        // ── Normal command matching ────────────────
         let matchedCommand = null;
         let matchedTranscript = spokenText;
 
@@ -438,7 +594,6 @@ export const useVoiceAssistant = () => {
         if (matchedCommand) {
           await processAction(matchedCommand.action || "");
         } else {
-          // 🆕 Context-aware not understood message
           const currentPath = location.pathname;
           const pageContext = getPageContext(currentPath, l);
           const navPrompt = getNavPrompt(l);
@@ -477,6 +632,7 @@ export const useVoiceAssistant = () => {
         setIsListening(false);
         recognitionRef.current = null;
         pendingActionRef.current = null;
+        pendingLanguageChangeRef.current = false;
       };
 
       recognition.onend = () => {
@@ -508,6 +664,7 @@ export const useVoiceAssistant = () => {
     executeAction,
     getCancelledMessage,
     location.pathname,
+    setLanguage,
   ]);
 
   useEffect(() => {
@@ -526,6 +683,7 @@ export const useVoiceAssistant = () => {
     if (!isVoiceEnabled) {
       stopListening();
       pendingActionRef.current = null;
+      pendingLanguageChangeRef.current = false;
     }
   }, [isVoiceEnabled, stopListening]);
 
