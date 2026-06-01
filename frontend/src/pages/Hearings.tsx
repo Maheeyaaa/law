@@ -1,8 +1,5 @@
-// frontend/src/pages/Hearings.tsx
-
 import { useState, useEffect, CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
-import CitizenLayout from "../components/CitizenLayout";
 import { getMyHearings } from "../services/api";
 
 const DM: CSSProperties = { fontFamily: "'DM Sans',sans-serif" };
@@ -31,20 +28,20 @@ function statusColor(status: string): string {
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
-  return date.toLocaleDateString("en-US", { 
+  return date.toLocaleDateString("en-US", {
     weekday: "short",
-    month: "short", 
-    day: "numeric", 
-    year: "numeric" 
+    month: "short",
+    day: "numeric",
+    year: "numeric",
   });
 }
 
 function formatTime(dateStr: string): string {
   const date = new Date(dateStr);
-  return date.toLocaleTimeString("en-US", { 
+  return date.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
-    hour12: true 
+    hour12: true,
   });
 }
 
@@ -53,7 +50,7 @@ function getRelativeTime(dateStr: string): string {
   const hearing = new Date(dateStr);
   const diff = hearing.getTime() - now.getTime();
   const days = Math.floor(diff / 86400000);
-  
+
   if (days < 0) return "Past";
   if (days === 0) return "Today";
   if (days === 1) return "Tomorrow";
@@ -84,7 +81,7 @@ export default function Hearings() {
     try {
       setLoading(true);
       const params: any = {};
-      
+
       if (filter === "upcoming") {
         params.upcoming = "true";
       } else if (filter !== "all") {
@@ -94,7 +91,6 @@ export default function Hearings() {
       const res = await getMyHearings(params);
       setConsultations(res.data.hearings || []);
 
-      // Get all consultations for stats
       const allRes = await getMyHearings({});
       const allHearings = allRes.data.hearings || [];
 
@@ -112,16 +108,30 @@ export default function Hearings() {
     }
   };
 
-  const upcomingConsultations = consultations.filter(h => new Date(h.hearingDate) >= new Date() && h.status === "Scheduled" || h.status === "Postponed");
+  const upcomingConsultations = consultations.filter(
+    (h) => (h.status === "Scheduled" || h.status === "Postponed") && new Date(h.hearingDate) >= new Date()
+  );
 
   return (
-    <CitizenLayout activeNav="hear">
+    <div
+      style={{
+        minHeight: "100vh",
+        width: "100%",
+        backgroundImage: "url('/images/bg-marble.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
       <div style={{ padding: "28px 28px 60px", display: "flex", flexDirection: "column", gap: 24 }}>
-
         {/* Header */}
         <div>
-          <p style={{ ...DM, fontSize: 9, letterSpacing: "2.5px", textTransform: "uppercase", color: "rgba(168,200,255,.5)" }}>MY CONSULTATIONS</p>
-          <p style={{ ...BN, fontSize: 32, color: "#fff", marginTop: 4 }}>My Consultations</p>
+          <p style={{ ...DM, fontSize: 9, letterSpacing: "2.5px", textTransform: "uppercase", color: "rgba(168,200,255,.5)" }}>
+            MY CONSULTATIONS
+          </p>
+          <p style={{ ...BN, fontSize: 32, color: "#fff", marginTop: 4 }}>
+            My Consultations
+          </p>
         </div>
 
         {/* Stats Cards */}
@@ -133,12 +143,45 @@ export default function Hearings() {
             { label: "Rescheduled", value: stats.postponed, color: "#fbbf24" },
             { label: "Cancelled", value: stats.cancelled, color: "#ef4444" },
           ].map((stat, i) => (
-            <div key={i} style={{ ...GLASS, borderRadius: 16, padding: "20px 24px", position: "relative", overflow: "hidden", transition: "transform .2s ease" }}
-              onMouseEnter={e => (e.currentTarget as HTMLElement).style.transform = "translateY(-4px)"}
-              onMouseLeave={e => (e.currentTarget as HTMLElement).style.transform = "translateY(0)"}>
-              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: stat.color, boxShadow: `0 0 10px ${stat.color}` }} />
-              <p style={{ ...DM, fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "rgba(255,255,255,.4)", marginBottom: 8 }}>{stat.label}</p>
-              <p style={{ ...BN, fontSize: 36, color: "#fff" }}>{String(stat.value).padStart(2, "0")}</p>
+            <div
+              key={i}
+              style={{
+                ...GLASS,
+                borderRadius: 16,
+                padding: "20px 24px",
+                position: "relative",
+                overflow: "hidden",
+                transition: "transform .2s ease",
+              }}
+              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.transform = "translateY(-4px)")}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.transform = "translateY(0)")}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 3,
+                  background: stat.color,
+                  boxShadow: `0 0 10px ${stat.color}`,
+                }}
+              />
+              <p
+                style={{
+                  ...DM,
+                  fontSize: 9,
+                  letterSpacing: "1.5px",
+                  textTransform: "uppercase",
+                  color: "rgba(255,255,255,.4)",
+                  marginBottom: 8,
+                }}
+              >
+                {stat.label}
+              </p>
+              <p style={{ ...BN, fontSize: 36, color: "#fff" }}>
+                {String(stat.value).padStart(2, "0")}
+              </p>
             </div>
           ))}
         </div>
@@ -153,7 +196,22 @@ export default function Hearings() {
             { id: "postponed", label: "Rescheduled" },
             { id: "cancelled", label: "Cancelled" },
           ].map((f) => (
-            <button key={f.id} onClick={() => setFilter(f.id)} style={{ ...DM, fontSize: 11, fontWeight: 600, padding: "8px 16px", borderRadius: 99, cursor: "pointer", background: filter === f.id ? BLUE : "rgba(30,95,255,0.15)", color: "#fff", border: filter === f.id ? "none" : "1px solid rgba(30,95,255,0.4)", transition: "all .2s ease" }}>
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id)}
+              style={{
+                ...DM,
+                fontSize: 11,
+                fontWeight: 600,
+                padding: "8px 16px",
+                borderRadius: 99,
+                cursor: "pointer",
+                background: filter === f.id ? BLUE : "rgba(30,95,255,0.15)",
+                color: "#fff",
+                border: filter === f.id ? "none" : "1px solid rgba(30,95,255,0.4)",
+                transition: "all .2s ease",
+              }}
+            >
               {f.label}
             </button>
           ))}
@@ -161,108 +219,210 @@ export default function Hearings() {
 
         {loading ? (
           <div style={{ ...GLASS, borderRadius: 16, padding: 60, textAlign: "center" }}>
-            <div style={{ width: 40, height: 40, border: "3px solid rgba(30,95,255,.3)", borderTop: "3px solid #1e5fff", borderRadius: "50%", animation: "spin 1s linear infinite", margin: "0 auto 16px" }} />
-            <p style={{ ...DM, fontSize: 14, color: "rgba(255,255,255,.5)" }}>Loading consultations...</p>
+            <div
+              style={{
+                width: 40,
+                height: 40,
+                border: "3px solid rgba(30,95,255,.3)",
+                borderTop: "3px solid #1e5fff",
+                borderRadius: "50%",
+                animation: "spin 1s linear infinite",
+                margin: "0 auto 16px",
+              }}
+            />
+            <p style={{ ...DM, fontSize: 14, color: "rgba(255,255,255,.5)" }}>
+              Loading consultations...
+            </p>
             <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
           </div>
         ) : consultations.length === 0 ? (
           <div style={{ ...GLASS, borderRadius: 16, padding: 60, textAlign: "center" }}>
-            <p style={{ ...DM, fontSize: 16, color: "rgba(255,255,255,.3)" }}>No consultations scheduled yet</p>
+            <p style={{ ...DM, fontSize: 16, color: "rgba(255,255,255,.3)" }}>
+              No consultations scheduled yet
+            </p>
           </div>
         ) : (
           <>
             {/* Upcoming Consultations */}
-            {filter === "upcoming" || filter === "all" ? (
-              upcomingConsultations.length > 0 && (
-                <div style={{ ...GLASS, borderRadius: 16, padding: "24px", position: "relative", overflow: "hidden" }}>
-                  <div style={{ position: "absolute", top: 0, left: "8%", right: "8%", height: 1, background: "linear-gradient(90deg,transparent,rgba(150,200,255,0.6),transparent)", pointerEvents: "none" }} />
-                  <p style={{ ...DM, fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 20, display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#3b82f6", boxShadow: "0 0 10px #3b82f6" }} />
-                    Upcoming Consultations
-                  </p>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 16 }}>
-                    {upcomingConsultations.map((h: any) => (
-                      <div key={h._id} style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(16px)", borderRadius: 14, padding: "18px 20px", border: "1px solid rgba(59,130,246,.25)", boxShadow: SH_CARD, cursor: "pointer", transition: "all .2s ease" }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-4px)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(59,130,246,.5)"; }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(59,130,246,.25)"; }}
-                        onClick={() => h.case?._id && navigate(`/citizen/cases/${h.case._id}`)}>
-                        
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                          <div>
-                            <p style={{ ...DM, fontSize: 11, color: BLUEB, fontWeight: 600 }}>{h.case?.requestId || h.case?.caseId}</p>
-                            <p style={{ ...DM, fontSize: 14, color: "#fff", fontWeight: 600, marginTop: 4 }}>{h.case?.title || "Legal Request"}</p>
-                          </div>
-                          <span style={{ ...DM, fontSize: 9, padding: "4px 10px", borderRadius: 99, background: `${statusColor(h.status)}15`, border: `1px solid ${statusColor(h.status)}44`, color: statusColor(h.status), fontWeight: 600 }}>
-                            {getRelativeTime(h.hearingDate)}
-                          </span>
-                        </div>
-
-                        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                          <span style={{ fontSize:14 }}>💻</span>
-
-                          <p
-                          style={{
-                          ...DM,
-                          fontSize:11,
-                          color:"rgba(255,255,255,.6)"
-                          }}
-                          >
-                            {h.mode || "Online Meeting"}
+            {(filter === "upcoming" || filter === "all") && upcomingConsultations.length > 0 ? (
+              <div style={{ ...GLASS, borderRadius: 16, padding: "24px", position: "relative", overflow: "hidden" }}>
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: "8%",
+                    right: "8%",
+                    height: 1,
+                    background: "linear-gradient(90deg,transparent,rgba(150,200,255,0.6),transparent)",
+                    pointerEvents: "none",
+                  }}
+                />
+                <p
+                  style={{
+                    ...DM,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: "#fff",
+                    marginBottom: 20,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background: "#3b82f6",
+                      boxShadow: "0 0 10px #3b82f6",
+                    }}
+                  />
+                  Upcoming Consultations
+                </p>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 16 }}>
+                  {upcomingConsultations.map((h: any) => (
+                    <div
+                      key={h._id}
+                      style={{
+                        background: "rgba(0,0,0,0.6)",
+                        backdropFilter: "blur(16px)",
+                        borderRadius: 14,
+                        padding: "18px 20px",
+                        border: "1px solid rgba(59,130,246,.25)",
+                        boxShadow: SH_CARD,
+                        cursor: "pointer",
+                        transition: "all .2s ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLElement).style.transform = "translateY(-4px)";
+                        (e.currentTarget as HTMLElement).style.borderColor = "rgba(59,130,246,.5)";
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+                        (e.currentTarget as HTMLElement).style.borderColor = "rgba(59,130,246,.25)";
+                      }}
+                      onClick={() => h.case?._id && navigate(`/citizen/cases/${h.case._id}`)}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                        <div>
+                          <p style={{ ...DM, fontSize: 11, color: BLUEB, fontWeight: 600 }}>
+                            {h.case?.requestId || h.case?.caseId}
+                          </p>
+                          <p style={{ ...DM, fontSize: 14, color: "#fff", fontWeight: 600, marginTop: 4 }}>
+                            {h.case?.title || "Legal Request"}
                           </p>
                         </div>
-
-                        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                          <span style={{ fontSize:14 }}>💬</span>
-
-                          <p
+                        <span
                           style={{
-                          ...DM,
-                          fontSize:11,
-                          color:"rgba(255,255,255,.4)"
+                            ...DM,
+                            fontSize: 9,
+                            padding: "4px 10px",
+                            borderRadius: 99,
+                            background: `${statusColor(h.status)}15`,
+                            border: `1px solid ${statusColor(h.status)}44`,
+                            color: statusColor(h.status),
+                            fontWeight: 600,
                           }}
-                          >
-                            {h.purpose || "Discussion with lawyer"}
-                          </p>
-                        </div>
+                        >
+                          {getRelativeTime(h.hearingDate)}
+                        </span>
                       </div>
-                    ))}
-                  </div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 14 }}>💻</span>
+                        <p style={{ ...DM, fontSize: 11, color: "rgba(255,255,255,.6)" }}>
+                          {h.mode || "Online Meeting"}
+                        </p>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 14 }}>💬</span>
+                        <p style={{ ...DM, fontSize: 11, color: "rgba(255,255,255,.4)" }}>
+                          {h.purpose || "Discussion with lawyer"}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              )
+              </div>
             ) : null}
 
             {/* Past/Other Consultations */}
             {filter !== "upcoming" && (
               <div style={{ ...GLASS, borderRadius: 16, padding: "24px", position: "relative", overflow: "hidden" }}>
-                <div style={{ position: "absolute", top: 0, left: "8%", right: "8%", height: 1, background: "linear-gradient(90deg,transparent,rgba(150,200,255,0.6),transparent)", pointerEvents: "none" }} />
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: "8%",
+                    right: "8%",
+                    height: 1,
+                    background: "linear-gradient(90deg,transparent,rgba(150,200,255,0.6),transparent)",
+                    pointerEvents: "none",
+                  }}
+                />
                 <p style={{ ...DM, fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 20 }}>
                   {filter === "all" ? "All Consultations" : filter.charAt(0).toUpperCase() + filter.slice(1) + " Consultations"}
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {consultations.map((h: any) => (
-                    <div key={h._id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderRadius: 12, background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,.06)", cursor: "pointer", transition: "all .2s ease" }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(30,95,255,.08)"; }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.4)"; }}
-                      onClick={() => h.case?._id && navigate(`/citizen/cases/${h.case._id}`)}>
-                      
+                    <div
+                      key={h._id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "16px 20px",
+                        borderRadius: 12,
+                        background: "rgba(0,0,0,0.4)",
+                        border: "1px solid rgba(255,255,255,.06)",
+                        cursor: "pointer",
+                        transition: "all .2s ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLElement).style.background = "rgba(30,95,255,.08)";
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.4)";
+                      }}
+                      onClick={() => h.case?._id && navigate(`/citizen/cases/${h.case._id}`)}
+                    >
                       <div style={{ flex: 1 }}>
-                        <p style={{ ...DM, fontSize: 12, color: "#fff", fontWeight: 600 }}>{h.case?.title || "Legal Request"}</p>
-                        <p style={{ ...DM, fontSize: 10, color: "rgba(255,255,255,.4)", marginTop: 4 }}>{h.purpose}</p>
+                        <p style={{ ...DM, fontSize: 12, color: "#fff", fontWeight: 600 }}>
+                          {h.case?.title || "Legal Request"}
+                        </p>
+                        <p style={{ ...DM, fontSize: 10, color: "rgba(255,255,255,.4)", marginTop: 4 }}>
+                          {h.purpose}
+                        </p>
                       </div>
 
                       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                         <div style={{ textAlign: "right" }}>
-                          <p style={{ ...DM, fontSize: 11, color: "rgba(255,255,255,.6)" }}>{formatDate(h.hearingDate)}</p>
-                          <p style={{ ...DM, fontSize: 10, color: "rgba(255,255,255,.3)", marginTop: 2 }}>{h.hearingTime || formatTime(h.hearingDate)}</p>
+                          <p style={{ ...DM, fontSize: 11, color: "rgba(255,255,255,.6)" }}>
+                            {formatDate(h.hearingDate)}
+                          </p>
+                          <p style={{ ...DM, fontSize: 10, color: "rgba(255,255,255,.3)", marginTop: 2 }}>
+                            {h.hearingTime || formatTime(h.hearingDate)}
+                          </p>
                         </div>
-                        <span style={{ ...DM, fontSize: 9, padding: "5px 12px", borderRadius: 99, background: `${statusColor(h.status)}15`, border: `1px solid ${statusColor(h.status)}44`, color: statusColor(h.status), fontWeight: 600 }}>
-                          {
-                            h.status === "Scheduled"
-                              ? "Upcoming"
-                              : h.status === "Postponed"
-                              ? "Rescheduled"
-                              : h.status
-                            }
+                        <span
+                          style={{
+                            ...DM,
+                            fontSize: 9,
+                            padding: "5px 12px",
+                            borderRadius: 99,
+                            background: `${statusColor(h.status)}15`,
+                            border: `1px solid ${statusColor(h.status)}44`,
+                            color: statusColor(h.status),
+                            fontWeight: 600,
+                          }}
+                        >
+                          {h.status === "Scheduled"
+                            ? "Upcoming"
+                            : h.status === "Postponed"
+                            ? "Rescheduled"
+                            : h.status}
                         </span>
                       </div>
                     </div>
@@ -272,8 +432,7 @@ export default function Hearings() {
             )}
           </>
         )}
-
       </div>
-    </CitizenLayout>
+    </div>
   );
 }

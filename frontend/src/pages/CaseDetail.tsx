@@ -2,7 +2,8 @@
 
 import { useState, useEffect, CSSProperties } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import CitizenLayout from "../components/CitizenLayout";
+// Remove CitizenLayout import
+// import CitizenLayout from "../components/CitizenLayout";
 import { getCaseDetail, updateCaseNotes } from "../services/api";
 
 const DM: CSSProperties = { fontFamily: "'DM Sans',sans-serif" };
@@ -72,7 +73,7 @@ const expectedSteps = [
   { type: "case_created",      label: "Request Created",        icon: "📝" },
   { type: "case_filed",        label: "Request Submitted",      icon: "📤" },
   { type: "under_review",      label: "Under Review",           icon: "🔍" },
-  { type: "lawyer_assigned",   label: "Lawyer Assigned",        icon: "⚖️" },
+  { type: "lawyer_assigned",   label: "Lawyer Assigned",        icon: "&" },
   { type: "hearing_scheduled", label: "Consultation Scheduled", icon: "📅" },
   { type: "hearing_completed", label: "Consultation Completed", icon: "💬" },
   { type: "resolved",          label: "Guidance Provided",      icon: "✅" },
@@ -136,22 +137,22 @@ export default function CaseDetail() {
 
   if (loading) {
     return (
-      <CitizenLayout activeNav="cases">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", ...DM }}>
+      <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%)", ...DM }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh" }}>
           <div style={{ textAlign: "center" }}>
             <div style={{ width: 40, height: 40, border: "3px solid rgba(30,95,255,.3)", borderTop: "3px solid #1e5fff", borderRadius: "50%", animation: "spin 1s linear infinite", margin: "0 auto 16px" }} />
             <p style={{ fontSize: 14, color: "rgba(255,255,255,.5)" }}>Loading request...</p>
             <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
           </div>
         </div>
-      </CitizenLayout>
+      </div>
     );
   }
 
   if (error || !caseData) {
     return (
-      <CitizenLayout activeNav="cases">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", ...DM }}>
+      <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%)", ...DM }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh" }}>
           <div style={{ textAlign: "center" }}>
             <p style={{ fontSize: 16, color: "#ff6b6b", marginBottom: 12 }}>{error || "Request not found"}</p>
             <button onClick={() => navigate("/citizen/cases")} style={{ ...DM, background: BLUE, color: "#fff", padding: "10px 24px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13 }}>
@@ -159,12 +160,12 @@ export default function CaseDetail() {
             </button>
           </div>
         </div>
-      </CitizenLayout>
+      </div>
     );
   }
 
   return (
-    <CitizenLayout activeNav="cases">
+    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%)" }}>
       <div style={{ padding: "28px 28px 60px", display: "flex", flexDirection: "column", gap: 24 }}>
 
         {/* Back + Header */}
@@ -356,6 +357,6 @@ export default function CaseDetail() {
         </div>
 
       </div>
-    </CitizenLayout>
+    </div>
   );
 }

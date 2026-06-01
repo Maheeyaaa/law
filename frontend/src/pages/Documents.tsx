@@ -1,8 +1,5 @@
-// frontend/src/pages/Documents.tsx
-
 import { useState, useEffect, useRef, CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
-import CitizenLayout from "../components/CitizenLayout";
 import { getMyDocuments, uploadDocument, deleteDocument, downloadDocument, getMyCases } from "../services/api";
 
 const DM: CSSProperties = { fontFamily: "'DM Sans',sans-serif" };
@@ -10,7 +7,6 @@ const BN: CSSProperties = { fontFamily: "'Bebas Neue',cursive" };
 const BLUE = "#1e5fff";
 const BLUEB = "#4d8aff";
 const ICEB = "#a8c8ff";
-const SH_CARD = "0 8px 32px rgba(0,0,0,.7), 0 2px 8px rgba(0,0,0,.5)";
 
 const GLASS: CSSProperties = {
   background: "rgba(0,0,0,0.45)",
@@ -22,17 +18,11 @@ const GLASS: CSSProperties = {
 
 function statusColor(status: string): string {
   switch (status) {
-    case "Verified":  return "#34d399";
-    case "Pending":   return "#fbbf24";
-    case "Rejected":  return "#ef4444";
-    default:          return "#6B7280";
+    case "Verified": return "#34d399";
+    case "Pending": return "#fbbf24";
+    case "Rejected": return "#ef4444";
+    default: return "#6B7280";
   }
-}
-
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    month: "short", day: "numeric", year: "numeric",
-  });
 }
 
 function formatFileSize(bytes: number): string {
@@ -162,9 +152,17 @@ export default function Documents() {
     : documents.filter(d => d.status === filter);
 
   return (
-    <CitizenLayout activeNav="docs">
+    <div
+      style={{
+        minHeight: "100vh",
+        width: "100%",
+        backgroundImage: "url('/images/bg-marble.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
       <div style={{ padding: "28px 28px 60px", display: "flex", flexDirection: "column", gap: 24 }}>
-
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
@@ -189,7 +187,8 @@ export default function Documents() {
               transition: "transform .2s ease",
             }}
             onMouseEnter={e => (e.currentTarget as HTMLElement).style.transform = "translateY(-3px)"}
-            onMouseLeave={e => (e.currentTarget as HTMLElement).style.transform = "translateY(0)"}>
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.transform = "translateY(0)"}
+          >
             {showUpload ? "✕ Cancel" : "+ Upload Document"}
           </button>
         </div>
@@ -198,11 +197,12 @@ export default function Documents() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
           {[
             { label: "Total Documents", value: stats.total },
-            { label: "Verified",        value: stats.verified },
-            { label: "Pending Review",  value: stats.pending },
-            { label: "Rejected",        value: stats.rejected },
+            { label: "Verified", value: stats.verified },
+            { label: "Pending Review", value: stats.pending },
+            { label: "Rejected", value: stats.rejected },
           ].map((stat, i) => (
-            <div key={i}
+            <div
+              key={i}
               style={{
                 ...GLASS,
                 borderRadius: 16,
@@ -212,16 +212,19 @@ export default function Documents() {
                 transition: "transform .2s ease",
               }}
               onMouseEnter={e => (e.currentTarget as HTMLElement).style.transform = "translateY(-4px)"}
-              onMouseLeave={e => (e.currentTarget as HTMLElement).style.transform = "translateY(0)"}>
-              <div style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                height: 3,
-                background: BLUE,
-                boxShadow: `0 0 12px ${BLUEB}, 0 0 4px ${BLUE}`,
-              }} />
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.transform = "translateY(0)"}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 3,
+                  background: BLUE,
+                  boxShadow: `0 0 12px ${BLUEB}, 0 0 4px ${BLUE}`,
+                }}
+              />
               <p style={{ ...DM, fontSize: 9, letterSpacing: "1.5px", textTransform: "uppercase", color: "rgba(255,255,255,.4)", marginBottom: 8 }}>{stat.label}</p>
               <p style={{ ...BN, fontSize: 36, color: "#fff" }}>{String(stat.value).padStart(2, "0")}</p>
             </div>
@@ -265,7 +268,8 @@ export default function Documents() {
                 <select
                   value={linkedCase}
                   onChange={e => setLinkedCase(e.target.value)}
-                  style={{ ...DM, width: "100%", background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 8, padding: "10px 12px", color: "rgba(255,255,255,.6)", fontSize: 12, outline: "none", cursor: "pointer" }}>
+                  style={{ ...DM, width: "100%", background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 8, padding: "10px 12px", color: "rgba(255,255,255,.6)", fontSize: 12, outline: "none", cursor: "pointer" }}
+                >
                   <option value="">-- Select a request --</option>
                   {cases.map(c => (
                     <option key={c._id} value={c._id}>{c.caseId} - {c.title}</option>
@@ -291,7 +295,8 @@ export default function Documents() {
                   alignSelf: "flex-start",
                 }}
                 onMouseEnter={e => { if (!uploading && uploadFile) (e.currentTarget as HTMLElement).style.transform = "translateY(-3px)"; }}
-                onMouseLeave={e => (e.currentTarget as HTMLElement).style.transform = "translateY(0)"}>
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.transform = "translateY(0)"}
+              >
                 {uploading ? "Uploading..." : "Upload Document"}
               </button>
             </div>
@@ -301,7 +306,9 @@ export default function Documents() {
         {/* Filters */}
         <div style={{ ...GLASS, borderRadius: 16, padding: "20px 24px", display: "flex", alignItems: "center", gap: 10 }}>
           {["All", "Verified", "Pending", "Rejected"].map(f => (
-            <button key={f} onClick={() => setFilter(f)}
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
               style={{
                 ...DM,
                 fontSize: 11,
@@ -314,7 +321,8 @@ export default function Documents() {
                 border: filter === f ? "1px solid rgba(255,255,255,0.15)" : "1px solid rgba(255,255,255,0.06)",
                 backdropFilter: "blur(8px)",
                 transition: "all .2s ease",
-              }}>
+              }}
+            >
               {f}
             </button>
           ))}
@@ -347,7 +355,8 @@ export default function Documents() {
                   border: "1px solid rgba(255,255,255,0.08)",
                   cursor: "pointer",
                   marginTop: 16,
-                }}>
+                }}
+              >
                 + Upload Your First Document
               </button>
             </div>
@@ -363,7 +372,8 @@ export default function Documents() {
               {/* Table Rows */}
               <div style={{ maxHeight: 500, overflowY: "auto" }}>
                 {filteredDocs.map((d, i) => (
-                  <div key={d._id}
+                  <div
+                    key={d._id}
                     style={{
                       display: "grid",
                       gridTemplateColumns: "2.5fr 1.5fr 0.8fr 0.8fr 0.8fr 1.4fr",
@@ -383,13 +393,14 @@ export default function Documents() {
                     onMouseLeave={e => {
                       (e.currentTarget as HTMLElement).style.background = i % 2 === 0 ? "rgba(0,0,0,0.35)" : "rgba(0,0,0,0.2)";
                       (e.currentTarget as HTMLElement).style.border = "1px solid rgba(255,255,255,0.03)";
-                    }}>
-
+                    }}
+                  >
                     <p style={{ ...DM, fontSize: 12, color: "rgba(255,255,255,.7)" }}>{d.name}</p>
 
                     <p
                       style={{ ...DM, fontSize: 11, color: d.case ? BLUEB : "rgba(255,255,255,.3)", cursor: d.case ? "pointer" : "default" }}
-                      onClick={() => d.case && navigate(`/citizen/cases/${d.case._id}`)}>
+                      onClick={() => d.case && navigate(`/citizen/cases/${d.case._id}`)}
+                    >
                       {d.case ? d.case.caseId : "—"}
                     </p>
 
@@ -429,9 +440,11 @@ export default function Documents() {
                         onMouseLeave={e => {
                           (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.35)";
                           (e.currentTarget as HTMLElement).style.border = "1px solid rgba(255,255,255,.08)";
-                        }}>
+                        }}
+                      >
                         ↓ Download
                       </button>
+
                       <button
                         onClick={() => handleDelete(d._id, d.status)}
                         disabled={d.status === "Verified"}
@@ -448,7 +461,8 @@ export default function Documents() {
                           transition: "all .2s ease",
                         }}
                         onMouseEnter={e => { if (d.status !== "Verified") { (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.5)"; (e.currentTarget as HTMLElement).style.border = "1px solid rgba(239,68,68,.35)"; } }}
-                        onMouseLeave={e => { if (d.status !== "Verified") { (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.35)"; (e.currentTarget as HTMLElement).style.border = "1px solid rgba(239,68,68,.2)"; } }}>
+                        onMouseLeave={e => { if (d.status !== "Verified") { (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.35)"; (e.currentTarget as HTMLElement).style.border = "1px solid rgba(239,68,68,.2)"; } }}
+                      >
                         Delete
                       </button>
                     </div>
@@ -458,8 +472,7 @@ export default function Documents() {
             </>
           )}
         </div>
-
       </div>
-    </CitizenLayout>
+    </div>
   );
 }
