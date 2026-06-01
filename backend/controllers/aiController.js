@@ -4,20 +4,21 @@ import Groq from "groq-sdk";
 import fs from "fs";
 import path from "path";
 import ChatMessage from "../models/ChatMessage.js";
+import Conversation from "../models/Conversation.js";
 import { extractTextFromPDF } from "../utils/pdfExtractor.js";
 import { ScamDetector } from "../utils/scamDetector.js";
 import ScamReport from "../models/ScamReport.js";
 import UserAnalytics from "../models/UserAnalytics.js";
 
+// ══════════════════════════════════════════
+// Analytics Helpers (unchanged)
+// ══════════════════════════════════════════
 const trackFeatureUsage = async (userId, featureName) => {
   try {
     let analytics = await UserAnalytics.findOne({ user: userId });
-
     if (!analytics) {
       analytics = await UserAnalytics.create({ user: userId });
     }
-
-    // Map feature names to schema fields
     const featureMap = {
       chatbot: "chatbot",
       explainNotice: "noticeExplanation",
@@ -28,9 +29,7 @@ const trackFeatureUsage = async (userId, featureName) => {
       checkLegalAid: "legalAidCheck",
       detectScam: "scamDetection",
     };
-
     const field = featureMap[featureName];
-
     if (field) {
       analytics.featureUsage[field] += 1;
       analytics.totalMessages += 1;
@@ -46,15 +45,11 @@ const trackFeatureUsage = async (userId, featureName) => {
 const trackPDFUpload = async (userId, isOCR = false) => {
   try {
     let analytics = await UserAnalytics.findOne({ user: userId });
-
     if (!analytics) {
       analytics = await UserAnalytics.create({ user: userId });
     }
-
     analytics.totalPDFsUploaded += 1;
-    if (isOCR) {
-      analytics.totalOCRProcessed += 1;
-    }
+    if (isOCR) analytics.totalOCRProcessed += 1;
     await analytics.save();
   } catch (error) {
     console.error("PDF tracking error:", error);
@@ -64,34 +59,27 @@ const trackPDFUpload = async (userId, isOCR = false) => {
 const trackScamResult = async (userId, isScam, score) => {
   try {
     let analytics = await UserAnalytics.findOne({ user: userId });
-
     if (!analytics) {
       analytics = await UserAnalytics.create({ user: userId });
     }
-
     analytics.scamStats.totalScansPerformed += 1;
-
-    if (score <= 3) {
-      analytics.scamStats.scamsDetected += 1;
-    } else if (score >= 8) {
-      analytics.scamStats.genuineNoticesVerified += 1;
-    } else {
-      analytics.scamStats.suspiciousNotices += 1;
-    }
-
+    if (score <= 3) analytics.scamStats.scamsDetected += 1;
+    else if (score >= 8) analytics.scamStats.genuineNoticesVerified += 1;
+    else analytics.scamStats.suspiciousNotices += 1;
     await analytics.save();
   } catch (error) {
     console.error("Scam tracking error:", error);
   }
 };
 
+// ══════════════════════════════════════════
+// Groq Helper (unchanged)
+// ══════════════════════════════════════════
 const askGroq = async (systemPrompt, userMessage, maxTokens = 1024) => {
   if (!process.env.GROQ_API_KEY) {
-    throw new Error("GROQ_API_KEY is not configured. AI features are unavailable.");
+    throw new Error("GROQ_API_KEY is not configured.");
   }
-  
-  const groq = new Groq({ apiKey: process.env.GROQ_API_KEY }); // ← create here
-  
+  const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
   const completion = await groq.chat.completions.create({
     model: "llama-3.3-70b-versatile",
     messages: [
@@ -128,29 +116,142 @@ You must NOT:
 - Encourage any illegal activities
 - Provide information about how to evade law`;
 
-// Helper: Save chat to history
-const saveToHistory = async (userId, sessionId, userMsg, assistantMsg) => {
-  await ChatMessage.create({
+// ══════════════════════════════════════════
+// Conversation Helpers
+// ══════════════════════════════════════════
+
+/**
+ * Auto-generate a conversation title from first user message
+ */
+const generateTitle = (message, featureType = "chatbot") => {
+  const featureTitles = {
+    explain_notice: "Notice Explanation",
+    deadline: "Deadline Calculation",
+    decode_term: "Legal Term",
+    filing_guidance: "Filing Guidance",
+    checklist: "Document Checklist",
+    legal_aid: "Legal Aid Check",
+    scam_detection: "Scam Detection",
+  };
+
+  if (featureType !== "chatbot" && featureTitles[featureType]) {
+    return `${featureTitles[featureType]} - ${new Date().toLocaleDateString("en-IN")}`;
+  }
+
+  // For chatbot, use first 60 chars of message
+  const cleaned = message.replace(/\[.*?\]/g, "").trim();
+  return cleaned.length > 60 ? cleaned.substring(0, 60) + "..." : cleaned;
+};
+
+/**
+ * Create or retrieve a Conversation document
+ * Returns { conversation, isNew }
+ */
+const getOrCreateConversation = async (
+  userId,
+  sessionId,
+  featureType = "chatbot",
+  firstMessage = ""
+) => {
+  // Try finding existing conversation by sessionId
+  let conversation = await Conversation.findOne({
     user: userId,
-    role: "user",
-    message: userMsg,
-    sessionId,
+    // We store sessionId as the _id string pattern or match by messages
+    // Instead, we'll use a different lookup approach
   });
-  await ChatMessage.create({
+
+  // Better: find conversation that has messages with this sessionId
+  const existingMessage = await ChatMessage.findOne({
     user: userId,
-    role: "assistant",
-    message: assistantMsg,
-    sessionId,
+    sessionId: sessionId,
+    conversation: { $exists: true, $ne: null },
+  });
+
+  if (existingMessage) {
+    conversation = await Conversation.findById(existingMessage.conversation);
+    if (conversation && !conversation.isDeleted) {
+      return { conversation, isNew: false };
+    }
+  }
+
+  // Create new conversation
+  const title = generateTitle(firstMessage, featureType);
+  conversation = await Conversation.create({
+    user: userId,
+    title,
+    type: featureType,
+    lastMessage: firstMessage.substring(0, 200),
+    messageCount: 0,
+    lastActivityAt: new Date(),
+  });
+
+  return { conversation, isNew: true };
+};
+
+/**
+ * Update conversation metadata after new message
+ */
+const updateConversationMeta = async (conversationId, lastMessage) => {
+  await Conversation.findByIdAndUpdate(conversationId, {
+    lastMessage: lastMessage.substring(0, 200),
+    lastActivityAt: new Date(),
+    $inc: { messageCount: 1 },
   });
 };
 
+/**
+ * Save message pair to history and update conversation
+ */
+const saveToHistory = async (
+  userId,
+  sessionId,
+  userMsg,
+  assistantMsg,
+  featureType = "chatbot",
+  conversationId = null
+) => {
+  let convId = conversationId;
+
+  if (!convId) {
+    const { conversation } = await getOrCreateConversation(
+      userId,
+      sessionId,
+      featureType,
+      userMsg
+    );
+    convId = conversation._id;
+  }
+
+  await ChatMessage.create({
+    user: userId,
+    conversation: convId,
+    role: "user",
+    message: userMsg,
+    sessionId,
+    featureType,
+  });
+
+  await ChatMessage.create({
+    user: userId,
+    conversation: convId,
+    role: "assistant",
+    message: assistantMsg,
+    sessionId,
+    featureType,
+  });
+
+  // Update conversation metadata
+  await updateConversationMeta(convId, assistantMsg);
+
+  return convId;
+};
+
 // ══════════════════════════════════════════
-// Helper: Extract text from uploaded file
+// File extraction helper (unchanged)
 // ══════════════════════════════════════════
 const extractTextFromFile = async (file) => {
   const filePath = path.join(process.cwd(), "uploads", file.filename);
   const ext = path.extname(file.originalname).toLowerCase();
-
   let text = "";
   let error = null;
   let isOCR = false;
@@ -158,50 +259,246 @@ const extractTextFromFile = async (file) => {
   if (ext === ".pdf") {
     try {
       text = await extractTextFromPDF(filePath);
-
-      // Check if OCR was used (OCR adds "--- Page X ---" markers)
-      if (text.includes("--- Page")) {
-        isOCR = true;
-      }
-    } catch (pdfError) {
-      error =
-        "Could not read this PDF file. Please try pasting the text instead.";
+      if (text.includes("--- Page")) isOCR = true;
+    } catch {
+      error = "Could not read this PDF file. Please try pasting the text instead.";
     }
   } else if (ext === ".txt") {
     text = fs.readFileSync(filePath, "utf-8");
   } else {
-    error =
-      "Unsupported file type. Please upload a PDF or TXT file, or paste the text directly.";
+    error = "Unsupported file type. Please upload a PDF or TXT file.";
   }
 
-  // Clean up uploaded file
   try {
     fs.unlinkSync(filePath);
   } catch {}
 
-  // Check if extracted text is meaningful
   if (!error && (!text || text.trim().length < 10)) {
     error =
       "Could not extract readable text from this PDF.\n\n" +
-      "This might be because:\n" +
-      "• The PDF is a scanned image with very low quality\n" +
-      "• The PDF is password protected\n" +
-      "• The PDF contains only images/diagrams\n\n" +
       "Please try:\n" +
-      "• Opening the PDF, selecting all text (Ctrl+A), copying (Ctrl+C), and pasting it here\n" +
+      "• Pasting the text directly\n" +
       "• Uploading a clearer scan\n" +
-      "• Typing the notice content directly";
+      "• Typing the content directly";
   }
 
   return { text: text.trim(), error, isOCR };
 };
 
-// ═══════════════════════════════════════
-// FEATURE 0: General Chatbot
-// ═══════════════════════════════════════
+// ══════════════════════════════════════════
+// CONVERSATION CRUD APIs
+// ══════════════════════════════════════════
+
+/**
+ * GET /api/ai/conversations
+ * List all conversations for the logged-in user
+ */
+export const getConversations = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, type } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const filter = {
+      user: req.user.id,
+      isDeleted: false,
+    };
+
+    if (type) filter.type = type;
+
+    const [conversations, total] = await Promise.all([
+      Conversation.find(filter)
+        .sort({ isPinned: -1, lastActivityAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean(),
+      Conversation.countDocuments(filter),
+    ]);
+
+    res.json({
+      conversations,
+      pagination: {
+        total,
+        page: parseInt(page),
+        pages: Math.ceil(total / parseInt(limit)),
+        limit: parseInt(limit),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * POST /api/ai/conversations
+ * Create a new empty conversation
+ */
+export const createConversation = async (req, res) => {
+  try {
+    const { title, type = "chatbot" } = req.body;
+
+    const conversation = await Conversation.create({
+      user: req.user.id,
+      title: title || "New Conversation",
+      type,
+      lastMessage: "",
+      messageCount: 0,
+      lastActivityAt: new Date(),
+    });
+
+    // Generate a sessionId for this conversation
+    const sessionId = `conv_${conversation._id}_${Date.now()}`;
+
+    res.status(201).json({
+      message: "Conversation created",
+      conversation,
+      sessionId,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * GET /api/ai/conversations/:conversationId
+ * Get a single conversation with its messages
+ */
+export const getConversationById = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const { page = 1, limit = 50 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const conversation = await Conversation.findOne({
+      _id: conversationId,
+      user: req.user.id,
+      isDeleted: false,
+    });
+
+    if (!conversation) {
+      return res.status(404).json({ message: "Conversation not found" });
+    }
+
+    const [messages, totalMessages] = await Promise.all([
+      ChatMessage.find({ conversation: conversationId })
+        .sort({ createdAt: 1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean(),
+      ChatMessage.countDocuments({ conversation: conversationId }),
+    ]);
+
+    res.json({
+      conversation,
+      messages,
+      pagination: {
+        total: totalMessages,
+        page: parseInt(page),
+        pages: Math.ceil(totalMessages / parseInt(limit)),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * PATCH /api/ai/conversations/:conversationId
+ * Rename a conversation or toggle pin
+ */
+export const updateConversation = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const { title, isPinned } = req.body;
+
+    const conversation = await Conversation.findOne({
+      _id: conversationId,
+      user: req.user.id,
+      isDeleted: false,
+    });
+
+    if (!conversation) {
+      return res.status(404).json({ message: "Conversation not found" });
+    }
+
+    if (title !== undefined) conversation.title = title.trim().substring(0, 120);
+    if (isPinned !== undefined) conversation.isPinned = isPinned;
+
+    await conversation.save();
+
+    res.json({ message: "Conversation updated", conversation });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * DELETE /api/ai/conversations/:conversationId
+ * Soft delete a conversation
+ */
+export const deleteConversation = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+
+    const conversation = await Conversation.findOne({
+      _id: conversationId,
+      user: req.user.id,
+    });
+
+    if (!conversation) {
+      return res.status(404).json({ message: "Conversation not found" });
+    }
+
+    // Soft delete conversation
+    conversation.isDeleted = true;
+    await conversation.save();
+
+    // Hard delete all messages in this conversation
+    await ChatMessage.deleteMany({ conversation: conversationId });
+
+    res.json({ message: "Conversation deleted" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * DELETE /api/ai/conversations
+ * Delete ALL conversations for this user
+ */
+export const deleteAllConversations = async (req, res) => {
+  try {
+    // Get all conversation IDs for this user
+    const conversations = await Conversation.find({
+      user: req.user.id,
+      isDeleted: false,
+    }).select("_id");
+
+    const ids = conversations.map((c) => c._id);
+
+    // Delete all messages
+    await ChatMessage.deleteMany({
+      user: req.user.id,
+      conversation: { $in: ids },
+    });
+
+    // Soft delete all conversations
+    await Conversation.updateMany(
+      { user: req.user.id },
+      { isDeleted: true }
+    );
+
+    res.json({ message: "All conversations deleted" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ══════════════════════════════════════════
+// FEATURE 0: General Chatbot (UPDATED)
+// ══════════════════════════════════════════
 export const chatbot = async (req, res) => {
   try {
-    const { message, sessionId } = req.body;
+    const { message, sessionId, conversationId } = req.body;
 
     if (!message || !message.trim()) {
       return res.status(400).json({ message: "Message is required" });
@@ -209,52 +506,104 @@ export const chatbot = async (req, res) => {
 
     await trackFeatureUsage(req.user.id, "chatbot");
 
+    // Determine session
     const session = sessionId || `session_${req.user.id}_${Date.now()}`;
 
+    // Find or create conversation
+    let conversation = null;
+    let isFirstMessage = false;
+
+    if (conversationId) {
+      conversation = await Conversation.findOne({
+        _id: conversationId,
+        user: req.user.id,
+        isDeleted: false,
+      });
+
+      // Check if this is the first real message in this conversation
+      if (conversation && conversation.messageCount === 0) {
+        isFirstMessage = true;
+      }
+
+      // Also update title if it's still "New Conversation"
+      if (conversation && conversation.title === "New Conversation") {
+        isFirstMessage = true;
+      }
+    }
+
+    if (!conversation) {
+      conversation = await Conversation.create({
+        user: req.user.id,
+        title: generateTitle(message.trim(), "chatbot"),
+        type: "chatbot",
+        lastMessage: message.trim().substring(0, 200),
+        messageCount: 0,
+        lastActivityAt: new Date(),
+      });
+    } else if (isFirstMessage) {
+      // Update the title from "New Conversation" to actual first message
+      conversation.title = generateTitle(message.trim(), "chatbot");
+      await conversation.save();
+    }
+
+    // Save user message
     await ChatMessage.create({
       user: req.user.id,
+      conversation: conversation._id,
       role: "user",
       message: message.trim(),
       sessionId: session,
+      featureType: "chatbot",
     });
 
+    // Get conversation history (last 10 messages for context)
     const history = await ChatMessage.find({
-      user: req.user.id,
-      sessionId: session,
+      conversation: conversation._id,
     })
       .sort({ createdAt: -1 })
-      .limit(10);
+      .limit(10)
+      .lean();
 
     const chronological = history.reverse();
 
-    const messages = [
-      { role: "system", content: LEGAL_SYSTEM_PROMPT },
-      ...chronological.map((msg) => ({
-        role: msg.role === "user" ? "user" : "assistant",
-        content: msg.message,
-      })),
-    ];
-
-    // Build conversation context as text for askGroq
+    // Build conversation context
     const conversationContext = chronological
-      .slice(0, -1) // exclude the message we just saved (last one)
-      .map(msg => `${msg.role === "user" ? "User" : "Assistant"}: ${msg.message}`)
+      .slice(0, -1)
+      .map((msg) =>
+        `${msg.role === "user" ? "User" : "Assistant"}: ${msg.message}`
+      )
       .join("\n");
 
-    const userPrompt = conversationContext.length > 0
-      ? `Previous conversation:\n${conversationContext}\n\nUser: ${message.trim()}`
-      : message.trim();
+    const userPrompt =
+      conversationContext.length > 0
+        ? `Previous conversation:\n${conversationContext}\n\nUser: ${message.trim()}`
+        : message.trim();
 
     const reply = await askGroq(LEGAL_SYSTEM_PROMPT, userPrompt, 1024);
 
+    // Save assistant reply
     await ChatMessage.create({
       user: req.user.id,
+      conversation: conversation._id,
       role: "assistant",
       message: reply,
       sessionId: session,
+      featureType: "chatbot",
     });
 
-    res.json({ reply, sessionId: session });
+    // Update conversation metadata
+    await Conversation.findByIdAndUpdate(conversation._id, {
+      lastMessage: reply.substring(0, 200),
+      lastActivityAt: new Date(),
+      $inc: { messageCount: 2 },
+    });
+
+    res.json({
+      reply,
+      sessionId: session,
+      conversationId: conversation._id,
+      conversationTitle: conversation.title,
+    });
   } catch (error) {
     res.status(500).json({
       error: error.message,
@@ -263,9 +612,9 @@ export const chatbot = async (req, res) => {
   }
 };
 
-// ═══════════════════════════════════════
-// FEATURE 1: Explain Notice
-// ═══════════════════════════════════════
+// ══════════════════════════════════════════
+// FEATURE 1: Explain Notice (UPDATED)
+// ══════════════════════════════════════════
 export const explainNotice = async (req, res) => {
   try {
     let noticeText = req.body.notice || "";
@@ -273,22 +622,16 @@ export const explainNotice = async (req, res) => {
 
     await trackFeatureUsage(req.user.id, "explainNotice");
 
-    // If file was uploaded, extract text
     if (req.file) {
       const { text, error, isOCR: ocrUsed } = await extractTextFromFile(req.file);
-
-      if (error) {
-        return res.status(400).json({ message: error });
-      }
-
+      if (error) return res.status(400).json({ message: error });
       noticeText = text;
       isOCR = ocrUsed;
     }
 
     if (!noticeText || !noticeText.trim()) {
       return res.status(400).json({
-        message:
-          "Notice text is required. Upload a PDF/TXT file or paste the text.",
+        message: "Notice text is required.",
       });
     }
 
@@ -303,7 +646,7 @@ Please explain this notice in simple, plain language. Break down:
 6. **Recommended next steps** - What should the citizen do right now
 7. **Key legal terms used** - Explain any legal jargon in simple words
 
-${isOCR ? "Note: This text was extracted via OCR from a scanned document, so there may be minor character recognition errors. Please interpret accordingly.\n\n" : ""}Legal Notice:
+${isOCR ? "Note: This text was extracted via OCR from a scanned document.\n\n" : ""}Legal Notice:
 ${noticeText.trim()}`;
 
     const reply = await askGroq(LEGAL_SYSTEM_PROMPT, prompt, 1500);
@@ -313,12 +656,13 @@ ${noticeText.trim()}`;
       req.user.id,
       session,
       `[Notice Explanation Request]\n${noticeText.trim().substring(0, 500)}...`,
-      reply
+      reply,
+      "explain_notice"
     );
 
     res.json({
       reply: isOCR
-        ? `📸 *This was a scanned document — text was extracted using OCR. Minor recognition errors are possible.*\n\n${reply}`
+        ? `📸 *Scanned document — text extracted via OCR.*\n\n${reply}`
         : reply,
       sessionId: session,
     });
@@ -326,14 +670,14 @@ ${noticeText.trim()}`;
     console.error("NOTICE ERROR:", error);
     res.status(500).json({
       error: error.message,
-      reply: "Sorry, I could not analyze this notice. Please try again.",
+      reply: "Sorry, I could not analyze this notice.",
     });
   }
 };
 
-// ═══════════════════════════════════════
-// FEATURE 2: Deadline Calculator
-// ═══════════════════════════════════════
+// ══════════════════════════════════════════
+// FEATURE 2: Deadline Calculator (UPDATED)
+// ══════════════════════════════════════════
 export const calculateDeadline = async (req, res) => {
   try {
     const { noticeType, receivedDate, noticeText } = req.body;
@@ -355,16 +699,14 @@ ${noticeType ? `Notice type: ${noticeType}\n` : ""}
 Date received: ${dateStr}
 
 Please calculate and provide:
+1. **Response deadline** - The exact date by which the citizen must respond
+2. **How the deadline is calculated** - The law/rule that determines this
+3. **What happens on the deadline**
+4. **Intermediate deadlines**
+5. **Tips to not miss the deadline**
+6. **Can the deadline be extended?**
 
-1. **Response deadline** - The exact date by which the citizen must respond, based on Indian law
-2. **How the deadline is calculated** - Explain the law/rule that determines this deadline
-3. **What happens on the deadline** - What expires or what action can be taken after this date
-4. **Intermediate deadlines** - Any intermediate dates the citizen should be aware of
-5. **Tips to not miss the deadline** - Practical advice
-6. **Can the deadline be extended?** - If yes, how
-
-Format dates clearly as DD Month YYYY (e.g., 15 January 2025).
-If you cannot determine the exact deadline from the information provided, explain what additional information is needed and provide general guidelines.`;
+Format dates clearly as DD Month YYYY.`;
 
     const reply = await askGroq(LEGAL_SYSTEM_PROMPT, prompt, 1024);
 
@@ -373,21 +715,22 @@ If you cannot determine the exact deadline from the information provided, explai
       req.user.id,
       session,
       `[Deadline Calculation] Type: ${noticeType || "N/A"}, Date: ${dateStr}`,
-      reply
+      reply,
+      "deadline"
     );
 
     res.json({ reply, sessionId: session });
   } catch (error) {
     res.status(500).json({
       error: error.message,
-      reply: "Sorry, I could not calculate the deadline. Please try again.",
+      reply: "Sorry, I could not calculate the deadline.",
     });
   }
 };
 
-// ═══════════════════════════════════════
-// FEATURE 3: Legal Term Decoder
-// ═══════════════════════════════════════
+// ══════════════════════════════════════════
+// FEATURE 3: Legal Term Decoder (UPDATED)
+// ══════════════════════════════════════════
 export const decodeLegalTerm = async (req, res) => {
   try {
     const { term, context } = req.body;
@@ -398,18 +741,17 @@ export const decodeLegalTerm = async (req, res) => {
       return res.status(400).json({ message: "Legal term is required." });
     }
 
-    const prompt = `A citizen encountered the legal term "${term.trim()}" ${context ? `in this context: "${context.trim()}"` : ""} and needs help understanding it.
+    const prompt = `A citizen encountered the legal term "${term.trim()}" ${
+      context ? `in this context: "${context.trim()}"` : ""
+    } and needs help understanding it.
 
 Please explain:
-
-1. **Simple meaning** - What this term means in plain everyday language (1-2 sentences)
-2. **Legal definition** - The formal legal meaning
-3. **Example** - A real-world example of how this term applies
-4. **Related terms** - Other legal terms that are commonly used together with this one
-5. **Why it matters** - Why a citizen should care about this term
-${context ? "6. **In this specific context** - What this term means in the context provided" : ""}
-
-Keep the explanation simple and easy to understand for someone with no legal background.`;
+1. **Simple meaning** - Plain everyday language
+2. **Legal definition** - Formal legal meaning
+3. **Example** - Real-world example
+4. **Related terms** - Commonly used together
+5. **Why it matters**
+${context ? "6. **In this specific context**" : ""}`;
 
     const reply = await askGroq(LEGAL_SYSTEM_PROMPT, prompt, 800);
 
@@ -417,22 +759,23 @@ Keep the explanation simple and easy to understand for someone with no legal bac
     await saveToHistory(
       req.user.id,
       session,
-      `[Legal Term Decoder] Term: "${term.trim()}"${context ? `, Context: "${context.trim()}"` : ""}`,
-      reply
+      `[Legal Term Decoder] Term: "${term.trim()}"`,
+      reply,
+      "decode_term"
     );
 
     res.json({ reply, sessionId: session });
   } catch (error) {
     res.status(500).json({
       error: error.message,
-      reply: "Sorry, I could not decode this term. Please try again.",
+      reply: "Sorry, I could not decode this term.",
     });
   }
 };
 
-// ═══════════════════════════════════════
-// FEATURE 4: Step-by-Step Filing Guidance
-// ═══════════════════════════════════════
+// ══════════════════════════════════════════
+// FEATURE 4: Filing Guidance (UPDATED)
+// ══════════════════════════════════════════
 export const filingGuidance = async (req, res) => {
   try {
     const { caseType, description, court, state } = req.body;
@@ -443,26 +786,20 @@ export const filingGuidance = async (req, res) => {
       return res.status(400).json({ message: "Case type is required." });
     }
 
-    const prompt = `A citizen wants to file a ${caseType.trim()} case in India${state ? ` (State: ${state})` : ""}${court ? ` at ${court}` : ""}.
+    const prompt = `A citizen wants to file a ${caseType.trim()} case in India${
+      state ? ` (State: ${state})` : ""
+    }${court ? ` at ${court}` : ""}.
 ${description ? `Details: ${description.trim()}\n` : ""}
 
 Please provide a complete step-by-step guide:
-
-1. **Before filing** - What to prepare before going to court
-2. **Step-by-step process** - Numbered steps from start to finish, including:
-   - Where to go
-   - What forms to fill
-   - What documents to carry
-   - Fees to pay
-   - How to submit
-3. **Required documents** - Complete list of documents needed
-4. **Estimated costs** - Filing fees and other expenses (approximate)
-5. **Estimated timeline** - How long the process typically takes
-6. **Common mistakes to avoid** - Things that delay or reject filings
-7. **Where to get help** - Free legal aid options, legal services authorities
-8. **Online filing options** - If available for this type of case
-
-Make each step clear and actionable. A person with no legal knowledge should be able to follow these steps.`;
+1. **Before filing**
+2. **Step-by-step process**
+3. **Required documents**
+4. **Estimated costs**
+5. **Estimated timeline**
+6. **Common mistakes to avoid**
+7. **Where to get help**
+8. **Online filing options**`;
 
     const reply = await askGroq(LEGAL_SYSTEM_PROMPT, prompt, 1500);
 
@@ -470,22 +807,23 @@ Make each step clear and actionable. A person with no legal knowledge should be 
     await saveToHistory(
       req.user.id,
       session,
-      `[Filing Guidance] Case Type: ${caseType.trim()}, State: ${state || "N/A"}`,
-      reply
+      `[Filing Guidance] Case Type: ${caseType.trim()}`,
+      reply,
+      "filing_guidance"
     );
 
     res.json({ reply, sessionId: session });
   } catch (error) {
     res.status(500).json({
       error: error.message,
-      reply: "Sorry, I could not generate filing guidance. Please try again.",
+      reply: "Sorry, I could not generate filing guidance.",
     });
   }
 };
 
-// ═══════════════════════════════════════
-// FEATURE 5: Document Checklist Generator
-// ═══════════════════════════════════════
+// ══════════════════════════════════════════
+// FEATURE 5: Document Checklist (UPDATED)
+// ══════════════════════════════════════════
 export const generateChecklist = async (req, res) => {
   try {
     const { caseType, purpose, state } = req.body;
@@ -496,31 +834,19 @@ export const generateChecklist = async (req, res) => {
       return res.status(400).json({ message: "Case type is required." });
     }
 
-    const prompt = `A citizen needs to know what documents are required for a ${caseType.trim()} case in India${state ? ` (State: ${state})` : ""}.
+    const prompt = `A citizen needs documents for a ${caseType.trim()} case in India${
+      state ? ` (State: ${state})` : ""
+    }.
 ${purpose ? `Purpose: ${purpose.trim()}\n` : ""}
 
-Please generate a comprehensive document checklist:
-
-1. **Mandatory documents** - Documents absolutely required (mark each with ✅)
-   - Document name
-   - What it is / where to get it
-   - Number of copies needed
-
-2. **Supporting documents** - Documents that strengthen the case (mark each with 📎)
-   - Document name
-   - Why it helps
-
-3. **Identity & address proof** - Which ID proofs are accepted
-
-4. **How to get documents you don't have** - Where to obtain missing documents (government offices, online portals, etc.)
-
-5. **Document formatting requirements** - Any specific requirements like notarization, attestation, affidavit format
-
-6. **Digital copies needed?** - Whether digital/scanned copies are required
-
-7. **Checklist summary** - A quick numbered checklist the citizen can print and tick off
-
-Make this practical and easy to follow. The citizen should be able to use this as a checklist while gathering documents.`;
+Generate a comprehensive document checklist:
+1. **Mandatory documents** (mark with ✅)
+2. **Supporting documents** (mark with 📎)
+3. **Identity & address proof**
+4. **How to get missing documents**
+5. **Document formatting requirements**
+6. **Digital copies needed?**
+7. **Checklist summary** (numbered, printable)`;
 
     const reply = await askGroq(LEGAL_SYSTEM_PROMPT, prompt, 1500);
 
@@ -528,70 +854,51 @@ Make this practical and easy to follow. The citizen should be able to use this a
     await saveToHistory(
       req.user.id,
       session,
-      `[Document Checklist] Case Type: ${caseType.trim()}, State: ${state || "N/A"}`,
-      reply
+      `[Document Checklist] Case Type: ${caseType.trim()}`,
+      reply,
+      "checklist"
     );
 
     res.json({ reply, sessionId: session });
   } catch (error) {
     res.status(500).json({
       error: error.message,
-      reply: "Sorry, I could not generate the checklist. Please try again.",
+      reply: "Sorry, I could not generate the checklist.",
     });
   }
 };
 
-// ═══════════════════════════════════════
-// FEATURE 6: Legal Aid Eligibility Checker
-// ═══════════════════════════════════════
+// ══════════════════════════════════════════
+// FEATURE 6: Legal Aid Checker (UPDATED)
+// ══════════════════════════════════════════
 export const checkLegalAid = async (req, res) => {
   try {
     const { annualIncome, category, caseType, state, description } = req.body;
 
     if (!annualIncome && !category && !caseType) {
       return res.status(400).json({
-        message: "Please provide at least annual income, category, or case type to check eligibility.",
+        message: "Please provide at least income, category, or case type.",
       });
     }
 
     await trackFeatureUsage(req.user.id, "checkLegalAid");
 
-    const prompt = `A citizen wants to know if they are eligible for free legal aid in India.
+    const prompt = `A citizen wants to know if they qualify for free legal aid in India.
 
-Their details:
+Details:
 - Annual Income: ${annualIncome ? `₹${annualIncome}` : "Not specified"}
-- Category: ${category || "Not specified"} (e.g., SC/ST, woman, child, disabled, industrial worker, etc.)
+- Category: ${category || "Not specified"}
 - Case Type: ${caseType || "Not specified"}
 - State: ${state || "Not specified"}
 ${description ? `- Additional details: ${description.trim()}` : ""}
 
-Based on the Legal Services Authorities Act, 1987 and other relevant Indian laws, please analyze:
-
-1. **Eligibility status** - Is this person likely eligible for free legal aid? (Yes/No/Maybe)
-
-2. **Eligibility criteria met** - Which criteria does this person meet:
-   - Section 12 of Legal Services Authorities Act categories
-   - Income threshold (varies by state)
-   - Special categories (SC/ST, women, children, disabled, etc.)
-
-3. **What free legal aid includes**:
-   - Free lawyer
-   - Court fees waived
-   - Other benefits
-
-4. **How to apply** - Step-by-step process to apply for legal aid:
-   - Where to go (District Legal Services Authority, Taluk level, etc.)
-   - Documents needed
-   - Application process
-
-5. **Important contacts**:
-   - NALSA (National Legal Services Authority) helpline
-   - State Legal Services Authority contact
-   - Nearest Legal Aid Clinic information
-
-6. **Alternative options** - If not eligible for free legal aid, what other affordable options exist
-
-Please be specific about Indian legal aid rules and provide accurate income thresholds.`;
+Based on the Legal Services Authorities Act, 1987, analyze:
+1. **Eligibility status** (Yes/No/Maybe)
+2. **Eligibility criteria met**
+3. **What free legal aid includes**
+4. **How to apply**
+5. **Important contacts** (NALSA, State authority)
+6. **Alternative options** if not eligible`;
 
     const reply = await askGroq(LEGAL_SYSTEM_PROMPT, prompt, 1500);
 
@@ -599,66 +906,53 @@ Please be specific about Indian legal aid rules and provide accurate income thre
     await saveToHistory(
       req.user.id,
       session,
-      `[Legal Aid Check] Income: ${annualIncome || "N/A"}, Category: ${category || "N/A"}, Case: ${caseType || "N/A"}`,
-      reply
+      `[Legal Aid Check] Income: ${annualIncome || "N/A"}, Category: ${category || "N/A"}`,
+      reply,
+      "legal_aid"
     );
 
     res.json({ reply, sessionId: session });
   } catch (error) {
     res.status(500).json({
       error: error.message,
-      reply: "Sorry, I could not check eligibility. Please try again.",
+      reply: "Sorry, I could not check eligibility.",
     });
   }
 };
 
-// ═══════════════════════════════════════
-// FEATURE 7: Fake Notice / Scam Detector (ENHANCED)
-// ═══════════════════════════════════════
+// ══════════════════════════════════════════
+// FEATURE 7: Scam Detector (UPDATED)
+// ══════════════════════════════════════════
 export const detectScam = async (req, res) => {
   try {
     let noticeText = req.body.notice || "";
     let isOCR = false;
 
-    // If file was uploaded, extract text
     if (req.file) {
       const { text, error, isOCR: ocrUsed } = await extractTextFromFile(req.file);
-
-      if (error) {
-        return res.status(400).json({ message: error });
-      }
-
+      if (error) return res.status(400).json({ message: error });
       noticeText = text;
       isOCR = ocrUsed;
-
-      // Track PDF upload
       await trackPDFUpload(req.user.id, ocrUsed);
     }
 
     if (!noticeText || !noticeText.trim()) {
       return res.status(400).json({
-        message: "Notice text is required. Upload a file or paste the text.",
+        message: "Notice text is required.",
       });
     }
 
-    // Track feature usage
     await trackFeatureUsage(req.user.id, "detectScam");
 
-    // ═══════════════════════════════════════════════════
-    // STEP 1: Rule-based detection (NEW!)
-    // ═══════════════════════════════════════════════════
     const detector = new ScamDetector();
     const ruleBasedAnalysis = await detector.analyze(noticeText.trim());
 
-    // ═══════════════════════════════════════════════════
-    // STEP 2: AI-based detection (existing)
-    // ═══════════════════════════════════════════════════
-    const aiPrompt = `A citizen received the following notice/document and wants to verify if it's genuine or a potential scam/fake.
+    const aiPrompt = `A citizen received the following notice and wants to verify if it's genuine or a scam.
 
-${isOCR ? "Note: This text was extracted via OCR from a scanned document.\n\n" : ""}Notice/Document:
+${isOCR ? "Note: Text extracted via OCR.\n\n" : ""}Notice:
 "${noticeText.trim()}"
 
-Please provide:
+Provide:
 1. Your assessment (Genuine/Suspicious/Fake)
 2. Key indicators you noticed
 3. Recommendations for the citizen
@@ -667,101 +961,49 @@ Keep it concise.`;
 
     const aiResponse = await askGroq(LEGAL_SYSTEM_PROMPT, aiPrompt, 800);
 
-    // STEP 3: Combine both analyses
-
     const aiLower = aiResponse.toLowerCase();
-
-    // Check if AI thinks it's suspicious
     const aiSaysFake =
       aiLower.includes("assessment: fake") ||
       aiLower.includes("assessment: suspicious/fake") ||
       aiLower.includes("assessment: suspicious");
 
-    // Start with rule score
     let finalScore = ruleBasedAnalysis.score;
-
-    // If AI says fake → reduce score
-    if (aiSaysFake) {
-      finalScore = Math.min(finalScore, 3);
-    }
-    else if (
-      aiLower.includes("requires verification") &&
-      finalScore > 7
-    ) {
-      finalScore = 7;
-    }
+    if (aiSaysFake) finalScore = Math.min(finalScore, 3);
+    else if (aiLower.includes("requires verification") && finalScore > 7) finalScore = 7;
 
     const aiSaysVerify =
       aiLower.includes("verify") ||
       aiLower.includes("consult") ||
       aiLower.includes("check credentials");
+    if (!aiSaysFake && aiSaysVerify && finalScore >= 9) finalScore = 8;
 
-    if (!aiSaysFake && aiSaysVerify && finalScore >= 9) {
-      finalScore = 8;
-    }
-
-    // Decide final verdict
     let finalVerdict;
-
-    if (finalScore <= 3) {
-      finalVerdict = "🚨 High Scam Risk";
-    }
-    else if (finalScore <= 7) {
-      finalVerdict = "⚠️ Needs Manual Verification";
-    }
-    else {
-      finalVerdict = "✅ Likely Genuine";
-    }
+    if (finalScore <= 3) finalVerdict = "🚨 High Scam Risk";
+    else if (finalScore <= 7) finalVerdict = "⚠️ Needs Manual Verification";
+    else finalVerdict = "✅ Likely Genuine";
 
     const isScam = finalScore <= 5;
-
     await trackScamResult(req.user.id, isScam, finalScore);
 
-    // Format red flags for display
     let redFlagsText = "";
     if (ruleBasedAnalysis.redFlags.length > 0) {
       redFlagsText = "\n\n🚩 **RED FLAGS DETECTED:**\n\n";
       ruleBasedAnalysis.redFlags.forEach((flag, index) => {
-        const emoji = {
-          critical: "🔴",
-          high: "🟠",
-          medium: "🟡",
-          low: "⚪",
-        }[flag.severity];
-
+        const emoji = { critical: "🔴", high: "🟠", medium: "🟡", low: "⚪" }[flag.severity];
         redFlagsText += `${index + 1}. ${emoji} **${flag.type.replace(/_/g, " ").toUpperCase()}**\n`;
         redFlagsText += `   ${flag.message}\n\n`;
       });
     }
 
-    let actionSection = "";
+    const actionSection =
+      finalScore <= 5
+        ? `## 🚨 If this is a SCAM:\n- Do NOT respond\n- Do NOT pay\n- Report to Cyber Crime Portal\n- Save as evidence`
+        : `## ✅ If this is GENUINE:\n- Respond through proper legal channels\n- Consult a lawyer if needed\n- Keep all documentation`;
 
-    if (finalScore <= 5) {
-      actionSection = `
-    ## 🚨 If this is a SCAM:
-
-    - Do NOT respond
-    - Do NOT pay
-    - Report to Cyber Crime Portal
-    - Save this notice as evidence
-    `;
-    }
-    else {
-      actionSection = `
-    ## ✅ If this is GENUINE:
-
-    - Respond through proper legal channels
-    - Consult a lawyer if needed
-    - Keep all documentation
-    `;
-    }
-
-    // Build final response
-  const finalResponse = `
+    const finalResponse = `
 # 🔍 SCAM DETECTION ANALYSIS
 
 ## 📊 Authenticity Score: ${finalScore}/10
-
 ## ${finalVerdict}
 
 ${redFlagsText}
@@ -769,39 +1011,21 @@ ${redFlagsText}
 ---
 
 ## 🤖 AI Analysis:
-
 ${aiResponse}
 
 ---
 
 ## ✅ VERIFICATION STEPS:
-
-1. **Check sender details**
-- Verify the court/authority name
-- Call the official landline (NOT the number in the notice)
-- Visit official website (.gov.in domain)
-
-2. **Verify case number**
-- Search case number on official court website
-- Contact court registrar office
-
+1. **Check sender details** - Verify court/authority name on official website (.gov.in)
+2. **Verify case number** - Search on official court website
 3. **Check for official seal/stamp**
-- Genuine notices have court seal
-- Signature of authorized officer
-
-4. **Never pay immediately**
-- Government never asks for urgent payments
-- No personal bank accounts or UPI
-- All payments through official portals
+4. **Never pay immediately** - Government never asks for urgent payments via UPI/personal accounts
 
 ${actionSection}
 
-${isOCR ? "\n📸 *Note: This was a scanned document processed via OCR*" : ""}
-  `.trim();
+${isOCR ? "\n📸 *Note: Scanned document processed via OCR*" : ""}
+    `.trim();
 
-    // ═══════════════════════════════════════════════════
-    // STEP 4: Save to database for learning
-    // ═══════════════════════════════════════════════════
     try {
       await ScamReport.create({
         reportedBy: req.user.id,
@@ -816,16 +1040,15 @@ ${isOCR ? "\n📸 *Note: This was a scanned document processed via OCR*" : ""}
       });
     } catch (dbError) {
       console.error("Failed to save scam report:", dbError);
-      // Don't fail the request if DB save fails
     }
 
-    // Save to chat history
     const session = `scam_${req.user.id}_${Date.now()}`;
     await saveToHistory(
       req.user.id,
       session,
       `[Scam Detection Request]\n${noticeText.trim().substring(0, 500)}...`,
-      finalResponse
+      finalResponse,
+      "scam_detection"
     );
 
     res.json({
@@ -844,26 +1067,31 @@ ${isOCR ? "\n📸 *Note: This was a scanned document processed via OCR*" : ""}
     console.error("SCAM DETECTION ERROR:", error);
     res.status(500).json({
       error: error.message,
-      reply: "Sorry, I could not analyze this notice. Please try again.",
+      reply: "Sorry, I could not analyze this notice.",
     });
   }
 };
 
-// ═══════════════════════════════════════
-// Chat History APIs
-// ═══════════════════════════════════════
+// ══════════════════════════════════════════
+// LEGACY Chat History APIs (kept for backward compatibility)
+// ══════════════════════════════════════════
+
 export const getChatHistory = async (req, res) => {
   try {
-    const { sessionId } = req.query;
+    const { sessionId, conversationId } = req.query;
 
     const filter = { user: req.user.id };
-    if (sessionId) {
+
+    if (conversationId) {
+      filter.conversation = conversationId;
+    } else if (sessionId) {
       filter.sessionId = sessionId;
     }
 
     const messages = await ChatMessage.find(filter)
       .sort({ createdAt: 1 })
-      .limit(100);
+      .limit(100)
+      .lean();
 
     res.json({ messages });
   } catch (error) {
@@ -873,27 +1101,28 @@ export const getChatHistory = async (req, res) => {
 
 export const getChatSessions = async (req, res) => {
   try {
-    const sessions = await ChatMessage.aggregate([
-      { 
-        $match: { 
-          user: new mongoose.Types.ObjectId(req.user.id) // ← convert to ObjectId
-        } 
-      },
-      { $sort: { createdAt: -1 } },
-      {
-        $group: {
-          _id: "$sessionId",
-          lastMessage: { $first: "$message" },
-          lastRole: { $first: "$role" },
-          lastTime: { $first: "$createdAt" },
-          messageCount: { $sum: 1 },
-        },
-      },
-      { $sort: { lastTime: -1 } },
-      { $limit: 20 },
-    ]);
+    // Return conversations instead of raw sessions
+    const conversations = await Conversation.find({
+      user: req.user.id,
+      isDeleted: false,
+    })
+      .sort({ isPinned: -1, lastActivityAt: -1 })
+      .limit(20)
+      .lean();
 
-    res.json({ sessions });
+    // Map to old format for backward compatibility
+    const sessions = conversations.map((conv) => ({
+      _id: conv._id,
+      sessionId: conv._id.toString(),
+      title: conv.title,
+      lastMessage: conv.lastMessage,
+      lastTime: conv.lastActivityAt,
+      messageCount: conv.messageCount,
+      type: conv.type,
+      isPinned: conv.isPinned,
+    }));
+
+    res.json({ sessions, conversations });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -902,10 +1131,32 @@ export const getChatSessions = async (req, res) => {
 export const deleteChatSession = async (req, res) => {
   try {
     const { sessionId } = req.params;
-    await ChatMessage.deleteMany({
-      user: req.user.id,
-      sessionId: sessionId,
-    });
+
+    // Try to delete by conversation ID first
+    let deleted = false;
+
+    if (mongoose.Types.ObjectId.isValid(sessionId)) {
+      const conversation = await Conversation.findOne({
+        _id: sessionId,
+        user: req.user.id,
+      });
+
+      if (conversation) {
+        conversation.isDeleted = true;
+        await conversation.save();
+        await ChatMessage.deleteMany({ conversation: sessionId });
+        deleted = true;
+      }
+    }
+
+    // Fallback: delete by sessionId string
+    if (!deleted) {
+      await ChatMessage.deleteMany({
+        user: req.user.id,
+        sessionId: sessionId,
+      });
+    }
+
     res.json({ message: "Chat session deleted" });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -915,6 +1166,10 @@ export const deleteChatSession = async (req, res) => {
 export const clearAllChats = async (req, res) => {
   try {
     await ChatMessage.deleteMany({ user: req.user.id });
+    await Conversation.updateMany(
+      { user: req.user.id },
+      { isDeleted: true }
+    );
     res.json({ message: "All chat history cleared" });
   } catch (error) {
     res.status(500).json({ error: error.message });

@@ -37,6 +37,42 @@ export const getCaseTimeline = (id: string) => API.get(`/cases/${id}/timeline`);
 export const updateCaseNotes = (id: string, data: { notes?: string; description?: string }) =>
   API.patch(`/cases/${id}`, data);
 
+// ── Saved Cases ────────────────────────────────────────────
+export const getSavedCases = () =>
+  API.get("/cases/saved");
+
+export const addSavedCase = (data: {
+  court: string;
+  caseType: string;
+  mtype: number;
+  caseNumber: string;
+  year: number;
+  label?: string;
+  cnrNumber?: string;
+}) => API.post("/cases/saved", data);
+
+export const deleteSavedCase = (id: string) =>
+  API.delete(`/cases/saved/${id}`);
+
+export const updateSavedCase = (id: string, data: { label?: string }) =>
+  API.patch(`/cases/saved/${id}`, data);
+
+// ── Track Cases ────────────────────────────────────────────
+export const trackByCredentials = (data: {
+  court: string;
+  caseType: string;
+  caseNumber: string;
+  year: number;
+  cnrNumber?: string;
+  captcha: string;
+  captchaId: string;
+  sessionCookie: string;
+  mtype: number;
+}) => API.post("/cases/track", data);
+
+export const trackSavedCase = (id: string) =>
+  API.get(`/cases/saved/${id}/track`);
+
 // ── Track ──────────────────────────────────────────────────
 export const trackCase = (caseId: string) =>
   API.get(`/cases/track/${encodeURIComponent(caseId)}`);
@@ -220,6 +256,27 @@ export const detectScam = (data: FormData | { notice: string }) => {
   return API.post("/ai/detect-scam", data);
 };
 
+// ── AI Conversations (New) ─────────────────────────────────
+export const getConversations = (params?: { page?: number; limit?: number; type?: string }) =>
+  API.get("/ai/conversations", { params });
+
+export const createConversation = (data: { title?: string; type?: string }) =>
+  API.post("/ai/conversations", data);
+
+export const getConversationById = (conversationId: string, params?: { page?: number }) =>
+  API.get(`/ai/conversations/${conversationId}`, { params });
+
+export const updateConversation = (
+  conversationId: string,
+  data: { title?: string; isPinned?: boolean }
+) => API.patch(`/ai/conversations/${conversationId}`, data);
+
+export const deleteConversation = (conversationId: string) =>
+  API.delete(`/ai/conversations/${conversationId}`);
+
+export const deleteAllConversations = () =>
+  API.delete("/ai/conversations/all");
+
 export const getChatHistory = (sessionId?: string) =>
   API.get("/ai/chat/history", { params: { sessionId } });
 export const getChatSessions = () => API.get("/ai/chat/sessions");
@@ -382,5 +439,10 @@ export const updateLanguage = (language: string) =>
 
 export const getLanguage = () =>
   API.get("/profile/language");
+
+export const getCaptcha = async () => {
+  const response = await API.get("/cases/captcha");
+  return response.data;
+};
 
 export default API;

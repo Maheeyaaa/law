@@ -1,119 +1,64 @@
+// backend/routes/aiRoutes.js
 import express from "express";
-
 import protect from "../middleware/authMiddleware.js";
-
 import upload from "../middleware/uploadMiddleware.js";
-
 import {
+  // AI Features
   chatbot,
   explainNotice,
+  calculateDeadline,
   decodeLegalTerm,
+  filingGuidance,
   generateChecklist,
   checkLegalAid,
   detectScam,
+  // Conversation CRUD
+  getConversations,
+  createConversation,
+  getConversationById,
+  updateConversation,
+  deleteConversation,
+  deleteAllConversations,
+  // Legacy
   getChatHistory,
   getChatSessions,
   deleteChatSession,
   clearAllChats,
 } from "../controllers/aiController.js";
 
-const router =
-  express.Router();
+const router = express.Router();
 
-// ======================
-// Protected
-// ======================
+// All routes require authentication
+router.use(protect);
 
-router.use(
-  protect
-);
+// ══════════════════════════════════════════
+// AI Feature Routes
+// ══════════════════════════════════════════
+router.post("/chatbot", chatbot);
+router.post("/explain-notice", upload.single("noticeFile"), explainNotice);
+router.post("/decode-term", decodeLegalTerm);
+router.post("/checklist", generateChecklist);
+router.post("/legal-aid", checkLegalAid);
+router.post("/detect-scam", upload.single("noticeFile"), detectScam);
+router.post("/deadline", calculateDeadline);
+router.post("/filing-guide", filingGuidance);
 
-// ======================
-// AI Features
-// ======================
+// ══════════════════════════════════════════
+// Conversation CRUD Routes (New)
+// ══════════════════════════════════════════
+router.get("/conversations", getConversations);
+router.post("/conversations", createConversation);
+router.get("/conversations/:conversationId", getConversationById);
+router.patch("/conversations/:conversationId", updateConversation);
+router.delete("/conversations/all", deleteAllConversations);
+router.delete("/conversations/:conversationId", deleteConversation);
 
-// General AI
-
-router.post(
-  "/chatbot",
-
-  chatbot
-);
-
-// Explain uploaded notice
-
-router.post(
-  "/explain-notice",
-
-  upload.single(
-    "noticeFile"
-  ),
-
-  explainNotice
-);
-
-// Decode legal terms
-
-router.post(
-  "/decode-term",
-
-  decodeLegalTerm
-);
-
-// Generate checklist
-
-router.post(
-  "/checklist",
-
-  generateChecklist
-);
-
-// Legal aid
-
-router.post(
-  "/legal-aid",
-
-  checkLegalAid
-);
-
-// Scam detection
-
-router.post(
-  "/detect-scam",
-
-  upload.single(
-    "noticeFile"
-  ),
-
-  detectScam
-);
-
-// ======================
-// Chat History
-// ======================
-
-router.get(
-  "/chat/history",
-
-  getChatHistory
-);
-
-router.get(
-  "/chat/sessions",
-
-  getChatSessions
-);
-
-router.delete(
-  "/chat/session/:sessionId",
-
-  deleteChatSession
-);
-
-router.delete(
-  "/chat/clear",
-
-  clearAllChats
-);
+// ══════════════════════════════════════════
+// Legacy Routes (kept for backward compatibility)
+// ══════════════════════════════════════════
+router.get("/chat/history", getChatHistory);
+router.get("/chat/sessions", getChatSessions);
+router.delete("/chat/session/:sessionId", deleteChatSession);
+router.delete("/chat/clear", clearAllChats);
 
 export default router;

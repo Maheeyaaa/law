@@ -22,6 +22,7 @@ import adminRoutes from "./routes/adminRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import { seedScamPatterns } from "./utils/scamDetector.js";
+import SavedCase from "./models/SavedCase.js";
 
 dns.setServers(["1.1.1.1", "8.8.8.8"]);
 dotenv.config();
