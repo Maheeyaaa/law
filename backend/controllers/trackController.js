@@ -1,486 +1,261 @@
 // backend/controllers/trackController.js
-import axios from "axios";
-import * as cheerio from "cheerio";
-import https from "https";
+
 import SavedCase from "../models/SavedCase.js";
+import {
+  getTrackingService,
+  validateCourtSupport,
+} from "../services/tracking/index.js";
+import { getCourtConfig } from "../constants/courtRegistry.js";
+import ChangeDetector from "../services/notifications/ChangeDetector.js";
+import NotificationService from "../services/notifications/NotificationService.js";
 
-const httpsAgent = new https.Agent({ rejectUnauthorized: false });
+// ══════════════════════════════════════════════════════════════════
+// GET CAPTCHA
+// ══════════════════════════════════════════════════════════════════
 
-const ecourtsAxios = axios.create({
-  httpsAgent,
-  timeout: 15000,
-  headers: {
-    "User-Agent": "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 Chrome/124.0 Mobile Safari/537.36",
-    "Accept": "application/json, text/javascript, */*; q=0.01",
-    "Accept-Language": "en-IN,en;q=0.9",
-    "X-Requested-With": "XMLHttpRequest",
-  },
-});
-
-// ══════════════════════════════════════════════════════════
-// CNR SEARCH
-// ══════════════════════════════════════════════════════════
-const searchByCNR = async (cnrNumber) => {
+export const getCaptcha = async (req, res) => {
   try {
-    console.log("Searching by CNR:", cnrNumber);
+    const courtName = req.query.court || "Telangana High Court, Hyderabad";
 
-    // Step 1 — Get session cookies and token
-    const homeRes = await ecourtsAxios.get(
-      "https://services.ecourts.gov.in/ecourtindia_v6/",
-      {
-        headers: {
-          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-          "X-Requested-With": undefined,
-        },
-      }
-    );
-
-    const $home = cheerio.load(homeRes.data);
-    const appToken =
-      $home('input[name="app_token"]').val() ||
-      $home('input[name="_token"]').val() ||
-      $home('meta[name="csrf-token"]').attr("content") || "";
-
-    const cookies = (homeRes.headers["set-cookie"] || [])
-      .map((c) => c.split(";")[0])
-      .join("; ");
-
-    console.log("Session - token:", appToken ? "found" : "not found");
-    console.log("Session - cookies:", cookies ? "found" : "not found");
-
-    // Log all hidden inputs for debugging
-    const hiddenInputs = [];
-    $home("input[type='hidden']").each((_, el) => {
-      hiddenInputs.push({
-        name: $home(el).attr("name"),
-        value: ($home(el).val() || "").substring(0, 30),
-      });
-    });
-    console.log("Hidden inputs found:", JSON.stringify(hiddenInputs));
-
-    // Step 2 — Try all known CNR endpoints
-    const cnrEndpoints = [
-      // Most likely correct endpoints based on eCourts v6 structure
-      {
-        url: "https://services.ecourts.gov.in/ecourtindia_v6/?p=casestatus/getCNRDetails",
-        body: { cino: cnrNumber, ajax_req: "true", app_token: appToken },
-      },
-      {
-        url: "https://services.ecourts.gov.in/ecourtindia_v6/?p=casestatus/viewCase",
-        body: { cino: cnrNumber, ajax_req: "true", app_token: appToken },
-      },
-      {
-        url: "https://services.ecourts.gov.in/ecourtindia_v6/",
-        body: { p: "casestatus/getCNRDetails", cino: cnrNumber, ajax_req: "true", app_token: appToken },
-      },
-      {
-        url: "https://services.ecourts.gov.in/ecourtindia_v6/",
-        body: { p: "casestatus/submitCNRSearch", cino: cnrNumber, ajax_req: "true", app_token: appToken },
-      },
-    ];
-
-    for (const ep of cnrEndpoints) {
-      try {
-        console.log("Trying:", ep.url);
-
-        const res = await ecourtsAxios.post(
-          ep.url,
-          new URLSearchParams(ep.body),
-          {
-            headers: {
-              "Content-Type":     "application/x-www-form-urlencoded",
-              "Referer":          "https://services.ecourts.gov.in/ecourtindia_v6/",
-              "Cookie":           cookies,
-              "Origin":           "https://services.ecourts.gov.in",
-              "X-Requested-With": "XMLHttpRequest",
-            },
-          }
-        );
-
-        const preview = JSON.stringify(res.data).substring(0, 200);
-        console.log("Response:", preview);
-
-        // Skip error responses
-        const dataStr = JSON.stringify(res.data).toLowerCase();
-        if (
-          dataStr.includes('"errormsg"') ||
-          dataStr.includes("page not found") ||
-          dataStr.includes("404")
-        ) {
-          console.log("→ Error response, skipping");
-          continue;
-        }
-
-        // Skip if it's just the homepage HTML
-        if (
-          typeof res.data === "string" &&
-          res.data.includes("e-committee") &&
-          res.data.includes("supreme court")
-        ) {
-          console.log("→ Homepage returned, skipping");
-          continue;
-        }
-
-        // Looks like a valid response
-        console.log("→ Valid response found!");
-        const parsed = parseCNRResponse(res.data, cnrNumber);
-        if (parsed) return parsed;
-
-      } catch (e) {
-        console.log("→ Failed:", e.message);
-        continue;
-      }
-    }
-
-    // Step 3 — Try High Court services if CNR starts with H
-    console.log("Trying High Court services...");
-    const hcResult = await searchHCByCNR(cnrNumber, appToken, cookies);
-    if (hcResult) return hcResult;
-
-    console.log("All endpoints exhausted");
-    return null;
-
-  } catch (error) {
-    console.error("CNR search error:", error.message);
-    return null;
-  }
-};
-
-// ── High Court CNR Search ──────────────────────────────────
-const searchHCByCNR = async (cnrNumber, appToken, cookies) => {
-  try {
-    console.log("HC CNR search for:", cnrNumber);
-
-    // Get HC session
-    const hcHomeRes = await ecourtsAxios.get(
-      "https://hcservices.ecourts.gov.in/hcservices/main.php",
-      {
-        headers: {
-          "Accept": "text/html,application/xhtml+xml",
-          "X-Requested-With": undefined,
-        },
-      }
-    );
-
-    const $hc = cheerio.load(hcHomeRes.data);
-    const hcToken =
-      $hc('input[name="app_token"]').val() ||
-      $hc('input[name="_token"]').val() || appToken || "";
-
-    const hcCookies = (hcHomeRes.headers["set-cookie"] || [])
-      .map((c) => c.split(";")[0])
-      .join("; ");
-
-    console.log("HC token:", hcToken ? "found" : "not found");
-
-    const hcEndpoints = [
-      "https://hcservices.ecourts.gov.in/hcservices/main.php?p=hcs_casestatus/getCNRDetails",
-      "https://hcservices.ecourts.gov.in/hcservices/main.php?p=hcs_casestatus/submitCNRSearch",
-      "https://hcservices.ecourts.gov.in/hcservices/main.php?p=hcs_casestatus/viewCase",
-    ];
-
-    for (const endpoint of hcEndpoints) {
-      try {
-        console.log("Trying HC endpoint:", endpoint);
-
-        const res = await ecourtsAxios.post(
-          endpoint,
-          new URLSearchParams({
-            cino:       cnrNumber.trim().toUpperCase(),
-            ajax_req:   "true",
-            app_token:  hcToken,
-            state_code: "18",
-          }),
-          {
-            headers: {
-              "Content-Type":     "application/x-www-form-urlencoded",
-              "Referer":          "https://hcservices.ecourts.gov.in/hcservices/main.php",
-              "Cookie":           hcCookies || cookies,
-              "Origin":           "https://hcservices.ecourts.gov.in",
-              "X-Requested-With": "XMLHttpRequest",
-            },
-          }
-        );
-
-        console.log("HC response preview:", JSON.stringify(res.data).substring(0, 200));
-
-        const dataStr = JSON.stringify(res.data).toLowerCase();
-        if (
-          dataStr.includes('"errormsg"') ||
-          dataStr.includes("page not found") ||
-          dataStr.includes("404")
-        ) {
-          console.log("→ HC Error response, skipping");
-          continue;
-        }
-
-        if (
-          typeof res.data === "string" &&
-          res.data.includes("e-committee")
-        ) {
-          console.log("→ HC Homepage returned, skipping");
-          continue;
-        }
-
-        console.log("→ HC Valid response!");
-        return res.data;
-
-      } catch (e) {
-        console.log("→ HC endpoint failed:", e.message);
-        continue;
-      }
-    }
-
-    return null;
-  } catch (error) {
-    console.error("HC CNR search error:", error.message);
-    return null;
-  }
-};
-
-// ── Parse CNR Response ─────────────────────────────────────
-const parseCNRResponse = (data, cnrNumber) => {
-  try {
-    let htmlContent = "";
-
-    if (typeof data === "string") {
-      htmlContent = data;
-    } else if (data?.case_details) {
-      htmlContent = data.case_details;
-    } else if (data?.data) {
-      htmlContent = data.data;
-    } else if (data?.html) {
-      htmlContent = data.html;
+    let service;
+    if (courtName.toLowerCase().includes("high court")) {
+      service = getTrackingService("Telangana High Court, Hyderabad");
     } else {
-      htmlContent = JSON.stringify(data);
-    }
-
-    const $ = cheerio.load(htmlContent);
-    const fullText = $.text().toLowerCase();
-
-    console.log("Parsed HTML text sample:", fullText.substring(0, 300));
-
-    // Check for no record
-    if (
-      fullText.includes("no record") ||
-      fullText.includes("not found") ||
-      fullText.includes("invalid cnr") ||
-      fullText.includes("page not found") ||
-      fullText.includes("errormsg")
-    ) {
-      console.log("CNR: No record found in parsed response");
-      return null;
-    }
-
-    // Extract using table row search
-    const extractRow = (keywords) => {
-      let result = "";
-      $("tr").each((_, row) => {
-        const cells = $(row).find("td");
-        if (cells.length >= 2) {
-          const label = $(cells[0]).text().trim().toLowerCase();
-          if (keywords.some((k) => label.includes(k))) {
-            result = $(cells[cells.length - 1]).text().trim();
-            return false;
-          }
-        }
+      const ECourtsService = (await import("../services/tracking/ECourtsService.js")).default;
+      service = new ECourtsService({
+        displayName:     courtName,
+        provider:        "ECOURTS",
+        captchaProvider: "ECOURTS",
+        supported:       true,
       });
-      return result;
-    };
-
-    const getSelector = (selectors) => {
-      for (const sel of selectors) {
-        const el = $(sel);
-        if (el.length && el.text().trim()) {
-          return el.text().trim();
-        }
-      }
-      return "";
-    };
-
-    const petitioner = getSelector([
-      ".Petitioner_Advocate_table td",
-      ".pet_name",
-      "#petitioner_name",
-    ]) || extractRow(["petitioner", "appellant", "plaintiff", "applicant"]);
-
-    const respondent = getSelector([
-      ".Respondent_Advocate_table td",
-      ".res_name",
-      "#respondent_name",
-    ]) || extractRow(["respondent", "defendant", "opposite party"]);
-
-    const status   = getSelector([".case_status_table td", "#case_status", ".status"]) ||
-                     extractRow(["status", "stage", "case stage"]);
-    const judge    = extractRow(["judge", "bench", "coram", "presiding"]);
-    const nextDate = extractRow(["next date", "next hearing", "adjourned to", "listed on"]);
-    const lastDate = extractRow(["last date", "previous date", "last hearing"]);
-
-    // Hearing history
-    const history = [];
-    $("table").each((_, table) => {
-      const headers = $(table).find("th")
-        .map((_, th) => $(th).text().trim().toLowerCase()).get();
-      if (
-        headers.some((h) => h.includes("date")) &&
-        headers.some((h) =>
-          h.includes("purpose") || h.includes("business") ||
-          h.includes("order")   || h.includes("stage")
-        )
-      ) {
-        $(table).find("tr").slice(1).each((_, row) => {
-          const cols = $(row).find("td");
-          if (cols.length >= 2 && $(cols[0]).text().match(/\d/)) {
-            history.push({
-              date:    $(cols[0]).text().trim(),
-              purpose: $(cols[1]).text().trim(),
-              result:  cols.length >= 3 ? $(cols[2]).text().trim() : "",
-            });
-          }
-        });
-        return false;
-      }
-    });
-
-    console.log("CNR parse result:", {
-      petitioner: petitioner || "not found",
-      status:     status     || "not found",
-      judge:      judge      || "not found",
-      history:    history.length,
-    });
-
-    if (!petitioner && !status && !judge && history.length === 0) {
-      console.log("CNR: No meaningful data in response");
-      return null;
     }
 
-    return {
-      found:       true,
-      source:      "eCourts India",
-      cnrNumber,
-      caseStatus:  status      || "Pending",
-      petitioner:  petitioner  || "As per court records",
-      respondent:  respondent  || "As per court records",
-      nextHearing: nextDate    || "Not yet fixed",
-      lastHearing: lastDate    || (history.length > 0 ? history[0].date : null),
-      judge:       judge       || "As per court records",
-      courtHall:   "As per cause list",
-      caseHistory: history,
-      lastUpdated: new Date(),
-    };
+    const result = await service.getCaptcha();
+    return res.json(result);
+
   } catch (error) {
-    console.error("CNR parse error:", error.message);
-    return null;
+    console.error("[getCaptcha] Error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch captcha",
+    });
   }
 };
 
-// ══════════════════════════════════════════════════════════
-// CONTROLLERS
-// ══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════
+// TRACK BY CREDENTIALS
+// ══════════════════════════════════════════════════════════════════
+
+export const trackByCredentials = async (req, res) => {
+  try {
+    const {
+      court,
+      caseType,
+      caseNumber,
+      year,
+      mtype,
+      captcha,
+      captchaId,
+      sessionCookie,
+      cnrNumber,
+      distCode,
+      complexCode,
+    } = req.body;
+
+    if (!court) {
+      return res.status(400).json({ success: false, message: "Please select a court" });
+    }
+    if (!caseType || !caseNumber || !year) {
+      return res.status(400).json({ success: false, message: "Case type, case number, and year are required" });
+    }
+
+    // Detect provider
+    let service;
+    let provider;
+
+    if (court.toLowerCase().includes("high court")) {
+      service = getTrackingService("Telangana High Court, Hyderabad");
+      provider = "TELANGANA_HC";
+    } else {
+      const ECourtsService = (await import("../services/tracking/ECourtsService.js")).default;
+      service = new ECourtsService({
+        displayName:      court,
+        provider:         "ECOURTS",
+        captchaProvider:  "ECOURTS",
+        supported:        true,
+        stateCode:        "29",
+        distCode:         distCode    || "",
+        courtComplexCode: complexCode || "",
+      });
+      provider = "ECOURTS";
+    }
+
+    // ── Fetch fresh data from court ──────────────────────────────
+    const result = await service.trackByCredentials({
+      court,
+      caseType,
+      caseNumber:    String(caseNumber).trim(),
+      year:          Number(year),
+      mtype:         mtype !== undefined ? mtype : 0,
+      captcha:       captcha       || "",
+      captchaId:     captchaId     || "",
+      sessionCookie: sessionCookie || "",
+      cnrNumber:     cnrNumber     || "",
+      distCode:      distCode      || "",
+      complexCode:   complexCode   || "",
+    });
+
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: "Case not found. Please verify the case details and try again.",
+        court,
+      });
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // CHANGE DETECTION
+    // Find the saved case, compare old vs new, create notifications
+    // ══════════════════════════════════════════════════════════════
+    if (req.user?.id) {
+      try {
+        const savedCase = await SavedCase.findOne({
+          user:       req.user.id,
+          court,
+          caseType,
+          caseNumber: String(caseNumber).trim(),
+          year:       Number(year),
+        });
+
+        if (savedCase) {
+          const changes = ChangeDetector.detect(
+            savedCase.cachedTrackingData,
+            result
+          );
+
+          if (changes.length > 0) {
+            // Check user's preferences before sending
+            const User = (await import("../models/User.js")).default;
+            const user = await User.findById(req.user.id).select("notificationPreferences");
+            const caseUpdatesEnabled = user?.notificationPreferences?.caseUpdates !== false;
+
+            if (caseUpdatesEnabled) {
+              const caseLabel = savedCase.label || `${savedCase.caseType} ${savedCase.caseNumber}/${savedCase.year}`;
+              const link      = `/citizen/track?savedCase=${savedCase._id}`;
+
+              for (const change of changes) {
+                let title = "📋 Case Updated";
+                if (change.subType === "status_change")     title = "🔄 Status Changed";
+                if (change.subType === "next_date_change")  title = "📆 Hearing Date Changed";
+                if (change.subType === "judge_change")      title = "👨‍⚖️ Judge Changed";
+                if (change.subType === "new_history_entry") title = "📝 New Court Entry";
+
+                await NotificationService.send({
+                  userId:        req.user.id,
+                  title,
+                  message:       `${caseLabel}: ${change.message}`,
+                  type:          "case_update",
+                  subType:       change.subType,
+                  relatedCase:   savedCase._id,
+                  link,
+                  changeDetails: change,
+                });
+              }
+
+              console.log(`[trackByCredentials] Sent ${changes.length} change notification(s) to user ${req.user.id}`);
+            }
+          }
+        }
+      } catch (changeErr) {
+        console.error("[trackByCredentials] Change detection failed:", changeErr.message);
+        // Don't fail the request — change detection is non-critical
+      }
+    }
+
+    // ── Update cache with fresh data ──────────────────────────────
+    if (cnrNumber || caseNumber) {
+      SavedCase.findOneAndUpdate(
+        { court, caseNumber: String(caseNumber), year: Number(year) },
+        { lastTrackedAt: new Date(), cachedTrackingData: result }
+      ).catch((e) => console.error("[trackByCredentials] Cache update failed:", e.message));
+    }
+
+    return res.json({ success: true, ...result });
+
+  } catch (error) {
+    console.error("[trackByCredentials] Error:", error.message);
+
+    if (error.message === "INVALID_CAPTCHA") {
+      return res.status(422).json({
+        success:        false,
+        invalidCaptcha: true,
+        message:        "Invalid captcha. Please refresh and try again.",
+      });
+    }
+
+    if (error.message.includes("coming soon") || error.message.includes("not yet implemented")) {
+      return res.status(422).json({
+        success:    false,
+        comingSoon: true,
+        message:    error.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch case details",
+    });
+  }
+};
+
+// ══════════════════════════════════════════════════════════════════
+// TRACK BY CNR
+// ══════════════════════════════════════════════════════════════════
 
 export const trackByCNR = async (req, res) => {
   try {
-    const { cnrNumber } = req.body;
+    const { cnrNumber, court } = req.body;
+
     if (!cnrNumber || cnrNumber.trim().length < 16) {
       return res.status(400).json({
         success: false,
         message: "Please enter a valid 16-character CNR number",
       });
     }
-    const data = await searchByCNR(cnrNumber.trim());
-    if (!data) {
+
+    const courtName = court || resolveCNRCourt(cnrNumber);
+    const service   = getTrackingService(courtName);
+
+    const result = await service.trackByCNR(cnrNumber.trim().toUpperCase());
+
+    if (!result) {
       return res.status(404).json({
         success: false,
-        message: "Case not found"
+        message: "Case not found for this CNR number",
       });
     }
-    res.json({ success: true, ...data });
+
+    return res.json({ success: true, ...result });
+
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error("[trackByCNR] Error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "CNR search failed",
+    });
   }
 };
 
-export const trackByCredentials = async (req, res) => {
-
-  console.log("=== TRACK BY CREDENTIALS ===");
-  console.log(req.body);
-
-  try {
-    const { court, caseType, caseNumber, year, cnrNumber, captcha, captchaId, sessionCookie, mtype } = req.body;
-    console.log("Received mtype:", mtype);
-    if (!captcha || !captchaId || !sessionCookie) {
-      return res.status(400).json({
-        success: false,
-        message: "Captcha is required"
-      });
-}
-
-    try {
-      console.log("Sending request to TSHC...");
-      const response = await axios.post(
-        "https://csis.tshc.gov.in/getCaseDetails",
-        new URLSearchParams({
-          mtype: String(mtype),
-          mno: String(caseNumber),
-          myear: String(year),
-          captcha,
-          captchaId,
-        }),
-        {
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            Cookie: sessionCookie,
-            Referer: "https://csis.tshc.gov.in/",
-            Origin: "https://csis.tshc.gov.in",
-          },
-        }
-      );
-       console.log("Request completed");
-        console.log("TSHC Response:");
-        console.log(response.data);
-
-      return res.json({
-        success: true,
-        court,
-        caseType,
-        caseNumber,
-        year,
-
-        petitioner: response.data.primary.petitioner,
-        respondent: response.data.primary.respondent,
-        caseStatus: response.data.primary.casestatus,
-        judge: response.data.primary.judges,
-        nextHearing: response.data.primary.listingdate,
-        district: response.data.primary.district,
-
-        rawData: response.data,
-      });
-
-    } catch (error) {
-
-        console.log("===== TSHC ERROR =====");
-        console.log(error.response?.status);
-        console.log(error.response?.data);
-        console.log(error.message);
-
-        return res.status(500).json({
-          success: false,
-          message: "Failed to fetch case details",
-        });
-      }
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
+// ══════════════════════════════════════════════════════════════════
+// TRACK SAVED CASE
+// ══════════════════════════════════════════════════════════════════
 
 export const trackSavedCase = async (req, res) => {
   try {
     const savedCase = await SavedCase.findOne({
-      _id: req.params.id,
+      _id:  req.params.id,
       user: req.user.id,
     });
-
-    console.log("Saved Case Found:", savedCase);
 
     if (!savedCase) {
       return res.status(404).json({
@@ -489,72 +264,142 @@ export const trackSavedCase = async (req, res) => {
       });
     }
 
-    const savedCaseInfo = {
-      _id:        savedCase._id,
-      label:      savedCase.label,
-      court:      savedCase.court,
-      caseType:   savedCase.caseType,
-      mtype:      savedCase.mtype,
-      caseNumber: savedCase.caseNumber,
-      year:       savedCase.year,
-      cnrNumber:  savedCase.cnrNumber,
-    };
+    const courtConfig = getCourtConfig(savedCase.court);
 
     return res.json({
       success: true,
-      savedCase: savedCaseInfo,
-      credentials: {
-        court: savedCase.court,
-        caseType: savedCase.caseType,
-        mtype: savedCase.mtype,
+      savedCase: {
+        _id:        savedCase._id,
+        label:      savedCase.label,
+        court:      savedCase.court,
+        caseType:   savedCase.caseType,
+        mtype:      savedCase.mtype,
         caseNumber: savedCase.caseNumber,
-        year: savedCase.year,
-        cnrNumber: savedCase.cnrNumber || ""
+        year:       savedCase.year,
+        cnrNumber:  savedCase.cnrNumber,
+        provider:   savedCase.provider,
+        courtCode:  savedCase.courtCode,
       },
-      message: "Case loaded successfully"
+      credentials: {
+        court:      savedCase.court,
+        caseType:   savedCase.caseType,
+        mtype:      savedCase.mtype,
+        caseNumber: savedCase.caseNumber,
+        year:       savedCase.year,
+        cnrNumber:  savedCase.cnrNumber || "",
+        provider:   savedCase.provider  || courtConfig?.provider,
+        distCode:     savedCase.distCode    || "",
+        distName:     savedCase.distName    || "",
+        complexCode:  savedCase.complexCode || "",
+        complexName:  savedCase.complexName || "",
+      },
+      courtConfig: courtConfig ? {
+        provider:        courtConfig.provider,
+        captchaProvider: courtConfig.captchaProvider,
+        caseTypeSet:     courtConfig.caseTypeSet,
+        supported:       courtConfig.supported,
+        comingSoon:      courtConfig.comingSoon || false,
+      } : null,
+      message: "Case loaded successfully",
     });
+
   } catch (error) {
-    console.error("trackSavedCase error:", error.message);
-    res.status(500).json({ success: false, error: error.message });
+    console.error("[trackSavedCase] Error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
+// ══════════════════════════════════════════════════════════════════
+// GET COURT INFO
+// ══════════════════════════════════════════════════════════════════
+
+export const getCourtInfo = async (req, res) => {
+  try {
+    const courtName = req.query.court;
+
+    if (!courtName) {
+      return res.status(400).json({
+        success: false,
+        message: "court query param is required",
+      });
+    }
+
+    const config = getCourtConfig(courtName);
+
+    if (!config) {
+      return res.status(404).json({
+        success: false,
+        message: `Court "${courtName}" not found in registry`,
+      });
+    }
+
+    const service   = getTrackingService(courtName);
+    const caseTypes = service.getCaseTypes?.() || [];
+
+    return res.json({
+      success: true,
+      court:   courtName,
+      config: {
+        provider:        config.provider,
+        captchaProvider: config.captchaProvider,
+        caseTypeSet:     config.caseTypeSet,
+        supported:       config.supported,
+        comingSoon:      config.comingSoon || false,
+        stateCode:       config.stateCode,
+        districtCode:    config.districtCode,
+      },
+      caseTypes,
+    });
+
+  } catch (error) {
+    console.error("[getCourtInfo] Error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ══════════════════════════════════════════════════════════════════
+// DEPRECATED
+// ══════════════════════════════════════════════════════════════════
+
 export const trackCase = async (req, res) => {
-  return res.status(410).json({ message: "Deprecated. Use POST /api/cases/track instead." });
+  return res.status(410).json({
+    message: "Deprecated. Use POST /api/track/credentials instead.",
+  });
 };
 
 export const trackCaseById = async (req, res) => {
-  return res.status(410).json({ message: "Deprecated. Use POST /api/cases/track instead." });
+  return res.status(410).json({
+    message: "Deprecated. Use POST /api/track/credentials instead.",
+  });
 };
 
-export const getCaptcha = async (req, res) => {
-  try {
-    const response = await axios.get(
-      "https://csis.tshc.gov.in/generateCaptcha",
-      {
-        responseType: "arraybuffer",
-      }
-    );
+// ══════════════════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════════════════
 
-    const captchaId = response.headers["captcha-id"];
+const resolveCNRCourt = (cnrNumber) => {
+  const prefix = cnrNumber.toUpperCase().substring(0, 4);
 
-    const cookie =
-      response.headers["set-cookie"]?.[0]?.split(";")[0] || "";
+  const prefixMap = {
+    TSHC: "Telangana High Court, Hyderabad",
+    TSHY: "District Court, Hyderabad",
+    TSRR: "District Court, Rangareddy",
+    TSMM: "District Court, Medchal-Malkajgiri",
+    TSSR: "District Court, Sangareddy",
+    TSWU: "District Court, Warangal",
+    TSKR: "District Court, Karimnagar",
+    TSNZ: "District Court, Nizamabad",
+    TSKM: "District Court, Khammam",
+    TSNL: "District Court, Nalgonda",
+    TSAD: "District Court, Adilabad",
+    TSMB: "District Court, Mahabubnagar",
+  };
 
-    const imageBase64 = Buffer.from(response.data).toString("base64");
-
-    res.json({
-      success: true,
-      captchaId,
-      sessionCookie: cookie,
-      image: `data:image/png;base64,${imageBase64}`,
-    });
-  } catch (error) {
-    console.error("Captcha error:", error.message);
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch captcha",
-    });
-  }
+  return prefixMap[prefix] || "Telangana High Court, Hyderabad";
 };

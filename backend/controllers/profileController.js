@@ -409,3 +409,111 @@ export const getLanguage = async (req, res) => {
     });
   }
 };
+
+// ══════════════════════════════════════════════════════════
+// Get Notification Preferences
+// ══════════════════════════════════════════════════════════
+export const getNotificationPreferences = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select(
+      "notificationPreferences pushSubscriptions"
+    );
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    res.json({
+      success: true,
+      preferences: user.notificationPreferences || {
+        hearingReminders: true,
+        caseUpdates:      true,
+        pushEnabled:      false,
+        reminderDays:     [7, 1, 0],
+      },
+      devices: (user.pushSubscriptions || []).map((sub) => ({
+        deviceLabel: sub.deviceLabel,
+        createdAt:   sub.createdAt,
+        endpoint:    sub.endpoint,
+      })),
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ══════════════════════════════════════════════════════════
+// Update Notification Preferences
+// ══════════════════════════════════════════════════════════
+export const updateNotificationPreferences = async (req, res) => {
+  try {
+    const { hearingReminders, caseUpdates, reminderDays } = req.body;
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    if (!user.notificationPreferences) {
+      user.notificationPreferences = {
+        hearingReminders: true,
+        caseUpdates:      true,
+        pushEnabled:      false,
+        reminderDays:     [7, 1, 0],
+      };
+    }
+
+    if (hearingReminders !== undefined) {
+      user.notificationPreferences.hearingReminders = hearingReminders;
+    }
+    if (caseUpdates !== undefined) {
+      user.notificationPreferences.caseUpdates = caseUpdates;
+    }
+    if (Array.isArray(reminderDays)) {
+      user.notificationPreferences.reminderDays = reminderDays;
+    }
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "Notification preferences updated",
+      preferences: user.notificationPreferences,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ══════════════════════════════════════════════════════════
+// Remove A Specific Device
+// ══════════════════════════════════════════════════════════
+export const removeDevice = async (req, res) => {
+  try {
+    const { endpoint } = req.body;
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const before = user.pushSubscriptions.length;
+    user.pushSubscriptions = user.pushSubscriptions.filter(
+      (sub) => sub.endpoint !== endpoint
+    );
+
+    if (user.pushSubscriptions.length === 0) {
+      user.notificationPreferences.pushEnabled = false;
+    }
+
+    await user.save();
+
+    res.json({
+      success: true,
+      removed:   before - user.pushSubscriptions.length,
+      remaining: user.pushSubscriptions.length,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

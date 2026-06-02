@@ -43,12 +43,17 @@ export const getSavedCases = () =>
 
 export const addSavedCase = (data: {
   court: string;
+  courtComplex?: string;
   caseType: string;
   mtype: number;
   caseNumber: string;
   year: number;
   label?: string;
   cnrNumber?: string;
+  distCode?: string;
+  distName?: string;
+  complexCode?: string;
+  complexName?: string;
 }) => API.post("/cases/saved", data);
 
 export const deleteSavedCase = (id: string) =>
@@ -63,20 +68,27 @@ export const trackByCredentials = (data: {
   caseType: string;
   caseNumber: string;
   year: number;
+  mtype: number;
   cnrNumber?: string;
   captcha: string;
   captchaId: string;
   sessionCookie: string;
-  mtype: number;
-}) => API.post("/cases/track", data);
+  distCode?: string;
+  complexCode?: string;
+}) => API.post("/track/credentials", data);
 
-export const trackSavedCase = (id: string) =>
-  API.get(`/cases/saved/${id}/track`);
+export const trackByCNR = (data: {
+  cnrNumber: string;
+  court?:    string;
+}) => API.post("/track/cnr", data);
 
-// ── Track ──────────────────────────────────────────────────
-export const trackCase = (caseId: string) =>
-  API.get(`/cases/track/${encodeURIComponent(caseId)}`);
-export const trackCaseById = (id: string) => API.get(`/cases/${id}`);
+export const trackSavedCase = (savedCaseId: string) =>
+  API.get(`/track/saved/${savedCaseId}`);
+
+export const getCourtInfo = (courtName: string) => {
+  const encoded = encodeURIComponent(courtName);
+  return API.get(`/track/court-info?court=${encoded}`);
+};
 
 // ── Hearings / Consultations ───────────────────────────────
 export const getMyHearings = (params = {}) =>
@@ -440,9 +452,48 @@ export const updateLanguage = (language: string) =>
 export const getLanguage = () =>
   API.get("/profile/language");
 
-export const getCaptcha = async () => {
-  const response = await API.get("/cases/captcha");
-  return response.data;
+export const getCaptcha = (courtName?: string) => {
+  const court = courtName || "Telangana High Court, Hyderabad";
+  const encoded = encodeURIComponent(court);
+  return API.get(`/track/captcha?court=${encoded}`);
 };
+
+// ── eCourts Dropdown APIs ──────────────────────────────────
+export const getECourtsDistricts = () =>
+  API.get("/track/ecourts/districts");
+
+export const getECourtsComplexes = (distCode: string) =>
+  API.get("/track/ecourts/complexes", { params: { distCode } });
+
+export const getECourtsCaseTypes = (distCode: string, complexCode: string) =>
+  API.get("/track/ecourts/case-types", { params: { distCode, complexCode } });
+
+// ── Push Notifications ─────────────────────────────────────
+export const getPushPublicKey = () => API.get("/push/public-key");
+
+export const subscribePush = (data: {
+  subscription: any;
+  deviceLabel:  string;
+}) => API.post("/push/subscribe", data);
+
+export const unsubscribePush = (endpoint: string) =>
+  API.post("/push/unsubscribe", { endpoint });
+
+export const testPush = () => API.post("/push/test");
+
+export const getPushSubscriptions = () => API.get("/push/subscriptions");
+
+// ── Notification Preferences ────────────────────────────────────
+export const getNotificationPreferences = () =>
+  API.get("/profile/notifications");
+
+export const updateNotificationPreferences = (data: {
+  hearingReminders?: boolean;
+  caseUpdates?:      boolean;
+  reminderDays?:     number[];
+}) => API.patch("/profile/notifications", data);
+
+export const removeDevice = (endpoint: string) =>
+  API.delete("/profile/device", { data: { endpoint } });
 
 export default API;

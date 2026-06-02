@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, CSSProperties, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { getDashboard, globalSearch, createCase } from "../services/api";
+import NotificationBell from "../components/NotificationBell";
 
 /* ──────────── Fonts & tokens ──────────── */
 const BN: CSSProperties = { fontFamily: "'Bebas Neue',cursive" };
@@ -580,6 +581,8 @@ export default function CitizenDashboard() {
             </div>
           </div>
         ) : (
+          <>
+
           <div style={{ padding: "13px", display: "flex", flexDirection: "column", gap: 28 }}>
             {/* ═══════ TOP NAVBAR ═══════ */}
             <nav
@@ -625,7 +628,10 @@ export default function CitizenDashboard() {
                   ))}
                 </div>
 
-                <button
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                    <NotificationBell />
+
+                <button 
                   onClick={() => navigate("/citizen/account")}
                   title="My Account"
                   style={{
@@ -674,6 +680,7 @@ export default function CitizenDashboard() {
                     {userInitials}
                   </div>
                 </button>
+              </div>
               </div>
             </nav>
 
@@ -1594,6 +1601,7 @@ export default function CitizenDashboard() {
               </Plate>
             </div>
           </div>
+          </>
         )}
       </main>
     </div>

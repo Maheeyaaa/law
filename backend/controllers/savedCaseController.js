@@ -5,7 +5,7 @@ import SavedCase from "../models/SavedCase.js";
 export const addSavedCase = async (req, res) => {
     console.log(req.body);
   try {
-    const { court, caseType, mtype, caseNumber, year, label, cnrNumber } = req.body;
+    const { court, courtComplex, caseType, mtype, caseNumber, year, label, cnrNumber, distCode, distName, complexCode, complexName } = req.body;
 
     if (!court || !caseType || !mtype || !caseNumber || !year) {
       return res.status(400).json({
@@ -25,6 +25,7 @@ export const addSavedCase = async (req, res) => {
     const existing = await SavedCase.findOne({
       user: req.user.id,
       court: court.trim(),
+      courtComplex: courtComplex?.trim() || "",
       caseType: caseType.trim(),
       mtype: Number(mtype),
       caseNumber: caseNumber.trim(),
@@ -47,6 +48,11 @@ export const addSavedCase = async (req, res) => {
       year: parseInt(year),
       cnrNumber: cnrNumber?.trim().toUpperCase() || "",
       label: label?.trim() || "",
+      courtComplex: courtComplex?.trim() || "",
+      distCode: distCode?.trim() || "",
+      distName: distName?.trim() || "",
+      complexCode: complexCode?.trim() || "",
+      complexName: complexName?.trim() || "",
     });
 
     res.status(201).json({
@@ -132,7 +138,7 @@ export const deleteSavedCase = async (req, res) => {
 // ── Update label of a saved case ───────────────────────────
 export const updateSavedCase = async (req, res) => {
   try {
-    const { label, mtype } = req.body;
+    const { label, mtype, distCode, distName, complexCode, complexName } = req.body;
 
     const savedCase = await SavedCase.findOne({
       _id: req.params.id,
@@ -148,6 +154,10 @@ export const updateSavedCase = async (req, res) => {
 
     if (label !== undefined) savedCase.label = label.trim();
     if (mtype !== undefined) savedCase.mtype = Number(mtype);
+    if (distCode !== undefined) savedCase.distCode = distCode.trim();
+    if (distName !== undefined) savedCase.distName = distName.trim();
+    if (complexCode !== undefined) savedCase.complexCode = complexCode.trim();
+    if (complexName !== undefined) savedCase.complexName = complexName.trim();
     await savedCase.save();
 
     res.json({

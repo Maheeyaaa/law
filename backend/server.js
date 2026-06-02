@@ -21,8 +21,11 @@ import voiceRoutes from "./routes/voiceRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import trackRoutes from "./routes/trackRoutes.js";
+import pushRoutes from "./routes/pushRoutes.js";
 import { seedScamPatterns } from "./utils/scamDetector.js";
 import SavedCase from "./models/SavedCase.js";
+import { initCronJobs } from "./jobs/cronManager.js";
 
 dns.setServers(["1.1.1.1", "8.8.8.8"]);
 dotenv.config();
@@ -56,6 +59,8 @@ app.use("/api/voice", voiceRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/auth", userRoutes);
+app.use("/api/track", trackRoutes);
+app.use("/api/push", pushRoutes);
 
 // ── Health check ───────────────────────────────────────────
 app.get("/", (req, res) => {
@@ -125,7 +130,7 @@ mongoose
         console.log(`\n✅ Database ready with ${totalLawyers} lawyers\n`);
       }
     } catch (error) {
-      console.log("⚠️ Startup check error:", error.message);
+      console.error("⚠️ Startup check error:", error.message);
     }
   })
   .catch((error) => {
@@ -138,4 +143,5 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`\n🚀 Server running on port ${PORT}`);
   console.log(`📍 http://localhost:${PORT}\n`);
+  initCronJobs();
 });

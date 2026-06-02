@@ -3,7 +3,23 @@
 import { useState, useEffect, useRef, CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 import CitizenLayout from "../components/CitizenLayout";
-import { getProfile, updateProfile, changePassword, uploadAvatar } from "../services/api";
+import { 
+  getProfile, 
+  updateProfile, 
+  changePassword, 
+  uploadAvatar, 
+  getNotificationPreferences, 
+  updateNotificationPreferences,
+  removeDevice,
+} from "../services/api";
+import {
+  isPushSupported,
+  getNotificationPermission,
+  subscribeToPush,
+  unsubscribeFromPush,
+  sendTestPush,
+  isCurrentlySubscribed,
+} from "../utils/pushSubscribe";
 import Help from "./Help";
 
 const DM: CSSProperties = { fontFamily: "'DM Sans',sans-serif" };
@@ -21,7 +37,6 @@ const GLASS = {
   boxShadow: "6px 10px 40px rgba(0,0,0,.55), 4px 8px 24px rgba(0,0,0,.4)",
 };
 
-// Maps role to display label
 const ROLE_DISPLAY: Record<string, string> = {
   citizen:     "Citizen",
   lawyer:      "Lawyer",
@@ -34,11 +49,17 @@ function getInitials(name: string): string {
   return parts[0]?.[0]?.toUpperCase() || "?";
 }
 
+interface DeviceInfo {
+  deviceLabel: string;
+  createdAt:   string;
+  endpoint:    string;
+}
+
 export default function Settings() {
   const navigate = useNavigate();
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
-  const [tab, setTab] = useState<"profile" | "password" | "help" |"privacy">("profile");
+  const [tab, setTab] = useState<"profile" | "password" | "notifications" | "help" | "privacy">("profile");
   const [loading, setLoading] = useState(true);
 
   const [profile, setProfile] = useState({
@@ -62,8 +83,29 @@ export default function Settings() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
 
+  // ── Push Notification States ────────────────────────────
+  const [pushSupported, setPushSupported]   = useState(false);
+  const [pushPermission, setPushPermission] = useState<NotificationPermission>("default");
+  const [pushSubscribed, setPushSubscribed] = useState(false);
+  const [pushLoading, setPushLoading]       = useState(false);
+  const [notifMsg, setNotifMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // ── Notification Preferences ────────────────────────────
+  const [notifPrefs, setNotifPrefs] = useState({
+    hearingReminders: true,
+    caseUpdates:      true,
+    reminderDays:     [7, 1, 0],
+  });
+  const [savingNotifs, setSavingNotifs] = useState(false);
+
+  // ── Connected Devices ───────────────────────────────────
+  const [devices, setDevices] = useState<DeviceInfo[]>([]);
+  const [removingDevice, setRemovingDevice] = useState<string | null>(null);
+
   useEffect(() => {
     fetchProfile();
+    checkPushStatus();
+    fetchNotificationPrefs();
   }, []);
 
   const fetchProfile = async () => {
@@ -158,6 +200,116 @@ export default function Settings() {
     navigate("/");
   };
 
+  // ══════════════════════════════════════════════════════════
+  // PUSH NOTIFICATION HANDLERS
+  // ══════════════════════════════════════════════════════════
+
+  const checkPushStatus = async () => {
+    setPushSupported(isPushSupported());
+    setPushPermission(getNotificationPermission());
+    setPushSubscribed(await isCurrentlySubscribed());
+  };
+
+  const handleEnablePush = async () => {
+    setPushLoading(true);
+    const result = await subscribeToPush();
+    setNotifMsg({
+      type: result.success ? "success" : "error",
+      text: result.message,
+    });
+    await checkPushStatus();
+    await fetchNotificationPrefs();   // refresh device list
+    setPushLoading(false);
+    setTimeout(() => setNotifMsg(null), 3000);
+  };
+
+  const handleDisablePush = async () => {
+    setPushLoading(true);
+    const result = await unsubscribeFromPush();
+    setNotifMsg({
+      type: result.success ? "success" : "error",
+      text: result.message,
+    });
+    await checkPushStatus();
+    await fetchNotificationPrefs();   // refresh device list
+    setPushLoading(false);
+    setTimeout(() => setNotifMsg(null), 3000);
+  };
+
+  const handleTestPush = async () => {
+    setPushLoading(true);
+    const result = await sendTestPush();
+    setNotifMsg({
+      type: result.success ? "success" : "error",
+      text: result.message,
+    });
+    setPushLoading(false);
+    setTimeout(() => setNotifMsg(null), 3000);
+  };
+
+  // ══════════════════════════════════════════════════════════
+  // NOTIFICATION PREFERENCES HANDLERS
+  // ══════════════════════════════════════════════════════════
+
+  const fetchNotificationPrefs = async () => {
+    try {
+      const { data } = await getNotificationPreferences();
+      if (data.preferences) {
+        setNotifPrefs({
+          hearingReminders: data.preferences.hearingReminders ?? true,
+          caseUpdates:      data.preferences.caseUpdates ?? true,
+          reminderDays:     data.preferences.reminderDays ?? [7, 1, 0],
+        });
+      }
+      setDevices(data.devices || []);
+    } catch (err) {
+      console.error("Failed to fetch notification prefs:", err);
+    }
+  };
+
+  const handleSaveNotifPrefs = async (updates: Partial<typeof notifPrefs>) => {
+    const newPrefs = { ...notifPrefs, ...updates };
+    setNotifPrefs(newPrefs);
+    setSavingNotifs(true);
+    try {
+      await updateNotificationPreferences(newPrefs);
+      setNotifMsg({ type: "success", text: "Preferences saved" });
+      setTimeout(() => setNotifMsg(null), 2000);
+    } catch (err: any) {
+      setNotifMsg({ type: "error", text: "Failed to save preferences" });
+    } finally {
+      setSavingNotifs(false);
+    }
+  };
+
+  const toggleReminderDay = (day: number) => {
+    const current = notifPrefs.reminderDays;
+    const newDays = current.includes(day)
+      ? current.filter((d) => d !== day)
+      : [...current, day].sort((a, b) => b - a);
+    handleSaveNotifPrefs({ reminderDays: newDays });
+  };
+
+  // ══════════════════════════════════════════════════════════
+  // DEVICE MANAGEMENT
+  // ══════════════════════════════════════════════════════════
+
+  const handleRemoveDevice = async (endpoint: string, label: string) => {
+    if (!confirm(`Remove "${label}" from notifications?`)) return;
+    setRemovingDevice(endpoint);
+    try {
+      await removeDevice(endpoint);
+      await fetchNotificationPrefs();
+      await checkPushStatus();
+      setNotifMsg({ type: "success", text: "Device removed" });
+      setTimeout(() => setNotifMsg(null), 2000);
+    } catch (err) {
+      setNotifMsg({ type: "error", text: "Failed to remove device" });
+    } finally {
+      setRemovingDevice(null);
+    }
+  };
+
   if (loading) {
     return (
       <CitizenLayout activeNav="">
@@ -186,7 +338,6 @@ export default function Settings() {
         <div style={{ ...GLASS, borderRadius: 20, padding: "28px", position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", top: 0, left: "8%", right: "8%", height: 1, background: "linear-gradient(90deg,transparent,rgba(150,200,255,0.6),transparent)", pointerEvents: "none" }} />
           <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-            {/* Avatar */}
             <div style={{ position: "relative" }}>
               <div style={{ width: 80, height: 80, borderRadius: "50%", background: "linear-gradient(135deg,#0a1840,#1e5fff)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 700, ...DM, color: "#fff", boxShadow: `0 0 24px rgba(30,95,255,.5)`, overflow: "hidden" }}>
                 {profile.avatar ? (
@@ -202,7 +353,6 @@ export default function Settings() {
               <input ref={avatarInputRef} type="file" accept="image/*" onChange={handleAvatarUpload} style={{ display: "none" }} />
             </div>
 
-            {/* Info */}
             <div style={{ flex: 1 }}>
               <p style={{ ...DM, fontSize: 22, fontWeight: 700, color: "#fff" }}>{profile.name}</p>
               <p style={{ ...DM, fontSize: 12, color: ICEB, marginTop: 2 }}>{profile.email}</p>
@@ -223,7 +373,6 @@ export default function Settings() {
               )}
             </div>
 
-            {/* Logout */}
             <button onClick={handleLogout}
               style={{ ...DM, background: "rgba(239,68,68,.15)", color: "#ef4444", fontSize: 11, fontWeight: 600, padding: "10px 20px", borderRadius: 10, border: "1px solid rgba(239,68,68,.3)", cursor: "pointer", transition: "all .2s ease", flexShrink: 0 }}
               onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "rgba(239,68,68,.25)"}
@@ -236,10 +385,11 @@ export default function Settings() {
         {/* Tabs */}
         <div style={{ ...GLASS, borderRadius: 16, padding: "16px 24px", display: "flex", alignItems: "center", gap: 12 }}>
           {[
-            { id: "profile"  as const, label: "👤 Profile"      },
-            { id: "password" as const, label: "⚙️ Settings"   },
-            { id: "help"  as const, label: "❓ Help & Support"      },
-            { id: "privacy"  as const, label: "🔒 Privacy" },
+            { id: "profile"       as const, label: "👤 Profile"            },
+            { id: "password"      as const, label: "⚙️ Settings"           },
+            { id: "notifications" as const, label: "🔔 Notifications"      },
+            { id: "help"          as const, label: "❓ Help & Support"     },
+            { id: "privacy"       as const, label: "🔒 Privacy"            },
           ].map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
               style={{ ...DM, fontSize: 12, fontWeight: 600, padding: "10px 24px", borderRadius: 10, cursor: "pointer", background: tab === t.id ? BLUE : "rgba(30,95,255,0.15)", color: "#fff", border: tab === t.id ? "none" : "1px solid rgba(30,95,255,0.4)", transition: "all .2s ease" }}>
@@ -372,6 +522,336 @@ export default function Settings() {
                 {changingPassword ? "Changing..." : "Change Password"}
               </button>
             </div>
+          </div>
+        )}
+
+        {/* ═══ NOTIFICATIONS TAB ═══ */}
+        {tab === "notifications" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+            {/* Message Banner */}
+            {notifMsg && (
+              <div style={{
+                ...DM,
+                background: notifMsg.type === "success" ? "rgba(52,211,153,.15)" : "rgba(255,107,107,.15)",
+                border: `1px solid ${notifMsg.type === "success" ? "rgba(52,211,153,.3)" : "rgba(255,107,107,.3)"}`,
+                borderRadius: 10,
+                padding: "12px 16px",
+                fontSize: 12,
+                color: notifMsg.type === "success" ? "#34d399" : "#ff6b6b",
+              }}>
+                {notifMsg.type === "success" ? "✅" : "❌"} {notifMsg.text}
+              </div>
+            )}
+
+            {/* ── Push Notifications Section ── */}
+            <div style={{ ...GLASS, borderRadius: 20, padding: "28px", position: "relative", overflow: "hidden" }}>
+              <div style={{ position: "absolute", top: 0, left: "8%", right: "8%", height: 1, background: "linear-gradient(90deg,transparent,rgba(150,200,255,0.6),transparent)", pointerEvents: "none" }} />
+
+              <div style={{ marginBottom: 20 }}>
+                <p style={{ ...DM, fontSize: 16, fontWeight: 700, color: "#fff", marginBottom: 4 }}>
+                  🔔 Push Notifications
+                </p>
+                <p style={{ ...DM, fontSize: 12, color: "rgba(255,255,255,.4)" }}>
+                  Get notifications on your device, even when the app is closed.
+                </p>
+              </div>
+
+              {!pushSupported ? (
+                <div style={{
+                  ...DM,
+                  padding: "16px",
+                  background: "rgba(255,107,107,.1)",
+                  border: "1px solid rgba(255,107,107,.3)",
+                  borderRadius: 10,
+                  fontSize: 12,
+                  color: "#ff6b6b",
+                }}>
+                  ❌ Your browser does not support push notifications.
+                </div>
+              ) : (
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "16px 20px",
+                  background: "rgba(255,255,255,.03)",
+                  borderRadius: 12,
+                  border: "1px solid rgba(255,255,255,.05)",
+                }}>
+                  <div>
+                    <p style={{ ...DM, fontSize: 13, fontWeight: 600, color: "#fff", marginBottom: 4 }}>
+                      Status: {pushSubscribed ? "✅ Enabled" : "❌ Disabled"}
+                    </p>
+                    <p style={{ ...DM, fontSize: 11, color: "rgba(255,255,255,.4)" }}>
+                      Browser permission: <span style={{
+                        color: pushPermission === "granted" ? "#34d399"
+                             : pushPermission === "denied" ? "#ff6b6b"
+                             : "#fbbf24"
+                      }}>{pushPermission}</span>
+                    </p>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {pushSubscribed ? (
+                      <>
+                        <button
+                          onClick={handleTestPush}
+                          disabled={pushLoading}
+                          style={{
+                            ...DM,
+                            background: "rgba(30,95,255,.15)",
+                            color: BLUEB,
+                            fontSize: 11,
+                            fontWeight: 600,
+                            padding: "8px 16px",
+                            borderRadius: 8,
+                            border: "1px solid rgba(30,95,255,.3)",
+                            cursor: pushLoading ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          {pushLoading ? "..." : "🧪 Test"}
+                        </button>
+                        <button
+                          onClick={handleDisablePush}
+                          disabled={pushLoading}
+                          style={{
+                            ...DM,
+                            background: "rgba(239,68,68,.15)",
+                            color: "#ef4444",
+                            fontSize: 11,
+                            fontWeight: 600,
+                            padding: "8px 16px",
+                            borderRadius: 8,
+                            border: "1px solid rgba(239,68,68,.3)",
+                            cursor: pushLoading ? "not-allowed" : "pointer",
+                          }}
+                        >
+                          Disable
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={handleEnablePush}
+                        disabled={pushLoading || pushPermission === "denied"}
+                        style={{
+                          ...DM,
+                          background: pushPermission === "denied" ? "rgba(255,255,255,.05)" : BLUE,
+                          color: "#fff",
+                          fontSize: 11,
+                          fontWeight: 600,
+                          padding: "8px 16px",
+                          borderRadius: 8,
+                          border: "none",
+                          cursor: (pushLoading || pushPermission === "denied") ? "not-allowed" : "pointer",
+                          opacity: pushPermission === "denied" ? 0.5 : 1,
+                        }}
+                      >
+                        {pushLoading ? "Enabling..." : "Enable Notifications"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {pushPermission === "denied" && (
+                <p style={{ ...DM, fontSize: 11, color: "#fbbf24", marginTop: 12, padding: "10px 14px", background: "rgba(251,191,36,.08)", borderRadius: 8 }}>
+                  ⚠️ Notifications are blocked in your browser. Click the 🔒 icon in your address bar to allow them.
+                </p>
+              )}
+            </div>
+
+            {/* ── Hearing Reminders Section ── */}
+            <div style={{ ...GLASS, borderRadius: 20, padding: "28px", position: "relative", overflow: "hidden" }}>
+              <div style={{ position: "absolute", top: 0, left: "8%", right: "8%", height: 1, background: "linear-gradient(90deg,transparent,rgba(150,200,255,0.6),transparent)", pointerEvents: "none" }} />
+
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+                <div>
+                  <p style={{ ...DM, fontSize: 16, fontWeight: 700, color: "#fff", marginBottom: 4 }}>
+                    📅 Hearing Reminders
+                  </p>
+                  <p style={{ ...DM, fontSize: 12, color: "rgba(255,255,255,.4)" }}>
+                    Get reminders before your court hearings.
+                  </p>
+                </div>
+
+                <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", flexShrink: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={notifPrefs.hearingReminders}
+                    onChange={(e) => handleSaveNotifPrefs({ hearingReminders: e.target.checked })}
+                    disabled={savingNotifs}
+                    style={{ width: 18, height: 18, cursor: "pointer", accentColor: BLUE }}
+                  />
+                  <span style={{ ...DM, fontSize: 12, color: "rgba(255,255,255,.7)", fontWeight: 600 }}>
+                    {notifPrefs.hearingReminders ? "Enabled" : "Disabled"}
+                  </span>
+                </label>
+              </div>
+
+              <div style={{
+                opacity: notifPrefs.hearingReminders ? 1 : 0.4,
+                pointerEvents: notifPrefs.hearingReminders ? "auto" : "none",
+                transition: "opacity .2s ease",
+              }}>
+                <p style={{ ...DM, fontSize: 10, color: "rgba(255,255,255,.4)", marginBottom: 12, textTransform: "uppercase", letterSpacing: "1.5px" }}>
+                  Remind me:
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {[
+                    { day: 7, label: "📅 7 days before hearing",  desc: "Advance notice" },
+                    { day: 1, label: "⏰ 1 day before hearing",   desc: "Tomorrow's hearing" },
+                    { day: 0, label: "🚨 On the day of hearing",   desc: "Same day reminder" },
+                  ].map((opt) => (
+                    <label
+                      key={opt.day}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        padding: "14px 16px",
+                        background: notifPrefs.reminderDays.includes(opt.day) ? "rgba(30,95,255,.08)" : "rgba(255,255,255,.03)",
+                        borderRadius: 10,
+                        cursor: "pointer",
+                        border: notifPrefs.reminderDays.includes(opt.day) ? "1px solid rgba(30,95,255,.25)" : "1px solid rgba(255,255,255,.04)",
+                        transition: "all .15s ease",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={notifPrefs.reminderDays.includes(opt.day)}
+                        onChange={() => toggleReminderDay(opt.day)}
+                        style={{ width: 16, height: 16, cursor: "pointer", accentColor: BLUE }}
+                      />
+                      <div style={{ flex: 1 }}>
+                        <p style={{ ...DM, fontSize: 13, color: "#fff", fontWeight: 500 }}>{opt.label}</p>
+                        <p style={{ ...DM, fontSize: 10, color: "rgba(255,255,255,.4)", marginTop: 2 }}>{opt.desc}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* ── Case Updates Section ── */}
+            <div style={{ ...GLASS, borderRadius: 20, padding: "28px", position: "relative", overflow: "hidden" }}>
+              <div style={{ position: "absolute", top: 0, left: "8%", right: "8%", height: 1, background: "linear-gradient(90deg,transparent,rgba(150,200,255,0.6),transparent)", pointerEvents: "none" }} />
+
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div style={{ flex: 1 }}>
+                  <p style={{ ...DM, fontSize: 16, fontWeight: 700, color: "#fff", marginBottom: 4 }}>
+                    📋 Case Updates
+                  </p>
+                  <p style={{ ...DM, fontSize: 12, color: "rgba(255,255,255,.4)", lineHeight: 1.7 }}>
+                    Notify me when my case details change — status updates, hearing date changes, judge changes, or new court entries.
+                  </p>
+
+                  <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 6 }}>
+                    {[
+                      "🔄 Status changes (e.g., Pending → Disposed)",
+                      "📆 Hearing date updates",
+                      "👨‍⚖️ Judge changes",
+                      "📝 New court history entries",
+                    ].map((item, i) => (
+                      <p key={i} style={{ ...DM, fontSize: 11, color: "rgba(255,255,255,.5)" }}>
+                        {item}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+
+                <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", flexShrink: 0, marginLeft: 20 }}>
+                  <input
+                    type="checkbox"
+                    checked={notifPrefs.caseUpdates}
+                    onChange={(e) => handleSaveNotifPrefs({ caseUpdates: e.target.checked })}
+                    disabled={savingNotifs}
+                    style={{ width: 18, height: 18, cursor: "pointer", accentColor: BLUE }}
+                  />
+                  <span style={{ ...DM, fontSize: 12, color: "rgba(255,255,255,.7)", fontWeight: 600 }}>
+                    {notifPrefs.caseUpdates ? "Enabled" : "Disabled"}
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            {/* ── Connected Devices Section ── */}
+            <div style={{ ...GLASS, borderRadius: 20, padding: "28px", position: "relative", overflow: "hidden" }}>
+              <div style={{ position: "absolute", top: 0, left: "8%", right: "8%", height: 1, background: "linear-gradient(90deg,transparent,rgba(150,200,255,0.6),transparent)", pointerEvents: "none" }} />
+
+              <div style={{ marginBottom: 16 }}>
+                <p style={{ ...DM, fontSize: 16, fontWeight: 700, color: "#fff", marginBottom: 4 }}>
+                  📱 Connected Devices ({devices.length})
+                </p>
+                <p style={{ ...DM, fontSize: 12, color: "rgba(255,255,255,.4)" }}>
+                  Devices that receive your push notifications.
+                </p>
+              </div>
+
+              {devices.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "30px 20px", background: "rgba(255,255,255,.02)", borderRadius: 10 }}>
+                  <p style={{ fontSize: 28, marginBottom: 8 }}>📭</p>
+                  <p style={{ ...DM, fontSize: 12, color: "rgba(255,255,255,.4)" }}>
+                    No devices connected.
+                  </p>
+                  <p style={{ ...DM, fontSize: 11, color: "rgba(255,255,255,.25)", marginTop: 4 }}>
+                    Enable notifications above to add this device.
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {devices.map((device, i) => (
+                    <div key={i} style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      padding: "14px 16px",
+                      background: "rgba(255,255,255,.03)",
+                      borderRadius: 10,
+                      border: "1px solid rgba(255,255,255,.04)",
+                      opacity: removingDevice === device.endpoint ? 0.4 : 1,
+                      transition: "opacity .2s ease",
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <span style={{ fontSize: 20 }}>
+                          {device.deviceLabel?.toLowerCase().includes("iphone") || device.deviceLabel?.toLowerCase().includes("android") ? "📱" : "💻"}
+                        </span>
+                        <div>
+                          <p style={{ ...DM, fontSize: 13, color: "#fff", fontWeight: 500 }}>
+                            {device.deviceLabel}
+                          </p>
+                          <p style={{ ...DM, fontSize: 10, color: "rgba(255,255,255,.4)", marginTop: 2 }}>
+                            Added {new Date(device.createdAt).toLocaleDateString("en-IN", { 
+                              day: "numeric", 
+                              month: "short", 
+                              year: "numeric" 
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveDevice(device.endpoint, device.deviceLabel)}
+                        disabled={removingDevice === device.endpoint}
+                        style={{ 
+                          ...DM, 
+                          background: "rgba(239,68,68,.15)", 
+                          color: "#ef4444", 
+                          fontSize: 11, 
+                          fontWeight: 600, 
+                          padding: "7px 14px", 
+                          borderRadius: 8, 
+                          border: "1px solid rgba(239,68,68,.3)", 
+                          cursor: removingDevice === device.endpoint ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        {removingDevice === device.endpoint ? "..." : "Remove"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
           </div>
         )}
 
