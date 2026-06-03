@@ -3,39 +3,14 @@
 import mongoose from "mongoose";
 
 const TELANGANA_DISTRICTS = [
-  "Hyderabad",
-  "Rangareddy",
-  "Medchal-Malkajgiri",
-  "Sangareddy",
-  "Vikarabad",
-  "Warangal Urban",
-  "Warangal Rural",
-  "Hanumakonda",
-  "Khammam",
-  "Nalgonda",
-  "Karimnagar",
-  "Nizamabad",
-  "Adilabad",
-  "Komaram Bheem Asifabad",
-  "Mancherial",
-  "Peddapalli",
-  "Jagtial",
-  "Rajanna Sircilla",
-  "Kamareddy",
-  "Medak",
-  "Siddipet",
-  "Jangaon",
-  "Mahabubabad",
-  "Warangal",
-  "Suryapet",
-  "Yadadri Bhuvanagiri",
-  "Mahabubnagar",
-  "Nagarkurnool",
-  "Wanaparthy",
-  "Jogulamba Gadwal",
-  "Narayanpet",
-  "Mulugu",
-  "Jayashankar Bhupalpally",
+  "Hyderabad", "Rangareddy", "Medchal-Malkajgiri", "Sangareddy",
+  "Vikarabad", "Warangal Urban", "Warangal Rural", "Hanumakonda",
+  "Khammam", "Nalgonda", "Karimnagar", "Nizamabad", "Adilabad",
+  "Komaram Bheem Asifabad", "Mancherial", "Peddapalli", "Jagtial",
+  "Rajanna Sircilla", "Kamareddy", "Medak", "Siddipet", "Jangaon",
+  "Mahabubabad", "Warangal", "Suryapet", "Yadadri Bhuvanagiri",
+  "Mahabubnagar", "Nagarkurnool", "Wanaparthy", "Jogulamba Gadwal",
+  "Narayanpet", "Mulugu", "Jayashankar Bhupalpally",
   "Bhadradri Kothagudem",
 ];
 
@@ -47,13 +22,19 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true },
     role: {
       type:     String,
-      enum:     ["citizen", "admin"],
+      enum:     ["citizen", "lawyer", "admin"],
       required: true,
     },
 
+    // ── Account Status ───────────────────────────────────────
+    isActive:     { type: Boolean, default: true  },
+    isBanned:     { type: Boolean, default: false },
+    bannedReason: { type: String,  default: ""    },
+    lastLogin:    { type: Date,    default: null  },
+
     // ── Location Fields ──────────────────────────────────────
     state:    { type: String, default: "Telangana" },
-    district: { type: String, default: "" },
+    district: { type: String, default: ""          },
 
     // ── Profile Fields ───────────────────────────────────────
     phone:   { type: String, default: "" },
@@ -70,16 +51,13 @@ const userSchema = new mongoose.Schema(
     isProfileComplete: { type: Boolean, default: false },
     isVerified:        { type: Boolean, default: false },
 
-    // ══════════════════════════════════════════════════════════
-    // ── PUSH NOTIFICATION FIELDS (NEW) ──────────────────────
-    // ══════════════════════════════════════════════════════════
-
+    // ── Push Notification Fields ─────────────────────────────
     pushSubscriptions: [
       {
         endpoint:    { type: String, required: true },
         keys: {
-          p256dh:    { type: String, required: true },
-          auth:      { type: String, required: true },
+          p256dh: { type: String, required: true },
+          auth:   { type: String, required: true },
         },
         deviceLabel: { type: String, default: "" },
         userAgent:   { type: String, default: "" },
@@ -94,16 +72,14 @@ const userSchema = new mongoose.Schema(
       reminderDays:     { type: [Number], default: [7, 1, 0] },
     },
 
-    // ══════════════════════════════════════════════════════════
-    // ── Lawyer Directory Fields (read-only for citizens) ─────
-    // ══════════════════════════════════════════════════════════
-    barCouncilNumber: String,
-    specialization:   String,
-    experience:       Number,
-    licenseDocument:  String,
-    languages:        { type: [String], default: [] },
-    education:        { type: [String], default: [] },
-    courtsPracticing: { type: [String], default: [] },
+    // ── Lawyer Directory Fields ──────────────────────────────
+    barCouncilNumber:     { type: String, default: "" },
+    specialization:       { type: String, default: "" },
+    experience:           { type: Number, default: 0  },
+    licenseDocument:      { type: String, default: "" },
+    languages:            { type: [String], default: [] },
+    education:            { type: [String], default: [] },
+    courtsPracticing:     { type: [String], default: [] },
 
     availability: {
       type:    String,
@@ -113,16 +89,12 @@ const userSchema = new mongoose.Schema(
     availableDays: {
       type: [String],
       enum: [
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-        "Sunday",
+        "Monday", "Tuesday", "Wednesday",
+        "Thursday", "Friday", "Saturday", "Sunday",
       ],
       default: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
     },
+
     consultationFee: { type: Number, default: 0 },
     rating:          { type: Number, default: 0, min: 0, max: 5 },
     totalReviews:    { type: Number, default: 0 },
@@ -134,10 +106,11 @@ const userSchema = new mongoose.Schema(
       enum:    ["pending", "approved", "rejected"],
       default: "pending",
     },
-    importedFrom:         { type: String, default: null },
-    scrapedFrom:          { type: String, default: null },
-    dataSource:           { type: String, default: null },
-    proBonoRegistrationNo:{ type: String, default: null },
+
+    importedFrom:          { type: String, default: null },
+    scrapedFrom:           { type: String, default: null },
+    dataSource:            { type: String, default: null },
+    proBonoRegistrationNo: { type: String, default: null },
   },
   { timestamps: true }
 );

@@ -34,7 +34,6 @@ export const registerUser = async (
       name,
       email,
       password,
-      role,
       district,
     } = req.body;
 
@@ -106,7 +105,7 @@ export const registerUser = async (
         password:
           hashedPassword,
 
-        role,
+        role: "citizen",
 
         state:
           "Telangana",
@@ -314,89 +313,6 @@ async (
     res.json(
       user
     );
-  } catch (
-    error
-  ) {
-    res
-      .status(500)
-      .json({
-        message:
-          error.message,
-      });
-  }
-};
-
-// ======================
-// Admin Create
-// ======================
-
-export const createAdmin =
-async (
-  req,
-  res
-) => {
-  try {
-    const {
-      name,
-      email,
-      password,
-    } =
-      req.body;
-
-    const exists =
-      await User.findOne(
-        {
-          email,
-        }
-      );
-
-    if (
-      exists
-    ) {
-      return res
-        .status(400)
-        .json({
-          message:
-            "Email already exists",
-        });
-    }
-
-    const hashed =
-      await bcrypt.hash(
-        password,
-        10
-      );
-
-    const admin =
-      await User.create({
-        name,
-
-        email,
-
-        password:
-          hashed,
-
-        role:
-          "admin",
-      });
-
-    res
-      .status(201)
-      .json({
-        message:
-          "Admin created",
-
-        user: {
-          id:
-            admin._id,
-
-          name:
-            admin.name,
-
-          email:
-            admin.email,
-        },
-      });
   } catch (
     error
   ) {

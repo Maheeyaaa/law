@@ -1,268 +1,115 @@
 import User from "../models/User.js";
 
-// ======================
-// Browse Lawyers
-// ======================
+// ══════════════════════════════════════════════════════════════════
+// Browse Lawyers (Citizen View)
+// ══════════════════════════════════════════════════════════════════
 
-export const browseLawyers =
-async (req, res) => {
+export const browseLawyers = async (req, res) => {
   try {
     const {
-      specialization,
       search,
       district,
-      language,
-      minRating,
+      specialization,
+      sortBy = "name",
       page = 1,
       limit = 12,
-    } =
-      req.query;
+    } = req.query;
 
-    const filter = {
-      role:
-        "lawyer",
+    const filter = { role: "lawyer" };
+
+    if (district) {
+      filter.district = district;
+    }
+
+    if (specialization) {
+      filter.specialization = { $regex: specialization, $options: "i" };
+    }
+
+    if (search) {
+      filter.$or = [
+        { name:                  { $regex: search, $options: "i" } },
+        { barCouncilNumber:      { $regex: search, $options: "i" } },
+        { proBonoRegistrationNo: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // Sort options
+    const sortMap = {
+      name:     { name: 1 },
+      "name-z": { name: -1 },
+      newest:   { createdAt: -1 },
     };
+    const sort = sortMap[sortBy] || { name: 1 };
 
-    if (
-      specialization
-    ) {
-      filter.specialization =
-        {
-          $regex:
-            specialization,
+    const skip = (Number(page) - 1) * Number(limit);
 
-          $options:
-            "i",
-        };
-    }
+    const [lawyers, total, allDistricts, allSpecializations] = await Promise.all([
+      User.find(filter)
+        .select("-password")
+        .sort(sort)
+        .skip(skip)
+        .limit(Number(limit)),
 
-    if (
-      district
-    ) {
-      filter.district =
-        district;
-    }
+      User.countDocuments(filter),
 
-    if (
-      language
-    ) {
-      filter.languages =
-        {
-          $in: [
-            language,
-          ],
-        };
-    }
+      // Get unique districts that have lawyers
+      User.distinct("district", { role: "lawyer", district: { $nin: ["", null] } }),
 
-    if (
-      search
-    ) {
-      filter.$or =
-        [
-          {
-            name:
-              {
-                $regex:
-                  search,
-
-                $options:
-                  "i",
-              },
-          },
-
-          {
-            specialization:
-              {
-                $regex:
-                  search,
-
-                $options:
-                  "i",
-              },
-          },
-        ];
-    }
-
-    if (
-      minRating
-    ) {
-      filter.rating =
-        {
-          $gte:
-            Number(
-              minRating
-            ),
-        };
-    }
-
-    const skip =
-      (
-        Number(
-          page
-        ) -
-        1
-      ) *
-      Number(
-        limit
-      );
-
-    const [
-      lawyers,
-      total,
-    ] =
-      await Promise.all(
-        [
-          User.find(
-            filter
-          )
-            .select(
-              "-password"
-            )
-            .sort(
-              {
-                rating:
-                  -1,
-              }
-            )
-            .skip(
-              skip
-            )
-            .limit(
-              Number(
-                limit
-              )
-            ),
-
-          User.countDocuments(
-            filter
-          ),
-        ]
-      );
+      // Get unique specializations that have lawyers
+      User.distinct("specialization", { role: "lawyer", specialization: { $nin: ["", null] } }),
+    ]);
 
     res.json({
-      success:
-        true,
-
+      success: true,
       lawyers,
-
       total,
-
-      page:
-        Number(
-          page
-        ),
-
-      totalPages:
-        Math.ceil(
-          total /
-            limit
-        ),
+      page: Number(page),
+      totalPages: Math.ceil(total / limit),
+      filters: {
+        districts:       allDistricts.filter(Boolean).sort(),
+        specializations: allSpecializations.filter(Boolean).sort(),
+      },
     });
-  } catch (
-    error
-  ) {
-    console.error(
-      error
-    );
-
-    res
-      .status(
-        500
-      )
-      .json({
-        success:
-          false,
-
-        error:
-          error.message,
-      });
+  } catch (error) {
+    console.error("[browseLawyers] Error:", error.message);
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
-// ======================
-// Single Lawyer
-// ======================
+// ══════════════════════════════════════════════════════════════════
+// Get Single Lawyer Profile
+// ══════════════════════════════════════════════════════════════════
 
-export const getLawyerProfile =
-async (
-  req,
-  res
-) => {
+export const getLawyerProfile = async (req, res) => {
   try {
-    const lawyer =
-      await User.findOne(
-        {
-          _id:
-            req.params
-              .id,
+    const lawyer = await User.findOne({
+      _id: req.params.id,
+      role: "lawyer",
+    }).select("-password");
 
-          role:
-            "lawyer",
-        }
-      ).select(
-        "-password"
-      );
-
-    if (
-      !lawyer
-    ) {
-      return res
-        .status(
-          404
-        )
-        .json({
-          success:
-            false,
-
-          message:
-            "Lawyer not found",
-        });
+    if (!lawyer) {
+      return res.status(404).json({
+        success: false,
+        message: "Lawyer not found",
+      });
     }
 
-    const contactOnly =
-      lawyer.importedFrom ===
-      "DoJ Pro Bono";
+    const isProBono = lawyer.importedFrom === "DoJ Pro Bono";
 
-    const contact =
-      contactOnly
+    res.json({
+      success: true,
+      lawyer: {
+        ...lawyer.toObject(),
+        isContactOnly: isProBono,
+      },
+      contact: isProBono
         ? {
-            portal:
-              "https://www.probono-doj.in",
-
-            helpline:
-              "15100",
+            portal:   "https://www.probono-doj.in",
+            helpline: "15100",
           }
-        : null;
-
-    res.json(
-      {
-        success:
-          true,
-
-        lawyer:
-          {
-            ...lawyer.toObject(),
-
-            isContactOnly:
-              contactOnly,
-          },
-
-        contact,
-      }
-    );
-  } catch (
-    error
-  ) {
-    res
-      .status(
-        500
-      )
-      .json({
-        success:
-          false,
-
-        error:
-          error.message,
-      });
+        : null,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 };

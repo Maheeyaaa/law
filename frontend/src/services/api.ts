@@ -26,9 +26,7 @@ export const getMyCases = (params?: {
 
 export const createCase = (data: FormData) =>
   API.post("/cases", data, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
+    headers: { "Content-Type": "multipart/form-data" },
   });
 
 export const getCaseStats = () => API.get("/cases/stats");
@@ -38,8 +36,7 @@ export const updateCaseNotes = (id: string, data: { notes?: string; description?
   API.patch(`/cases/${id}`, data);
 
 // ── Saved Cases ────────────────────────────────────────────
-export const getSavedCases = () =>
-  API.get("/cases/saved");
+export const getSavedCases = () => API.get("/cases/saved");
 
 export const addSavedCase = (data: {
   court: string;
@@ -90,13 +87,21 @@ export const getCourtInfo = (courtName: string) => {
   return API.get(`/track/court-info?court=${encoded}`);
 };
 
-// ── Hearings / Consultations ───────────────────────────────
-export const getMyHearings = (params = {}) =>
-  API.get("/hearings", { params });
-export const getNextHearing = () => API.get("/hearings/next");
-export const getHearingById = (id: string) => API.get(`/hearings/${id}`);
-export const requestReschedule = (id: string, reason: string) =>
-  API.post(`/hearings/${id}/reschedule-request`, { reason });
+export const getCaptcha = (courtName?: string) => {
+  const court = courtName || "Telangana High Court, Hyderabad";
+  const encoded = encodeURIComponent(court);
+  return API.get(`/track/captcha?court=${encoded}`);
+};
+
+// ── eCourts Dropdown APIs ──────────────────────────────────
+export const getECourtsDistricts = () =>
+  API.get("/track/ecourts/districts");
+
+export const getECourtsComplexes = (distCode: string) =>
+  API.get("/track/ecourts/complexes", { params: { distCode } });
+
+export const getECourtsCaseTypes = (distCode: string, complexCode: string) =>
+  API.get("/track/ecourts/case-types", { params: { distCode, complexCode } });
 
 // ── Documents ──────────────────────────────────────────────
 export const getMyDocuments = () => API.get("/documents");
@@ -141,6 +146,25 @@ export const uploadAvatar = (formData: FormData) =>
     headers: { "Content-Type": "multipart/form-data" },
   });
 
+export const updateLanguage = (language: string) =>
+  API.patch("/profile/language", { language });
+
+export const getLanguage = () =>
+  API.get("/profile/language");
+
+// ── Notification Preferences ───────────────────────────────
+export const getNotificationPreferences = () =>
+  API.get("/profile/notifications");
+
+export const updateNotificationPreferences = (data: {
+  hearingReminders?: boolean;
+  caseUpdates?:      boolean;
+  reminderDays?:     number[];
+}) => API.patch("/profile/notifications", data);
+
+export const removeDevice = (endpoint: string) =>
+  API.delete("/profile/device", { data: { endpoint } });
+
 // ── Locations ──────────────────────────────────────────────
 export const getLocationData = () => API.get("/locations");
 export const getDistricts = () => API.get("/locations/districts");
@@ -148,17 +172,13 @@ export const getCourts = (district?: string) =>
   API.get("/locations/courts", { params: { district } });
 export const getSpecializations = () => API.get("/locations/specializations");
 
-// ── Lawyers (Citizen View) ─────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// LAWYERS (Citizen View — Browse DoJ Pro Bono Directory)
+// ══════════════════════════════════════════════════════════════
 export const browseLawyers = (params?: {
-  specialization?: string;
   search?: string;
-  experience?: number;
   district?: string;
-  language?: string;
-  availability?: string;
-  minExperience?: number;
-  maxExperience?: number;
-  minRating?: number;
+  specialization?: string;
   sortBy?: string;
   page?: number;
   limit?: number;
@@ -166,42 +186,6 @@ export const browseLawyers = (params?: {
 
 export const getLawyerPublicProfile = (id: string) =>
   API.get(`/lawyers/profile/${id}`);
-
-export const sendLawyerRequest = (data: {
-  lawyerId: string;
-  caseId?: string;
-  message: string;
-}) => API.post("/lawyers/request", data);
-
-export const getMyLawyerRequests = (status?: string) =>
-  API.get("/lawyers/my-requests", { params: { status } });
-
-export const cancelLawyerRequest = (id: string) =>
-  API.delete(`/lawyers/request/${id}`);
-
-export const bookAppointment = (data: {
-  lawyerId: string;
-  caseId?: string;
-  appointmentDate: string;
-  appointmentTime: string;
-  mode?: string;
-  notes?: string;
-}) => API.post("/lawyers/appointment", data);
-
-export const getMyAppointments = (status?: string) =>
-  API.get("/lawyers/appointments", { params: { status } });
-
-export const cancelAppointment = (id: string) =>
-  API.patch(`/lawyers/appointment/${id}/cancel`);
-
-export const submitReview = (lawyerId: string, data: {
-  rating: number;
-  comment?: string;
-  caseId?: string;
-}) => API.post(`/lawyers/review/${lawyerId}`, data);
-
-export const getLawyerReviews = (lawyerId: string) =>
-  API.get(`/lawyers/reviews/${lawyerId}`);
 
 // ── Help & Support ─────────────────────────────────────────
 export const getFAQs = (category?: string) =>
@@ -268,7 +252,7 @@ export const detectScam = (data: FormData | { notice: string }) => {
   return API.post("/ai/detect-scam", data);
 };
 
-// ── AI Conversations (New) ─────────────────────────────────
+// ── AI Conversations ───────────────────────────────────────
 export const getConversations = (params?: { page?: number; limit?: number; type?: string }) =>
   API.get("/ai/conversations", { params });
 
@@ -316,105 +300,6 @@ export const getMyStats = () => API.get("/analytics/my-stats");
 export const getGlobalStats = () => API.get("/analytics/global-stats");
 export const getScamTrends = () => API.get("/analytics/scam-trends");
 
-// ── Lawyer Panel (Lawyer Role) ─────────────────────────────
-export const getLawyerDashboard = () => API.get("/lawyer/dashboard");
-
-export const getIncomingRequests = (params?: {
-  status?: string;
-  page?: number;
-}) => API.get("/lawyer/requests", { params });
-
-export const acceptLawyerRequest = (
-  id: string,
-  data?: { responseMessage?: string }
-) => API.patch(`/lawyer/requests/${id}/accept`, data);
-
-export const rejectLawyerRequest = (
-  id: string,
-  data?: { responseMessage?: string }
-) => API.patch(`/lawyer/requests/${id}/reject`, data);
-
-export const getLawyerCases = (params?: {
-  status?: string;
-  search?: string;
-  page?: number;
-}) => API.get("/lawyer/cases", { params });
-
-export const getLawyerCaseDetails = (id: string) =>
-  API.get(`/lawyer/cases/${id}`);
-
-export const updateLawyerCaseNotes = (
-  id: string,
-  data: { notes?: string; status?: string }
-) => API.patch(`/lawyer/cases/${id}/notes`, data);
-
-export const getLawyerConsultations = (params?: {
-  status?: string;
-  upcoming?: string;
-}) => API.get("/lawyer/appointments", { params });
-
-export const updateConsultationStatus = (
-  id: string,
-  data: { status: string; meetingLink?: string }
-) => API.patch(`/lawyer/appointments/${id}/status`, data);
-
-export const getLawyerOwnProfile = () => API.get("/lawyer/profile");
-
-export const updateLawyerProfile = (data: {
-  phone?: string;
-  address?: string;
-  bio?: string;
-  languages?: string[];
-  availability?: string;
-  availableDays?: string[];
-  consultationFee?: number;
-  specialization?: string;
-  courtsPracticing?: string[];
-  education?: string[];
-}) => API.patch("/lawyer/profile", data);
-
-export const updateAvailability = (availability: string) =>
-  API.patch("/lawyer/availability", { availability });
-
-export const getLawyerNotifications = (unreadOnly?: boolean) =>
-  API.get("/lawyer/notifications", { params: { unreadOnly } });
-
-export const markLawyerNotificationRead = (id: string) =>
-  API.patch(`/lawyer/notifications/${id}/read`);
-
-// ── Court Staff Panel ──────────────────────────────────────
-export const getCourtStaffDashboard = () =>
-  API.get("/court-staff/dashboard");
-
-export const getCourtCases = (params?: {
-  status?: string;
-  search?: string;
-  priority?: string;
-  page?: number;
-  limit?: number;
-}) => API.get("/court-staff/cases", { params });
-
-export const getCourtCaseDetails = (id: string) =>
-  API.get(`/court-staff/cases/${id}`);
-
-export const updateCourtCaseStatus = (
-  id: string,
-  data: { status: string; notes?: string }
-) => API.patch(`/court-staff/cases/${id}/status`, data);
-
-export const assignLawyerToCase = (
-  id: string,
-  data: { lawyerId: string }
-) => API.patch(`/court-staff/cases/${id}/assign-lawyer`, data);
-
-export const removeLawyerFromCase = (id: string) =>
-  API.patch(`/court-staff/cases/${id}/remove-lawyer`);
-
-export const getAvailableLawyers = (params?: {
-  specialization?: string;
-  district?: string;
-}) => API.get("/court-staff/available-lawyers", { params });
-
 // ── Admin Panel ────────────────────────────────────────────
 export const getPendingLawyers = () =>
   API.get("/admin/pending-lawyers");
@@ -441,33 +326,6 @@ export const clearSyntheticLawyers = () =>
 export const downloadCSVTemplate = () =>
   API.get("/admin/csv-template");
 
-// ── CNR Assignment (Court Staff via caseRoutes) ────────────
-export const assignCNR = (id: string, data: { cnrNumber: string }) =>
-  API.patch(`/cases/${id}/cnr`, data);
-
-// Add in Profile section
-export const updateLanguage = (language: string) =>
-  API.patch("/profile/language", { language });
-
-export const getLanguage = () =>
-  API.get("/profile/language");
-
-export const getCaptcha = (courtName?: string) => {
-  const court = courtName || "Telangana High Court, Hyderabad";
-  const encoded = encodeURIComponent(court);
-  return API.get(`/track/captcha?court=${encoded}`);
-};
-
-// ── eCourts Dropdown APIs ──────────────────────────────────
-export const getECourtsDistricts = () =>
-  API.get("/track/ecourts/districts");
-
-export const getECourtsComplexes = (distCode: string) =>
-  API.get("/track/ecourts/complexes", { params: { distCode } });
-
-export const getECourtsCaseTypes = (distCode: string, complexCode: string) =>
-  API.get("/track/ecourts/case-types", { params: { distCode, complexCode } });
-
 // ── Push Notifications ─────────────────────────────────────
 export const getPushPublicKey = () => API.get("/push/public-key");
 
@@ -482,18 +340,5 @@ export const unsubscribePush = (endpoint: string) =>
 export const testPush = () => API.post("/push/test");
 
 export const getPushSubscriptions = () => API.get("/push/subscriptions");
-
-// ── Notification Preferences ────────────────────────────────────
-export const getNotificationPreferences = () =>
-  API.get("/profile/notifications");
-
-export const updateNotificationPreferences = (data: {
-  hearingReminders?: boolean;
-  caseUpdates?:      boolean;
-  reminderDays?:     number[];
-}) => API.patch("/profile/notifications", data);
-
-export const removeDevice = (endpoint: string) =>
-  API.delete("/profile/device", { data: { endpoint } });
 
 export default API;
