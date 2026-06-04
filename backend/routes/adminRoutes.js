@@ -19,6 +19,7 @@ import {
   approveLawyer,
   rejectLawyer,
   getSystemActivity,
+  changeAdminPassword,
 } from "../controllers/adminController.js";
 
 const router = express.Router();
@@ -57,5 +58,8 @@ router.patch ("/lawyers/:id/reject",     rejectLawyer);
 
 // ── Activity ───────────────────────────────────────
 router.get("/activity", getSystemActivity);
+
+//change password
+router.patch("/change-password", changeAdminPassword);
 
 export default router;

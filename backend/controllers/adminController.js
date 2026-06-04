@@ -500,3 +500,44 @@ export const getSystemActivity = async (req, res) => {
     res.status(500).json({ message: "Failed to load activity" });
   }
 };
+
+//Change password
+
+export const changeAdminPassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        message: "Current and new password are required",
+      });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        message: "New password must be at least 8 characters",
+      });
+    }
+
+    // Get admin with password
+    const admin = await User.findById(req.user.id);
+    if (!admin) {
+      return res.status(404).json({ message: "Admin not found" });
+    }
+
+    // Verify current password
+    const valid = await bcrypt.compare(currentPassword, admin.password);
+    if (!valid) {
+      return res.status(400).json({ message: "Current password is incorrect" });
+    }
+
+    // Hash new password
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await User.findByIdAndUpdate(req.user.id, { password: hashed });
+
+    res.json({ message: "Password changed successfully" });
+  } catch (error) {
+    console.error("[changeAdminPassword]", error);
+    res.status(500).json({ message: "Failed to change password" });
+  }
+};

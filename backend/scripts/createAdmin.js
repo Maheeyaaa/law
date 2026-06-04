@@ -14,18 +14,28 @@ async function createAdmin() {
     await mongoose.connect(process.env.MONGO_URI);
     console.log("✅ Connected to MongoDB");
 
-    const existing = await User.findOne({ email: "admin@legalapp.com" });
+    // Read from .env instead of hardcoding
+    const email    = process.env.ADMIN_EMAIL;
+    const password = process.env.ADMIN_PASSWORD;
+    const name     = process.env.ADMIN_NAME || "Super Admin";
+
+    if (!email || !password) {
+      console.error("❌ ADMIN_EMAIL and ADMIN_PASSWORD must be set in .env");
+      process.exit(1);
+    }
+
+    const existing = await User.findOne({ email });
     if (existing) {
       console.log("⚠️  Admin already exists:", existing.email);
       process.exit(0);
     }
 
-    const password = await bcrypt.hash("Admin@123", 10);
+    const hashed = await bcrypt.hash(password, 10);
 
     await User.create({
-      name:     "Super Admin",
-      email:    "admin@legalapp.com",
-      password,
+      name,
+      email,
+      password: hashed,
       role:     "admin",
       state:    "Telangana",
       district: "Hyderabad",
@@ -34,8 +44,7 @@ async function createAdmin() {
     });
 
     console.log("✅ Admin created successfully!");
-    console.log("   Email:    admin@legalapp.com");
-    console.log("   Password: Admin@123");
+    console.log("   Email:", email);
     console.log("   ⚠️  Change password after first login!");
     process.exit(0);
   } catch (error) {
