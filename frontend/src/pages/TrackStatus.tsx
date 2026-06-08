@@ -15,21 +15,23 @@ import { CASE_TYPES } from "../constants/caseTypes";
 let _captchaLoadedForSession = "";
 
 // ── Styles ─────────────────────────────────────────────────────────
-const DM:  CSSProperties = { fontFamily: "'Inter','DM Sans',sans-serif" };
-const BN:  CSSProperties = { fontFamily: "'Cormorant Garamond','Playfair Display',Georgia,serif", fontWeight: 600 };
+const DM: CSSProperties = { fontFamily: "'Inter','DM Sans',sans-serif" };
+const BN: CSSProperties = { fontFamily: "'Cormorant Garamond','Playfair Display',Georgia,serif", fontWeight: 600 };
 const BLUE  = "#1e5fff";
 const BLUEB = "#4d8aff";
 const GOLD = "#c9a84c";
 
 const GLASS: CSSProperties = {
-  background:           "rgba(35, 22, 12, 0.65)",
+  background:           "rgba(184, 115, 51, 0.15)",
   border:               "1px solid rgba(201, 168, 76, 0.25)",
   boxShadow:            "0 4px 24px rgba(0,0,0,.3)",
+  backdropFilter:       "blur(6px)",
+  WebkitBackdropFilter: "blur(6px)",
 };
 
 const inp: CSSProperties = {
   ...DM, width: "100%",
-  background:   "rgba(45, 28, 15, 0.7)",
+  background:   "transparent",
   border:       "1px solid rgba(201, 168, 76, 0.3)",
   borderRadius: 0, padding: "11px 14px",
   color: "#fff", fontSize: 13,
@@ -188,7 +190,7 @@ export default function TrackStatus() {
 
   // ── Background ──────────────────────────────────────────────────
   useEffect(() => {
-    document.body.style.backgroundImage      = "linear-gradient(rgba(15,8,3,0.75), rgba(15,8,3,0.75)), url('/track.jpg')";
+    document.body.style.backgroundImage      = "url('/track.jpg')";
     document.body.style.backgroundSize       = "cover";
     document.body.style.backgroundPosition   = "center";
     document.body.style.backgroundRepeat     = "no-repeat";
@@ -277,9 +279,9 @@ export default function TrackStatus() {
       setError("");
 
       const res = await trackSavedCase(savedCaseId);
-      const sc  = res.data?.savedCase;
+      const sc    = res.data?.savedCase;
       const creds = res.data?.credentials;
-      const data = creds || sc;
+      const data  = creds || sc;
 
       if (!data) {
         setError("Saved case not found");
@@ -614,22 +616,32 @@ export default function TrackStatus() {
 
         @keyframes spin   { to { transform: rotate(360deg) } }
         @keyframes fadeUp { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:translateY(0) } }
-        select option     { background: #1a0f06; color: #fff; }
+        select option     { background: #111111; color: #fff; }
 
-        /* Brown + gold scrollbar */
+        /* Gold scrollbar */
         ::-webkit-scrollbar         { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track   { background: rgba(25,15,8,0.6); }
+        ::-webkit-scrollbar-track   { background: rgba(0,0,0,0.6); }
         ::-webkit-scrollbar-thumb   {
           background: linear-gradient(180deg, #c9a84c 0%, #8a6f2e 100%);
-          border: 1px solid rgba(25,15,8,0.8);
+          border: 1px solid rgba(0,0,0,0.8);
         }
         ::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #e0bf63 0%, #a18534 100%); }
 
         /* Firefox */
-        * { scrollbar-width: thin; scrollbar-color: #c9a84c rgba(25,15,8,0.6); }
+        * { scrollbar-width: thin; scrollbar-color: #c9a84c rgba(0,0,0,0.6); }
       `}</style>
 
-      {/* ── Header ── */}
+
+
+      {/* ── Dark tint overlay ── */}
+      <div style={{
+        position: "fixed",
+        inset: 0,
+        backgroundColor: "#000",
+        opacity: 0.45,
+        pointerEvents: "none",
+        zIndex: 0,
+      }} />
       <div style={{
         display: "flex",
         alignItems: "flex-start",
@@ -690,18 +702,16 @@ export default function TrackStatus() {
         margin: "0 auto",
         maxWidth: "92%",
         width: "100%",
-        backdropFilter: "blur(2px)",
-        WebkitBackdropFilter: "blur(2px)",
       }}>
 
         {/* ── Input Form ── */}
-        <div style={{ ...GLASS, borderRadius: 0, padding: "28px" }}>
-          <p style={{ ...DM, fontSize: 14, fontWeight: 700, color: GOLD, marginBottom: 20 }}>
+        <div style={{ ...GLASS, borderRadius: 0, padding: "36px 40px", border: "1px solid rgba(201, 168, 76, 0.55)", boxShadow: "0 0 0 1px rgba(201,168,76,0.08), 0 8px 32px rgba(0,0,0,0.4)" }}>
+          <p style={{ ...DM, fontSize: 14, fontWeight: 700, color: GOLD, marginBottom: 28 }}>
             Enter Case Credentials
           </p>
 
           {/* ── Court Type Selector ── */}
-          <div style={{ marginBottom: 20 }}>
+          <div style={{ marginBottom: 28 }}>
             <label style={lbl}>Court Type *</label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
               {COURT_TYPES.map((ct) => {
@@ -720,7 +730,7 @@ export default function TrackStatus() {
                       border: isActive
                         ? "1px solid rgba(201,168,76,0.5)"
                         : "1px solid rgba(201,168,76,0.25)",
-                      background: isActive ? "rgba(201,168,76,.12)" : "rgba(35,22,12,0.6)",
+                      background: isActive ? "rgba(201,168,76,.12)" : "rgba(15,15,15,0.6)",
                       color: isActive ? GOLD : "rgba(255,255,255,.55)",
                       display: "flex", alignItems: "center", gap: 8,
                       transition: "all .15s",
@@ -741,7 +751,7 @@ export default function TrackStatus() {
 
           {/* ── eCourts: District + Complex ── */}
           {isECourts && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr", gap: 16, marginBottom: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr", gap: 20, marginBottom: 24 }}>
               <div>
                 <label style={lbl}>District *</label>
                 <select
@@ -782,7 +792,7 @@ export default function TrackStatus() {
           )}
 
           {/* ── Case Type + Number + Year ── */}
-          <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 0.6fr", gap: 16, marginBottom: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 0.6fr", gap: 20, marginBottom: 24 }}>
             <div>
               <label style={lbl}>Case Type *</label>
               <select
@@ -839,7 +849,7 @@ export default function TrackStatus() {
           </div>
 
           {/* ── CNR Number ── */}
-          <div style={{ marginBottom: 20 }}>
+          <div style={{ marginBottom: 24 }}>
             <label style={lbl}>
               CNR Number
               {isECourts ? " (recommended for District Courts)" : " (optional)"}
@@ -852,7 +862,7 @@ export default function TrackStatus() {
               style={inp}
               onKeyDown={(e) => e.key === "Enter" && handleTrack()}
             />
-            <p style={{ ...DM, fontSize: 10, color: "rgba(201,168,76,.5)", marginTop: 6 }}>
+            <p style={{ ...DM, fontSize: 10, color: "rgba(201,168,76,.5)", marginTop: 8 }}>
               {isECourts
                 ? "CNR enables direct case lookup. Find it on your court filing receipt."
                 : "CNR is printed on all court documents. Speeds up case lookup."}
@@ -861,7 +871,7 @@ export default function TrackStatus() {
 
           {/* ── Captcha ── */}
           {needsCaptcha && (
-            <div style={{ marginBottom: 20 }}>
+            <div style={{ marginBottom: 28 }}>
               <label style={lbl}>
                 Captcha *
                 {isECourts && (
@@ -871,7 +881,7 @@ export default function TrackStatus() {
                 )}
               </label>
 
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
                 {captchaLoading ? (
                   <div style={{
                     width: 140, height: 50, background: "rgba(255,255,255,.04)",
@@ -937,14 +947,14 @@ export default function TrackStatus() {
                 onKeyDown={(e) => e.key === "Enter" && handleTrack()}
               />
 
-              <p style={{ ...DM, fontSize: 10, color: "rgba(255,255,255,.3)", marginTop: 6 }}>
+              <p style={{ ...DM, fontSize: 10, color: "rgba(255,255,255,.3)", marginTop: 8 }}>
                 Case-insensitive. Click Refresh if image is unclear.
               </p>
             </div>
           )}
 
           {/* ── Track Button ── */}
-          <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginTop: 8 }}>
             <button
               onClick={handleTrack}
               disabled={loading || !courtTypeConfig?.supported}
@@ -988,7 +998,7 @@ export default function TrackStatus() {
           {/* ── Error ── */}
           {error && (
             <div style={{
-              marginTop: 14, background: "rgba(239,68,68,.1)",
+              marginTop: 16, background: "rgba(239,68,68,.1)",
               border: "1px solid rgba(239,68,68,.25)",
               borderRadius: 0, padding: "11px 14px", ...DM, fontSize: 12, color: "#ef4444",
             }}>
@@ -1039,7 +1049,7 @@ export default function TrackStatus() {
               </p>
               <p style={{ ...DM, fontSize: 12, color: "rgba(251,191,36,.7)", lineHeight: 1.7 }}>
                 {trackingData.message}
-                {trackingData.cachedAt &&  `Last updated: ${formatDate(trackingData.cachedAt)}`}
+                {trackingData.cachedAt && ` Last updated: ${formatDate(trackingData.cachedAt)}`}
               </p>
             </div>
           </div>
@@ -1065,7 +1075,7 @@ export default function TrackStatus() {
                   <p style={{ ...DM, fontSize: 12, color: "rgba(255,255,255,.4)", marginTop: 4 }}>
                     {trackingData.year && <>Year: {trackingData.year}</>}
                     {(trackingData.cnrNumber || primary?.cnrno) &&
-                      `· CNR: ${trackingData.cnrNumber || primary?.cnrno}`}
+                      ` · CNR: ${trackingData.cnrNumber || primary?.cnrno}`}
                   </p>
                   {trackingData.provider && (
                     <div style={{

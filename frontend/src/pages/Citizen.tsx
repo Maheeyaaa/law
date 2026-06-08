@@ -151,7 +151,6 @@ function StatValue({ value }: { value: number | null }) {
 }
 
 export default function App() {
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("dash");
   const [caseFilter, setCaseFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -185,11 +184,6 @@ export default function App() {
 
   const activitiesList: { text: string; time: string }[] = [];
   const lawyersList: { initials: string; name: string; caseName: string }[] = [];
-
-  useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 500);
-    return () => clearTimeout(t);
-  }, []);
 
   useEffect(() => {
     let ticking = false;
@@ -255,24 +249,6 @@ export default function App() {
     boxShadow: "inset 0 1px 0 rgba(255,255,255,0.035)",
   };
 
-  if (loading) {
-    return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100vh",
-          background: DARK,
-        }}
-      >
-        <p style={{ ...SERIF_ITAL, fontSize: 18, color: GOLD_SOFT }}>
-          — preparing the docket —
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div
       style={{
@@ -319,8 +295,10 @@ export default function App() {
           opacity: Math.max(0.18, 1 - scrollY / 950),
         }}
       />
+
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=DM+Sans:wght@400;500&display=swap');
+
         * {
           box-sizing: border-box;
           margin: 0;
@@ -381,6 +359,7 @@ export default function App() {
         .quick-pill,
         .ai-entry,
         .nav-link,
+        .notif-btn,
         .primary-action,
         .secondary-action {
           transition:
@@ -407,6 +386,14 @@ export default function App() {
         .nav-link:hover {
           color: ${GOLD} !important;
           transform: translateY(-1px);
+        }
+        .notif-btn:hover {
+          border-color: ${GOLD} !important;
+          transform: translateY(-2px);
+          box-shadow: 0 10px 24px rgba(0,0,0,0.18);
+        }
+        .notif-btn:hover svg {
+          stroke: ${GOLD} !important;
         }
         .primary-action:hover,
         .secondary-action:hover {
@@ -470,7 +457,7 @@ export default function App() {
               style={{
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "center",
+                justifyContent: "space-between",
                 padding: "14px 10px",
                 marginBottom: 36,
                 background: "rgba(7,19,15,0.58)",
@@ -526,6 +513,56 @@ export default function App() {
                   </span>
                 ))}
               </div>
+
+              {/* ── Notification Bell ── */}
+              <button
+                type="button"
+                className="notif-btn"
+                title="Notifications"
+                aria-label="Open notifications"
+                onClick={() => goTo("/citizen/notifications")}
+                style={{
+                  background: "rgba(185,145,53,0.08)",
+                  border: `1px solid ${GOLD_SOFT}44`,
+                  borderRadius: 3,
+                  padding: "10px 14px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  marginLeft: 20,
+                  position: "relative",
+                }}
+              >
+                {/* Bell SVG */}
+                <svg
+                  width="17"
+                  height="17"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke={GOLD_SOFT}
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+                  <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+                </svg>
+                {/* Subtle gold dot — indicates unread notifications */}
+                <span
+                  style={{
+                    position: "absolute",
+                    top: 8,
+                    right: 10,
+                    width: 5,
+                    height: 5,
+                    borderRadius: "50%",
+                    background: GOLD,
+                    boxShadow: `0 0 6px ${GOLD}`,
+                  }}
+                />
+              </button>
             </nav>
 
             <div
@@ -1038,7 +1075,9 @@ export default function App() {
                         cursor: "pointer",
                         background: caseFilter === t ? BRONZE : "transparent",
                         color: caseFilter === t ? CHALK : GOLD_SOFT,
-                        border: `1px solid ${caseFilter === t ? BRONZE : GOLD_SOFT + "44"}`,
+                        border: `1px solid ${
+                          caseFilter === t ? BRONZE : GOLD_SOFT + "44"
+                        }`,
                         transition: "all .25s ease",
                       }}
                     >
@@ -1148,13 +1187,14 @@ export default function App() {
                               r.status === "Active"
                                 ? BRONZE
                                 : r.status === "Pending"
-                                  ? DARK_SOFT
-                                  : "transparent",
+                                ? DARK_SOFT
+                                : "transparent",
                             color: CHALK,
-                            border: `1px solid ${r.status === "Resolved"
-                              ? MUTED_TEXT + "55"
-                              : "transparent"
-                              }`,
+                            border: `1px solid ${
+                              r.status === "Resolved"
+                                ? MUTED_TEXT + "55"
+                                : "transparent"
+                            }`,
                             display: "inline-block",
                             textAlign: "center",
                           }}
@@ -1281,7 +1321,11 @@ export default function App() {
                         aria-label={`Start AI quick action: ${pill.label}`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          goTo(`/citizen/legal-chatbot?quickStart=${encodeURIComponent(pill.label)}`);
+                          goTo(
+                            `/citizen/legal-chatbot?quickStart=${encodeURIComponent(
+                              pill.label
+                            )}`
+                          );
                         }}
                         style={{
                           ...DM,
@@ -1294,10 +1338,11 @@ export default function App() {
                             selectedQuickStart?.label === pill.label
                               ? "rgba(213,169,61,0.18)"
                               : "transparent",
-                          border: `1px solid ${selectedQuickStart?.label === pill.label
-                            ? GOLD
-                            : GOLD_SOFT + "55"
-                            }`,
+                          border: `1px solid ${
+                            selectedQuickStart?.label === pill.label
+                              ? GOLD
+                              : GOLD_SOFT + "55"
+                          }`,
                           color:
                             selectedQuickStart?.label === pill.label
                               ? GOLD
