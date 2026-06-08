@@ -4,16 +4,20 @@ import {
   useRef,
   CSSProperties,
   ReactNode,
-  DragEvent,
 } from "react";
+import { useNavigate } from "react-router-dom";
 
 const SERIF: CSSProperties = { fontFamily: "'Playfair Display', serif" };
+
 const SERIF_ITAL: CSSProperties = {
   fontFamily: "'Playfair Display', serif",
   fontStyle: "italic",
 };
+
 const ACCENT: CSSProperties = { fontFamily: "'Cormorant Garamond', serif" };
+
 const DM: CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
+
 const MIST = "#d8e1d7";
 const GOLD = "#d5a93d";
 const GOLD_SOFT = "#b99135";
@@ -151,6 +155,8 @@ function StatValue({ value }: { value: number | null }) {
 }
 
 export default function App() {
+  const navigate = useNavigate();
+
   const [activeTab, setActiveTab] = useState("dash");
   const [caseFilter, setCaseFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -158,6 +164,15 @@ export default function App() {
   const [selectedQuickStart, setSelectedQuickStart] = useState<
     (typeof QUICK_STARTS)[number] | null
   >(null);
+
+  // User account info (loaded from localStorage after login)
+  const [user, setUser] = useState<{
+    name: string;
+    email: string;
+    _id?: string;
+    id?: string;
+  } | null>(null);
+  const [userInitials, setUserInitials] = useState("--");
 
   const sec0 = useRef<HTMLDivElement>(null);
   const sec1 = useRef<HTMLDivElement>(null);
@@ -183,7 +198,29 @@ export default function App() {
   }[] = [];
 
   const activitiesList: { text: string; time: string }[] = [];
+
   const lawyersList: { initials: string; name: string; caseName: string }[] = [];
+
+  // Load logged-in user from localStorage (set during login)
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+        setUser(userData);
+        const parts = userData.name?.split(" ") || [];
+        if (parts.length >= 2) {
+          setUserInitials(
+            (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+          );
+        } else if (parts.length === 1) {
+          setUserInitials(parts[0][0].toUpperCase());
+        }
+      } catch {
+        console.log("Failed to parse user data");
+      }
+    }
+  }, []);
 
   useEffect(() => {
     let ticking = false;
@@ -202,7 +239,7 @@ export default function App() {
   }, []);
 
   const goTo = (path: string) => {
-    window.location.href = path;
+    navigate(path);
   };
 
   const handleNav = (id: string) => {
@@ -361,7 +398,8 @@ export default function App() {
         .nav-link,
         .notif-btn,
         .primary-action,
-        .secondary-action {
+        .secondary-action,
+        .account-btn {
           transition:
             transform .2s ease,
             background .2s ease,
@@ -399,6 +437,11 @@ export default function App() {
         .secondary-action:hover {
           transform: translateY(-2px);
           box-shadow: 0 16px 34px rgba(0,0,0,0.26);
+        }
+        .account-btn:hover {
+          border-color: ${GOLD} !important;
+          transform: translateY(-2px);
+          box-shadow: 0 10px 24px rgba(0,0,0,0.18);
         }
         button:focus-visible,
         input:focus-visible,
@@ -452,7 +495,6 @@ export default function App() {
                   "linear-gradient(90deg, rgba(7,19,15,0.84) 0%, rgba(7,19,15,0.58) 42%, rgba(7,19,15,0.22) 72%, transparent 100%)",
               }}
             />
-
             <nav
               style={{
                 display: "flex",
@@ -470,12 +512,11 @@ export default function App() {
                 zIndex: 2,
               }}
             >
+              {/* Left: Navigation links */}
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "center",
-                  flex: 1,
                   gap: 28,
                   flexWrap: "wrap",
                 }}
@@ -514,57 +555,111 @@ export default function App() {
                 ))}
               </div>
 
-              {/* ── Notification Bell ── */}
-              <button
-                type="button"
-                className="notif-btn"
-                title="Notifications"
-                aria-label="Open notifications"
-                onClick={() => goTo("/citizen/notifications")}
-                style={{
-                  background: "rgba(185,145,53,0.08)",
-                  border: `1px solid ${GOLD_SOFT}44`,
-                  borderRadius: 3,
-                  padding: "10px 14px",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  marginLeft: 20,
-                  position: "relative",
-                }}
-              >
-                {/* Bell SVG */}
-                <svg
-                  width="17"
-                  height="17"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke={GOLD_SOFT}
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-                  <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-                </svg>
-                {/* Subtle gold dot — indicates unread notifications */}
-                <span
+              {/* Right: Notification Bell + Account Avatar */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                {/* Notification Bell */}
+                <button
+                  type="button"
+                  className="notif-btn"
+                  title="Notifications"
+                  aria-label="Open notifications"
+                  onClick={() => goTo("/citizen/notifications")}
                   style={{
-                    position: "absolute",
-                    top: 8,
-                    right: 10,
-                    width: 5,
-                    height: 5,
-                    borderRadius: "50%",
-                    background: GOLD,
-                    boxShadow: `0 0 6px ${GOLD}`,
+                    background: "rgba(185,145,53,0.08)",
+                    border: `1px solid ${GOLD_SOFT}44`,
+                    borderRadius: 3,
+                    padding: "10px 14px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    position: "relative",
                   }}
-                />
-              </button>
+                >
+                  {/* Bell SVG */}
+                  <svg
+                    width="17"
+                    height="17"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke={GOLD_SOFT}
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+                    <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+                  </svg>
+                  {/* Subtle gold dot — indicates unread notifications */}
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: 8,
+                      right: 10,
+                      width: 5,
+                      height: 5,
+                      borderRadius: "50%",
+                      background: GOLD,
+                      boxShadow: `0 0 6px ${GOLD}`,
+                    }}
+                  />
+                </button>
+
+                {/* Account Avatar — shows logged-in user */}
+                <button
+                  type="button"
+                  className="account-btn"
+                  title="My Account"
+                  aria-label="Open account"
+                  onClick={() => navigate("/citizen/account")}
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: "50%",
+                    border: `1px solid ${GOLD_SOFT}44`,
+                    background: "rgba(7,19,15,0.85)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    padding: 0,
+                    flexShrink: 0,
+                    transition: "all .2s ease",
+                    backdropFilter: "blur(12px)",
+                    WebkitBackdropFilter: "blur(12px)",
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
+                    (e.currentTarget as HTMLElement).style.borderColor = GOLD;
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+                    (e.currentTarget as HTMLElement).style.borderColor = `${GOLD_SOFT}44`;
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: "50%",
+                      background: `linear-gradient(135deg, ${BRONZE}, ${GOLD_SOFT})`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: CHALK,
+                      ...DM,
+                    }}
+                  >
+                    {userInitials}
+                  </div>
+                </button>
+              </div>
             </nav>
 
+            {/* Search bar */}
             <div
               style={{
                 marginBottom: 44,
@@ -652,6 +747,22 @@ export default function App() {
                 }}
               >
                 <div>
+                  {/* Welcome message for logged-in user */}
+                  {user?.name && (
+                    <p
+                      style={{
+                        ...DM,
+                        fontSize: 10,
+                        letterSpacing: 3,
+                        color: GOLD_SOFT,
+                        textTransform: "uppercase",
+                        marginBottom: 8,
+                      }}
+                    >
+                      WELCOME BACK, {user.name.split(" ")[0].toUpperCase()}
+                    </p>
+                  )}
+
                   <h1
                     style={{
                       ...SERIF,
@@ -751,6 +862,7 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Right side stat plate */}
               <div
                 style={{
                   flex: "1 1 0",
@@ -859,6 +971,7 @@ export default function App() {
               </div>
             </div>
 
+            {/* Steps section */}
             <div
               style={{
                 position: "relative",
@@ -980,6 +1093,7 @@ export default function App() {
             </div>
           </div>
 
+          {/* My Cases section */}
           <div ref={sec1} className="a1">
             <Plate style={{ padding: "54px 54px 60px" }}>
               <div
@@ -1224,6 +1338,7 @@ export default function App() {
             </Plate>
           </div>
 
+          {/* AI + Recent sections */}
           <div ref={sec2} className="a2">
             <Plate style={{ padding: "56px 56px 60px", marginBottom: 64 }}>
               <div
@@ -1389,7 +1504,6 @@ export default function App() {
                   </button>
                 </div>
               </div>
-
               {selectedQuickStart && (
                 <div
                   style={{
@@ -1488,7 +1602,6 @@ export default function App() {
                     ))
                   )}
                 </div>
-
                 <div style={innerCard}>
                   <div
                     style={{
