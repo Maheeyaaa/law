@@ -7,6 +7,7 @@ import VoiceMicButton from "./components/voice/VoiceMicButton";
 
 // ── User Pages ──────────────────────────────────────────────
 import Home          from "./pages/Home";
+import VerifyEmail   from "./pages/VerifyEmail.tsx";
 import LegalChatbot  from "./pages/LegalChatbot";
 import Citizen       from "./pages/Citizen";
 import MyCases       from "./pages/MyCases";
@@ -34,6 +35,7 @@ function AppContent() {
       <Routes>
         {/* ══ Main ══════════════════════════════════════════ */}
         <Route path="/" element={<Home />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
 
         {/* ══ AI Legal Assistant ════════════════════════════ */}
         <Route path="/citizen/legal-chatbot" element={<LegalChatbot />} />

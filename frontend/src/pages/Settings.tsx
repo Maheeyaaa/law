@@ -195,8 +195,20 @@ export default function Settings() {
 
   const handleLogout = () => {
     if (!confirm("Are you sure you want to logout?")) return;
+
+    // Clear voice prompt state for current user
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        const key = `voicePromptDone_${user.id || user._id || user.email}`;
+        localStorage.removeItem(key);
+      } catch {}
+    }
+
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem("voiceGreetingDone");
     navigate("/");
   };
 

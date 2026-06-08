@@ -50,6 +50,8 @@ const userSchema = new mongoose.Schema(
     },
     isProfileComplete: { type: Boolean, default: false },
     isVerified:        { type: Boolean, default: false },
+    verificationToken:        { type: String,  default: null },
+    verificationTokenExpiry:  { type: Date,    default: null },
 
     // ── Push Notification Fields ─────────────────────────────
     pushSubscriptions: [

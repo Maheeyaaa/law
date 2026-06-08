@@ -34,6 +34,19 @@ const VoiceAssistant: React.FC = () => {
 
   useEffect(() => {
     if (!isCitizenDashboard) return;
+
+    // ✅ Re-check localStorage directly to avoid stale state
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        const key = `voicePromptDone_${user.id || user._id || user.email}`;
+        if (localStorage.getItem(key) === "true") {
+          return; // ← already done, skip everything
+        }
+      } catch {}
+    }
+
     if (voicePromptDone || promptStarted.current) return;
     if (!isBrowserSupported) return;
     if (!languageLoaded) return;
@@ -55,7 +68,7 @@ const VoiceAssistant: React.FC = () => {
     };
 
     start();
-  }, [isCitizenDashboard, languageLoaded]);
+  }, [isCitizenDashboard, languageLoaded, voicePromptDone]);
 
   // ── Step 1: Language Selection ─────────────────────
   const askLanguage = async () => {
@@ -131,7 +144,6 @@ const VoiceAssistant: React.FC = () => {
         console.error("Failed to save language:", e);
       }
 
-      // Now speaks in chosen language via ResponsiveVoice ✅
       await speak(t("language_selected", chosenLang), chosenLang);
       await new Promise((r) => setTimeout(r, 400));
       askVoicePrompt(chosenLang);
@@ -180,7 +192,7 @@ const VoiceAssistant: React.FC = () => {
     if (!SpeechRecognition) return;
 
     const recognition = new SpeechRecognition();
-    recognition.lang = "en-IN"; // always en-IN for listening
+    recognition.lang = "en-IN";
     recognition.continuous = false;
     recognition.interimResults = false;
 
@@ -216,7 +228,6 @@ const VoiceAssistant: React.FC = () => {
       if (isYes) {
         setVoicePromptDone(true);
         enableVoice();
-        // Speaks in user's language via ResponsiveVoice ✅
         await speak(t("yes_response", lang), lang);
         await new Promise((r) => setTimeout(r, 300));
         await speak(t("main_menu", lang), lang);

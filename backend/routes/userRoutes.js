@@ -1,20 +1,18 @@
-import express from "express";
+// backend/routes/userRoutes.js
 
+import express from "express";
 import {
   registerUser,
   loginUser,
+  verifyEmail,
+  resendVerification,
+  getCurrentUser,
 } from "../controllers/userController.js";
-
 import protect from "../middleware/authMiddleware.js";
-
 import upload from "../middleware/uploadMiddleware.js";
+import { validateUserLocation } from "../middleware/telanganaValidation.js";
 
-import {
-  validateUserLocation,
-} from "../middleware/telanganaValidation.js";
-
-const router =
-  express.Router();
+const router = express.Router();
 
 // ======================
 // Auth
@@ -22,62 +20,34 @@ const router =
 
 router.post(
   "/register",
-
-  upload.single(
-    "avatar"
-  ),
-
+  upload.single("avatar"),
   validateUserLocation,
-
   registerUser
 );
 
-router.post(
-  "/login",
+router.post("/login", (req, res) => {
+  req.body.allowedRole = "citizen";
+  loginUser(req, res);
+});
 
-  (req, res) => {
-    req.body.allowedRole =
-      "citizen";
+router.post("/admin/login", (req, res) => {
+  req.body.allowedRole = "admin";
+  loginUser(req, res);
+});
 
-    loginUser(
-      req,
-      res
-    );
-  }
-);
+// ======================
+// Email Verification
+// ======================
 
-router.post(
-  "/admin/login",
-
-  (req, res) => {
-    req.body.allowedRole =
-      "admin";
-
-    loginUser(
-      req,
-      res
-    );
-  }
-);
+router.get("/verify-email", verifyEmail);
+router.post("/resend-verification", resendVerification);
 
 // ======================
 // Profile
 // ======================
 
-router.get(
-  "/profile",
-
-  protect,
-
-  (
-    req,
-    res
-  ) => {
-    res.json({
-      user:
-        req.user,
-    });
-  }
-);
+router.get("/profile", protect, (req, res) => {
+  res.json({ user: req.user });
+});
 
 export default router;

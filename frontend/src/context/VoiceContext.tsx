@@ -49,13 +49,45 @@ interface VoiceContextType {
 
 const VoiceContext = createContext<VoiceContextType | null>(null);
 
+// ── Helper: get user-specific localStorage key ──
+// So if user A and user B login on same device, each gets their own prompt state
+function getPromptDoneKey(): string | null {
+  const userStr = localStorage.getItem("user");
+  if (!userStr) return null;
+  try {
+    const user = JSON.parse(userStr);
+    return `voicePromptDone_${user.id || user._id || user.email}`;
+  } catch {
+    return null;
+  }
+}
+
 export const VoiceProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [voicePromptDone, setVoicePromptDone] = useState(false);
+
+  // ── voicePromptDone: load from localStorage on init ──
+  const [voicePromptDone, setVoicePromptDoneState] = useState<boolean>(() => {
+    const key = getPromptDoneKey();
+    if (!key) return false;
+    return localStorage.getItem(key) === "true";
+  });
+
+  // ── Wrapper that persists to localStorage too ──
+  const setVoicePromptDone = useCallback((val: boolean) => {
+    setVoicePromptDoneState(val);
+    const key = getPromptDoneKey();
+    if (!key) return;
+    if (val) {
+      localStorage.setItem(key, "true");
+    } else {
+      localStorage.removeItem(key);
+    }
+  }, []);
+
   const [transcript, setTranscript] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
