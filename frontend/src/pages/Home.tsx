@@ -424,6 +424,10 @@ function SignInPage({ role, onRegister, onBack }: { role: string | null; onRegis
         localStorage.setItem("user", JSON.stringify(data.user));
         localStorage.removeItem("voiceGreetingDone");
 
+        // ✅ Reset voice prompt so it runs after every login
+        const voiceKey = `voicePromptDone_${data.user._id || data.user.id || data.user.email}`;
+        localStorage.removeItem(voiceKey);
+
         const userRole = data.user.role;
 
         if (userRole === "admin") {

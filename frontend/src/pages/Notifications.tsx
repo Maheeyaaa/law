@@ -40,52 +40,43 @@ const GLASS: CSSProperties = {
 
 function typeIcon(type: string): string {
   switch (type) {
-    case "hearing":
-      return "CS";
-    case "case":
-      return "RQ";
-    case "document":
-      return "DC";
-    case "lawyer":
-      return "LW";
-    case "system":
-      return "SY";
-    default:
-      return "NT";
+    case "hearing_reminder": return "CS";
+    case "case":             return "RQ";
+    case "case_update":      return "RQ";
+    case "document":         return "DC";
+    case "support":          return "SP";
+    case "voice":            return "VC";
+    case "ai":               return "AI";
+    case "system":           return "SY";
+    default:                 return "NT";
   }
 }
 
 function typeColor(type: string): string {
   switch (type) {
-    case "hearing":
-      return "#3b82f6";
-    case "case":
-      return "#34d399";
-    case "document":
-      return "#fbbf24";
-    case "lawyer":
-      return "#a78bfa";
-    case "system":
-      return "#9ca3af";
-    default:
-      return "#6aadff";
+    case "hearing_reminder": return "#3b82f6";
+    case "case":             return "#34d399";
+    case "case_update":      return "#34d399";
+    case "document":         return "#fbbf24";
+    case "support":          return "#a78bfa";
+    case "voice":            return "#f97316";
+    case "ai":               return "#22d3ee";
+    case "system":           return "#9ca3af";
+    default:                 return "#6aadff";
   }
 }
 
 function typeLabel(type: string): string {
   switch (type) {
-    case "hearing":
-      return "Consultation";
-    case "case":
-      return "Request";
-    case "document":
-      return "Document";
-    case "lawyer":
-      return "Lawyer";
-    case "system":
-      return "System";
-    default:
-      return type;
+    case "hearing_reminder": return "Hearing Reminder";
+    case "case":             return "Case";
+    case "case_update":      return "Case Update";
+    case "document":         return "Document";
+    case "support":          return "Support";
+    case "voice":            return "Voice";
+    case "ai":               return "AI";
+    case "system":           return "System";
+    default:                 return type;
   }
 }
 
@@ -179,14 +170,16 @@ export default function Notifications() {
     switch (filter) {
       case "unread":
         return notifications.filter((n) => !n.read);
-      case "hearing":
-        return notifications.filter((n) => n.type === "hearing");
-      case "case":
-        return notifications.filter((n) => n.type === "case");
+      case "hearing_reminder":
+        return notifications.filter((n) => n.type === "hearing_reminder");
+      case "case_update":
+        return notifications.filter((n) => 
+          n.type === "case_update" || n.type === "case"
+        );
       case "document":
         return notifications.filter((n) => n.type === "document");
-      case "lawyer":
-        return notifications.filter((n) => n.type === "lawyer");
+      case "system":
+        return notifications.filter((n) => n.type === "system");
       default:
         return notifications;
     }
@@ -221,20 +214,26 @@ export default function Notifications() {
   const groupOrder = ["Today", "Yesterday", "This Week", "Earlier"];
 
   const stats = [
-    { label: "Total", value: notifications.length },
-    { label: "Unread", value: unreadCount },
+    { label: "Total",    value: notifications.length },
+    { label: "Unread",   value: unreadCount },
     {
-      label: "Consultations",
-      value: notifications.filter((n) => n.type === "hearing").length,
+      label: "Hearings",
+      value: notifications.filter((n) => n.type === "hearing_reminder").length,
     },
     {
-      label: "Requests",
-      value: notifications.filter((n) => n.type === "case").length,
+      label: "Case Updates",
+      value: notifications.filter((n) => 
+        n.type === "case_update" || n.type === "case"
+      ).length,
     },
     {
       label: "Documents",
       value: notifications.filter((n) => n.type === "document").length,
     },
+    {
+      label: "System",
+      value: notifications.filter((n) => n.type === "system").length,
+    }
   ];
 
   return (
@@ -413,12 +412,12 @@ export default function Notifications() {
         }}
       >
         {[
-          { id: "all", label: "All" },
-          { id: "unread", label: "Unread" },
-          { id: "hearing", label: "Consultations" },
-          { id: "case", label: "Requests" },
-          { id: "document", label: "Documents" },
-          { id: "lawyer", label: "Lawyer" },
+          { id: "all",              label: "All"              },
+          { id: "unread",           label: "Unread"           },
+          { id: "hearing_reminder", label: "Hearing Reminders"},
+          { id: "case_update",      label: "Case Updates"     },
+          { id: "document",         label: "Documents"        },
+          { id: "system",           label: "System"           },
         ].map((f) => {
           const isActive = filter === f.id;
 

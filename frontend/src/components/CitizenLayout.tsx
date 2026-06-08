@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, CSSProperties, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import scalesNavy from "../assets/scales-navy.png";
 import VoiceMicButton from "./voice/VoiceMicButton";
+import NotificationBell from "./NotificationBell";
+import ToastNotification from "./ToastNotification";
 
 const PF: CSSProperties = { fontFamily: "'Playfair Display',serif" };
 const DM: CSSProperties = { fontFamily: "'DM Sans',sans-serif" };
@@ -204,51 +206,14 @@ export default function CitizenLayout({ children, activeNav }: { children: React
             pointerEvents: "none",
           }}
         >
-        <div
-          onClick={() => navigate("/citizen/notifications")}
-          style={{
-            pointerEvents: "auto",
-            width: 42,
-            height: 42,
-            borderRadius: 12,
-            background: "rgba(0,0,0,.75)",
-            border: "1px solid rgba(30,95,255,.25)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            fontSize: 18,
-            backdropFilter: "blur(16px)",
-            boxShadow: "3px 4px 14px rgba(0,0,0,.5)",
-            transition: "all .2s ease",
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
-          }}
-        >
-          <>
-            🔔
-            <span
-              style={{
-                position: "absolute",
-                top: 8,
-                right: 8,
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background: "#1e5fff",
-                boxShadow: "0 0 8px #1e5fff",
-              }}
-            />
-          </>
+        <div style={{ pointerEvents: "auto" }}>
+          <NotificationBell />
         </div>
       </div>
       {children}
       </main>
       <VoiceMicButton />
+      <ToastNotification /> 
     </div>
   );
 }

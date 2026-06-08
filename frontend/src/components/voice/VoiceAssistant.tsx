@@ -33,42 +33,43 @@ const VoiceAssistant: React.FC = () => {
   const isCitizenDashboard = location.pathname === "/citizen";
 
   useEffect(() => {
-    if (!isCitizenDashboard) return;
+  if (!isCitizenDashboard) return;
+  if (!isBrowserSupported) return;
+  if (!languageLoaded) return;
+  if (promptStarted.current) return;
 
-    // ✅ Re-check localStorage directly to avoid stale state
-    const userStr = localStorage.getItem("user");
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        const key = `voicePromptDone_${user.id || user._id || user.email}`;
-        if (localStorage.getItem(key) === "true") {
-          return; // ← already done, skip everything
-        }
-      } catch {}
+  // Check token — only run if logged in
+  const token = localStorage.getItem("token");
+  if (!token) return;
+
+  // Check if already done for this user
+  const userStr = localStorage.getItem("user");
+  if (userStr) {
+    try {
+      const user = JSON.parse(userStr);
+      const key = `voicePromptDone_${user.id || user._id || user.email}`;
+      if (localStorage.getItem(key) === "true") return;
+    } catch {}
+  }
+
+  // Check context state
+  if (voicePromptDone) return;
+
+  // All checks passed — start voice prompt
+  promptStarted.current = true;
+  retryCount.current = 0;
+
+  const start = async () => {
+    await new Promise((r) => setTimeout(r, 2500));
+    if (!language) {
+      askLanguage();
+    } else {
+      askVoicePrompt(language);
     }
+  };
 
-    if (voicePromptDone || promptStarted.current) return;
-    if (!isBrowserSupported) return;
-    if (!languageLoaded) return;
-
-    const token = localStorage.getItem("token");
-    if (!token) return;
-
-    promptStarted.current = true;
-    retryCount.current = 0;
-
-    const start = async () => {
-      await new Promise((r) => setTimeout(r, 2500));
-
-      if (!language) {
-        askLanguage();
-      } else {
-        askVoicePrompt(language);
-      }
-    };
-
-    start();
-  }, [isCitizenDashboard, languageLoaded, voicePromptDone]);
+  start();
+}, [isCitizenDashboard, languageLoaded, voicePromptDone, language]);
 
   // ── Step 1: Language Selection ─────────────────────
   const askLanguage = async () => {

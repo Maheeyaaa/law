@@ -1,11 +1,27 @@
 // backend/controllers/savedCaseController.js
+
 import SavedCase from "../models/SavedCase.js";
+import Notification from "../models/Notification.js";
+import Activity from "../models/Activity.js";
 
 // ── Add a saved case ───────────────────────────────────────
 export const addSavedCase = async (req, res) => {
-    console.log(req.body);
+  console.log(req.body);
   try {
-    const { court, courtComplex, caseType, mtype, caseNumber, year, label, cnrNumber, distCode, distName, complexCode, complexName } = req.body;
+    const { 
+      court, 
+      courtComplex, 
+      caseType, 
+      mtype, 
+      caseNumber, 
+      year, 
+      label, 
+      cnrNumber, 
+      distCode, 
+      distName, 
+      complexCode, 
+      complexName 
+    } = req.body;
 
     if (!court || !caseType || !mtype || !caseNumber || !year) {
       return res.status(400).json({
@@ -39,6 +55,7 @@ export const addSavedCase = async (req, res) => {
       });
     }
 
+    // ── Create the saved case ──────────────────────────────
     const savedCase = await SavedCase.create({
       user: req.user.id,
       court: court.trim(),
@@ -55,11 +72,31 @@ export const addSavedCase = async (req, res) => {
       complexName: complexName?.trim() || "",
     });
 
+    // ── Create Activity ────────────────────────────────────
+    await Activity.create({
+      citizen: req.user.id,
+      text: `Case saved for tracking: ${caseNumber}/${year} at ${court}`,
+      type: "case_created",
+    });
+
+    // ── Create Notification ────────────────────────────────
+    await Notification.create({
+      citizen: req.user.id,
+      title: "Case Added for Tracking",
+      message: `Case ${caseNumber}/${year} at ${court} has been saved. We'll notify you of any updates.`,
+      type: "case",
+      subType: null,
+      relatedCase: savedCase._id,
+      link: `/cases/saved`,
+      read: false,
+    });
+
     res.status(201).json({
       success: true,
       message: "Case saved successfully",
       savedCase,
     });
+
   } catch (error) {
     console.log("ERROR:", error);
     if (error.code === 11000) {
@@ -138,7 +175,14 @@ export const deleteSavedCase = async (req, res) => {
 // ── Update label of a saved case ───────────────────────────
 export const updateSavedCase = async (req, res) => {
   try {
-    const { label, mtype, distCode, distName, complexCode, complexName } = req.body;
+    const { 
+      label, 
+      mtype, 
+      distCode, 
+      distName, 
+      complexCode, 
+      complexName 
+    } = req.body;
 
     const savedCase = await SavedCase.findOne({
       _id: req.params.id,
@@ -152,12 +196,13 @@ export const updateSavedCase = async (req, res) => {
       });
     }
 
-    if (label !== undefined) savedCase.label = label.trim();
-    if (mtype !== undefined) savedCase.mtype = Number(mtype);
-    if (distCode !== undefined) savedCase.distCode = distCode.trim();
-    if (distName !== undefined) savedCase.distName = distName.trim();
+    if (label !== undefined)       savedCase.label       = label.trim();
+    if (mtype !== undefined)       savedCase.mtype       = Number(mtype);
+    if (distCode !== undefined)    savedCase.distCode    = distCode.trim();
+    if (distName !== undefined)    savedCase.distName    = distName.trim();
     if (complexCode !== undefined) savedCase.complexCode = complexCode.trim();
     if (complexName !== undefined) savedCase.complexName = complexName.trim();
+
     await savedCase.save();
 
     res.json({
