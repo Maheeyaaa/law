@@ -6,6 +6,7 @@ import {
   ReactNode,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import { getSavedCases, getMyActivity } from "../services/api";
 
 const SERIF: CSSProperties = { fontFamily: "'Playfair Display', serif" };
 
@@ -174,31 +175,42 @@ export default function App() {
   } | null>(null);
   const [userInitials, setUserInitials] = useState("--");
 
+    useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const casesRes = await getSavedCases();
+        const savedCases = casesRes.data.savedCases || [];
+        setCasesList(savedCases);
+        setStats({
+          total:    savedCases.length,
+          active:   savedCases.length,
+          hearings: null,
+          resolved: null,
+        });
+
+        const activityRes = await getMyActivity(5);
+        setActivitiesList(activityRes.data.activities || []);
+      } catch (err) {
+        console.error("Dashboard fetch failed:", err);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
   const sec0 = useRef<HTMLDivElement>(null);
   const sec1 = useRef<HTMLDivElement>(null);
   const sec2 = useRef<HTMLDivElement>(null);
 
-  const stats: {
-    total: number | null;
-    active: number | null;
-    hearings: number | null;
-    resolved: number | null;
-  } = {
-    total: null,
-    active: null,
-    hearings: null,
-    resolved: null,
-  };
+    const [stats, setStats] = useState({
+    total:    null as number | null,
+    active:   null as number | null,
+    hearings: null as number | null,
+    resolved: null as number | null,
+  });
 
-  const casesList: {
-    _id: string;
-    caseId: string;
-    title: string;
-    status: string;
-  }[] = [];
-
-  const activitiesList: { text: string; time: string }[] = [];
-
+  const [casesList, setCasesList] = useState<any[]>([]);
+  const [activitiesList, setActivitiesList] = useState<any[]>([]);
   const lawyersList: { initials: string; name: string; caseName: string }[] = [];
 
   // Load logged-in user from localStorage (set during login)
@@ -1268,7 +1280,7 @@ export default function App() {
                           borderBottom: `1px dashed ${CHALK}12`,
                         }}
                       >
-                        <p
+                                                <p
                           style={{
                             ...SERIF,
                             fontSize: 13,
@@ -1277,7 +1289,7 @@ export default function App() {
                             letterSpacing: 1,
                           }}
                         >
-                          {r.caseId}
+                          {r.caseNumber}/{r.year}
                         </p>
                         <p
                           style={{
@@ -1287,7 +1299,7 @@ export default function App() {
                             lineHeight: 1.4,
                           }}
                         >
-                          {r.title}
+                          {r.label || r.court}
                         </p>
                         <span
                           style={{
@@ -1297,23 +1309,14 @@ export default function App() {
                             textTransform: "uppercase",
                             padding: "6px 12px",
                             borderRadius: 3,
-                            background:
-                              r.status === "Active"
-                                ? BRONZE
-                                : r.status === "Pending"
-                                ? DARK_SOFT
-                                : "transparent",
+                            background: DARK_SOFT,
                             color: CHALK,
-                            border: `1px solid ${
-                              r.status === "Resolved"
-                                ? MUTED_TEXT + "55"
-                                : "transparent"
-                            }`,
+                            border: "1px solid transparent",
                             display: "inline-block",
                             textAlign: "center",
                           }}
                         >
-                          {r.status}
+                          {r.caseType}
                         </span>
                         <span
                           onClick={() => handleNav("cases")}
@@ -1595,10 +1598,36 @@ export default function App() {
                       The desk is quiet — no recent activity.
                     </p>
                   ) : (
-                    activitiesList.map((a, i) => (
-                      <p key={i}>
-                        {a.text} · {a.time}
-                      </p>
+                                        activitiesList.map((a, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                          padding: "10px 0",
+                          borderBottom: `1px dashed ${CHALK}12`,
+                          gap: 12,
+                        }}
+                      >
+                        <p style={{
+                          ...DM,
+                          fontSize: 13,
+                          color: CHALK,
+                          lineHeight: 1.5,
+                          flex: 1,
+                        }}>
+                          {a.text}
+                        </p>
+                        <p style={{
+                          ...DM,
+                          fontSize: 10,
+                          color: MUTED_TEXT,
+                          flexShrink: 0,
+                        }}>
+                          {a.time}
+                        </p>
+                      </div>
                     ))
                   )}
                 </div>
