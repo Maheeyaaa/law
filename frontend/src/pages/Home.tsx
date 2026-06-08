@@ -378,10 +378,11 @@ function SignInPage({ role, onRegister, onBack }) {
                 // ✅ Save BOTH token AND user data
                 localStorage.setItem("token", data.token);
                 localStorage.setItem("user", JSON.stringify(data.user));
-                
+                localStorage.removeItem("voiceGreetingDone");
+
                 // ✅ Redirect based on role
                 const userRole = data.user.role;
-                
+
                 if (userRole === "admin") {
                     window.location.href = "/admin";
                 } else {
@@ -442,7 +443,7 @@ function SignInPage({ role, onRegister, onBack }) {
                 <button
                     style={authPrimaryButton}
                     onClick={handleLogin}
-                    >
+                >
                     Login
                 </button>
 
@@ -472,19 +473,19 @@ function RegisterPage({ role, onSignIn, onBack }) {
         try {
             const backendRole = "citizen";
             const data = {
-            name,
-            email,
-            password,
-            role: backendRole,
-            district,
+                name,
+                email,
+                password,
+                role: backendRole,
+                district,
             };
 
             const res = await fetch("http://localhost:8000/api/auth/register", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(data)
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(data)
             });
 
             const result = await res.json();
@@ -497,7 +498,7 @@ function RegisterPage({ role, onSignIn, onBack }) {
         } catch (error) {
             console.error(error);
         }
-        };
+    };
 
     return (
         <div style={authPageWrapper}>
@@ -548,31 +549,31 @@ function RegisterPage({ role, onSignIn, onBack }) {
                 />
 
                 {/* District selection for all users */}
-                    <div style={fieldLabel}>DISTRICT (TELANGANA)</div>
-                    <select
-                        style={{ ...authInput, cursor: "pointer" }}
-                        value={district}
-                        onChange={(e) => setDistrict(e.target.value)}
-                    >
-                        <option value="" style={{ backgroundColor: "#1a1a2e" }}>Select your district…</option>
-                        {[
-                            "Hyderabad", "Rangareddy", "Medchal-Malkajgiri", "Sangareddy", "Vikarabad",
-                            "Warangal Urban", "Warangal Rural", "Hanumakonda", "Khammam", "Nalgonda",
-                            "Karimnagar", "Nizamabad", "Adilabad", "Komaram Bheem Asifabad", "Mancherial",
-                            "Peddapalli", "Jagtial", "Rajanna Sircilla", "Kamareddy", "Medak",
-                            "Siddipet", "Jangaon", "Mahabubabad", "Warangal", "Suryapet",
-                            "Yadadri Bhuvanagiri", "Mahabubnagar", "Nagarkurnool", "Wanaparthy",
-                            "Jogulamba Gadwal", "Narayanpet", "Mulugu", "Jayashankar Bhupalpally",
-                            "Bhadradri Kothagudem",
-                        ].map(d => (
-                            <option key={d} value={d} style={{ backgroundColor: "#1a1a2e" }}>{d}</option>
-                        ))}
-                    </select>
+                <div style={fieldLabel}>DISTRICT (TELANGANA)</div>
+                <select
+                    style={{ ...authInput, cursor: "pointer" }}
+                    value={district}
+                    onChange={(e) => setDistrict(e.target.value)}
+                >
+                    <option value="" style={{ backgroundColor: "#1a1a2e" }}>Select your district…</option>
+                    {[
+                        "Hyderabad", "Rangareddy", "Medchal-Malkajgiri", "Sangareddy", "Vikarabad",
+                        "Warangal Urban", "Warangal Rural", "Hanumakonda", "Khammam", "Nalgonda",
+                        "Karimnagar", "Nizamabad", "Adilabad", "Komaram Bheem Asifabad", "Mancherial",
+                        "Peddapalli", "Jagtial", "Rajanna Sircilla", "Kamareddy", "Medak",
+                        "Siddipet", "Jangaon", "Mahabubabad", "Warangal", "Suryapet",
+                        "Yadadri Bhuvanagiri", "Mahabubnagar", "Nagarkurnool", "Wanaparthy",
+                        "Jogulamba Gadwal", "Narayanpet", "Mulugu", "Jayashankar Bhupalpally",
+                        "Bhadradri Kothagudem",
+                    ].map(d => (
+                        <option key={d} value={d} style={{ backgroundColor: "#1a1a2e" }}>{d}</option>
+                    ))}
+                </select>
 
                 <button
                     style={authPrimaryButton}
                     onClick={handleRegister}
-                    >
+                >
                     Create Account
                 </button>
 

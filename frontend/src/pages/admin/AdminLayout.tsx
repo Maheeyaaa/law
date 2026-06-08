@@ -1,5 +1,3 @@
-// frontend/src/pages/admin/AdminLayout.tsx
-
 import { useState, useEffect, type CSSProperties } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -8,10 +6,10 @@ const BLUE = "#1e5fff";
 const BLUEB = "#4d8aff";
 
 const NAV_ITEMS = [
-  { label: "Dashboard", path: "/admin/dashboard", icon: "📊" },
-  { label: "Users",     path: "/admin/users",     icon: "👥" },
-  { label: "Lawyers",   path: "/admin/lawyers",   icon: "⚖️"  },
-  { label: "Activity",  path: "/admin/activity",  icon: "📋" },
+  { label: "Dashboard", path: "/admin/dashboard" },
+  { label: "Users",     path: "/admin/users"     },
+  { label: "Lawyers",   path: "/admin/lawyers"   },
+  { label: "Activity",  path: "/admin/activity"  },
 ];
 
 interface AdminLayoutProps {
@@ -157,7 +155,8 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
     <div style={{
       ...DM,
       minHeight:  "100vh",
-      background: "linear-gradient(135deg, #0a1628 0%, #1a2a4a 100%)",
+      background: "#0f1117 url('/admin.jpg') no-repeat center center / cover",
+      backgroundAttachment: "fixed",
       display:    "flex",
       color:      "#fff",
     }}>
@@ -166,9 +165,9 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
       <div style={{
         width:        240,
         minHeight:    "100vh",
-        background:   "rgba(5,12,40,.8)",
-        backdropFilter: "blur(16px)",
-        borderRight:  "1px solid rgba(30,95,255,.12)",
+        background:   "rgba(52, 2, 29, 0.55)", // Updated to translucent deep rich maroonish purple
+        backdropFilter: "blur(20px)",
+        borderRight:  "1px solid rgba(201,168,76,.3)",
         display:      "flex",
         flexDirection:"column",
         position:     "fixed",
@@ -181,21 +180,9 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
         {/* Logo */}
         <div style={{
           padding:      "28px 24px 20px",
-          borderBottom: "1px solid rgba(30,95,255,.1)",
+          borderBottom: "1px solid rgba(201,168,76,.15)",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{
-              width:          36,
-              height:         36,
-              background:     "rgba(30,95,255,.2)",
-              borderRadius:   10,
-              display:        "flex",
-              alignItems:     "center",
-              justifyContent: "center",
-              fontSize:       18,
-            }}>
-              🛡️
-            </div>
             <div>
               <p style={{
                 fontSize:   13,
@@ -235,8 +222,8 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
                   borderRadius:   10,
                   marginBottom:   4,
                   cursor:         "pointer",
-                  background:     isActive ? "rgba(30,95,255,.2)"  : "transparent",
-                  border:         isActive ? "1px solid rgba(30,95,255,.3)" : "1px solid transparent",
+                  background:     isActive ? "rgba(201,168,76,.15)"  : "transparent",
+                  border:         isActive ? "1px solid rgba(201,168,76,.3)" : "1px solid transparent",
                   transition:     "all .2s",
                 }}
                 onMouseEnter={e => {
@@ -248,11 +235,10 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
                     (e.currentTarget as HTMLDivElement).style.background = "transparent";
                 }}
               >
-                <span style={{ fontSize: 16 }}>{item.icon}</span>
                 <span style={{
                   fontSize:   13,
                   fontWeight: isActive ? 600 : 400,
-                  color:      isActive ? BLUEB : "rgba(255,255,255,.6)",
+                  color:      isActive ? "#C9A84C" : "rgba(255,255,255,.6)",
                 }}>
                   {item.label}
                 </span>
@@ -262,7 +248,7 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
                     width:        4,
                     height:       4,
                     borderRadius: "50%",
-                    background:   BLUEB,
+                    background:   "#C9A84C",
                   }} />
                 )}
               </div>
@@ -273,14 +259,14 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
         {/* Bottom Section */}
         <div style={{
           padding:    "16px 12px",
-          borderTop:  "1px solid rgba(30,95,255,.1)",
+          borderTop:  "1px solid rgba(201,168,76,.15)",
         }}>
 
           {/* Admin Info */}
           <div style={{
             padding:      "10px 14px",
             borderRadius: 10,
-            background:   "rgba(255,255,255,.03)",
+            background:   "rgba(201,168,76,.08)",
             marginBottom: 8,
           }}>
             <p style={{
@@ -294,7 +280,7 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
             </p>
             <p style={{
               fontSize: 10,
-              color:    "rgba(255,255,255,.3)",
+              color:    "rgba(201,168,76,.5)",
               margin:   0,
             }}>
               {adminUser.email || ""}
@@ -307,9 +293,9 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
             style={{
               ...DM,
               width:          "100%",
-              background:     "rgba(30,95,255,.1)",
-              color:          "rgba(168,200,255,.6)",
-              border:         "1px solid rgba(30,95,255,.15)",
+              background:     "rgba(201,168,76,.1)",
+              color:          "#C9A84C",
+              border:         "1px solid rgba(201,168,76,.2)",
               borderRadius:   10,
               padding:        "10px 14px",
               fontSize:       12,
@@ -324,14 +310,14 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
             }}
             onMouseEnter={e =>
               (e.currentTarget as HTMLButtonElement).style.background =
-                "rgba(30,95,255,.2)"
+                "rgba(201,168,76,.2)"
             }
             onMouseLeave={e =>
               (e.currentTarget as HTMLButtonElement).style.background =
-                "rgba(30,95,255,.1)"
+                "rgba(201,168,76,.1)"
             }
           >
-            <span>🔑</span> Change Password
+            Change Password
           </button>
 
           {/* Logout Button */}
@@ -363,7 +349,7 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
                 "rgba(239,68,68,.1)"
             }
           >
-            <span>🚪</span> Logout
+            Logout
           </button>
 
         </div>
@@ -446,7 +432,7 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
                 color:      "#fff",
                 margin:     0,
               }}>
-                🔑 Change Password
+                Change Password
               </h2>
               <button
                 onClick={closePwModal}
@@ -474,7 +460,7 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
                 marginBottom: 16,
               }}>
                 <p style={{ ...DM, fontSize: 12, color: "#ef4444", margin: 0 }}>
-                  ⚠️ {pwError}
+                  {pwError}
                 </p>
               </div>
             )}
@@ -489,7 +475,7 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
                 marginBottom: 16,
               }}>
                 <p style={{ ...DM, fontSize: 12, color: "#34d399", margin: 0 }}>
-                  ✅ {pwSuccess}
+                  {pwSuccess}
                 </p>
               </div>
             )}
@@ -535,12 +521,12 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
                       background:"none",
                       border:    "none",
                       cursor:    "pointer",
-                      fontSize:  15,
+                      fontSize:  13,
                       color:     "rgba(255,255,255,.4)",
                       padding:   0,
                     }}
                   >
-                    {showPw[showKey as keyof typeof showPw] ? "🙈" : "👁️"}
+                    {showPw[showKey as keyof typeof showPw] ? "Hide" : "Show"}
                   </button>
                 </div>
               </div>
@@ -553,7 +539,7 @@ export default function AdminLayout({ children, title, subtitle }: AdminLayoutPr
               color:        "rgba(255,255,255,.25)",
               marginBottom: 20,
             }}>
-              ⚠️ Minimum 8 characters · Must be different from current
+              Minimum 8 characters · Must be different from current
             </p>
 
             {/* Action Buttons */}

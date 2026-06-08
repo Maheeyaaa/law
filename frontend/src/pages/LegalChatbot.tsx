@@ -1,12 +1,13 @@
 // frontend/src/pages/LegalChatbot.tsx
+
 import {
   useState, useRef, useEffect, useCallback, type CSSProperties,
 } from "react";
 
 // ── Design tokens ────────────────────────────────────────────
 const DM: CSSProperties = { fontFamily: "'DM Sans', sans-serif" };
-const BLUE = "#1e5fff";
-const BLUEB = "#4d8aff";
+const GOLD = "#C9A84C";          // primary accent (state-gov gold)
+const GOLDB = "#d8bd6e";         // lighter gold for hover/secondary text
 const API_BASE = "http://localhost:8000/api";
 
 // ── Types ────────────────────────────────────────────────────
@@ -31,13 +32,13 @@ interface ChatMsg {
 
 // ── Tools config ─────────────────────────────────────────────
 const TOOLS = [
-  { id: "notice",   icon: "📄", label: "Notice Explainer",  desc: "Understand any legal notice" },
-  { id: "scam",     icon: "🚨", label: "Scam Detector",      desc: "Verify if a notice is fake" },
-  { id: "deadline", icon: "⏰", label: "Deadline Calculator",desc: "Calculate response deadlines" },
-  { id: "term",     icon: "📖", label: "Term Decoder",       desc: "Decode legal jargon" },
-  { id: "filing",   icon: "📝", label: "Filing Guide",       desc: "Step-by-step filing help" },
-  { id: "checklist",icon: "✅", label: "Doc Checklist",      desc: "Get required documents list" },
-  { id: "legalaid", icon: "🏛️", label: "Legal Aid Check",   desc: "Check free aid eligibility" },
+  { id: "notice", icon: "📄", label: "Notice Explainer", desc: "Understand any legal notice" },
+  { id: "scam", icon: "🚨", label: "Scam Detector", desc: "Verify if a notice is fake" },
+  { id: "deadline", icon: "⏰", label: "Deadline Calculator", desc: "Calculate response deadlines" },
+  { id: "term", icon: "📖", label: "Term Decoder", desc: "Decode legal jargon" },
+  { id: "filing", icon: "📝", label: "Filing Guide", desc: "Step-by-step filing help" },
+  { id: "checklist", icon: "✅", label: "Doc Checklist", desc: "Get required documents list" },
+  { id: "legalaid", icon: "🏛️", label: "Legal Aid Check", desc: "Check free aid eligibility" },
 ];
 
 const SUGGESTED = [
@@ -100,8 +101,8 @@ function Spinner({ size = 24 }: { size?: number }) {
   return (
     <div style={{
       width: size, height: size, borderRadius: "50%",
-      border: `2px solid rgba(30,95,255,.2)`,
-      borderTop: `2px solid ${BLUE}`,
+      border: `2px solid rgba(201,168,76,.2)`,
+      borderTop: `2px solid ${GOLD}`,
       animation: "spin 0.9s linear infinite",
       flexShrink: 0,
     }} />
@@ -157,7 +158,7 @@ function ToolForm({
 
   const inp: CSSProperties = {
     ...DM, width: "100%", background: "rgba(255,255,255,.06)",
-    border: "1px solid rgba(30,95,255,.2)", borderRadius: 8,
+    border: "1px solid rgba(201,168,76,.25)", borderRadius: 0,
     padding: "9px 12px", color: "#fff", fontSize: 13,
     outline: "none", boxSizing: "border-box",
   };
@@ -221,8 +222,8 @@ function ToolForm({
 
   return (
     <div style={{
-      background: "rgba(10,20,55,.85)", backdropFilter: "blur(20px)",
-      border: "1px solid rgba(30,95,255,.25)", borderRadius: 16,
+      background: "rgba(30,30,35,.92)", backdropFilter: "blur(20px)",
+      border: "1px solid rgba(201,168,76,.3)", borderRadius: 16,
       padding: "20px 22px", maxWidth: 560,
     }}>
       {/* Header */}
@@ -238,7 +239,7 @@ function ToolForm({
           background: "none", border: "none",
           color: "rgba(255,255,255,.3)", fontSize: 18,
           cursor: "pointer", lineHeight: 1, padding: "2px 6px",
-          borderRadius: 6, transition: "color .2s",
+          borderRadius: 0, transition: "color .2s",
         }}
           onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
           onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,.3)")}
@@ -257,7 +258,7 @@ function ToolForm({
             <input type="file" accept=".pdf,.txt"
               onChange={(e) => setNoticeFile(e.target.files?.[0] || null)}
               style={{ ...inp, padding: 8, cursor: "pointer" }} />
-            {noticeFile && <p style={{ ...DM, fontSize: 10, color: BLUEB, marginTop: 4 }}>📎 {noticeFile.name}</p>}
+            {noticeFile && <p style={{ ...DM, fontSize: 10, color: GOLDB, marginTop: 4 }}>📎 {noticeFile.name}</p>}
           </div>
           <div>
             <label style={lbl}>Or paste notice text</label>
@@ -269,7 +270,7 @@ function ToolForm({
 
         {/* SCAM */}
         {toolId === "scam" && <>
-          <div style={{ background: "rgba(255,80,80,.07)", border: "1px solid rgba(255,80,80,.18)", borderRadius: 8, padding: "10px 12px" }}>
+          <div style={{ background: "rgba(255,80,80,.07)", border: "1px solid rgba(255,80,80,.18)", borderRadius: 0, padding: "10px 12px" }}>
             <p style={{ ...DM, fontSize: 12, color: "#ff9999", lineHeight: 1.7 }}>🚨 Upload or paste the suspicious notice to check for fraud indicators.</p>
           </div>
           <div>
@@ -277,7 +278,7 @@ function ToolForm({
             <input type="file" accept=".pdf,.txt"
               onChange={(e) => setScamFile(e.target.files?.[0] || null)}
               style={{ ...inp, padding: 8, cursor: "pointer" }} />
-            {scamFile && <p style={{ ...DM, fontSize: 10, color: BLUEB, marginTop: 4 }}>📎 {scamFile.name}</p>}
+            {scamFile && <p style={{ ...DM, fontSize: 10, color: GOLDB, marginTop: 4 }}>📎 {scamFile.name}</p>}
           </div>
           <div>
             <label style={lbl}>Or paste notice text</label>
@@ -326,10 +327,10 @@ function ToolForm({
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {["Affidavit", "Bail", "FIR", "Injunction", "Habeas Corpus", "Summons", "Writ"].map((t) => (
               <button key={t} onClick={() => setTerm(t)} style={{
-                ...DM, background: "rgba(30,95,255,.1)",
-                border: "1px solid rgba(30,95,255,.25)",
-                borderRadius: 20, padding: "4px 12px",
-                color: BLUEB, fontSize: 11, cursor: "pointer",
+                ...DM, background: "rgba(201,168,76,.1)",
+                border: "1px solid rgba(201,168,76,.3)",
+                borderRadius: 0, padding: "4px 12px",
+                color: GOLDB, fontSize: 11, cursor: "pointer",
               }}>{t}</button>
             ))}
           </div>
@@ -436,7 +437,7 @@ function ToolForm({
 
       {/* Error */}
       {err && (
-        <p style={{ ...DM, fontSize: 12, color: "#ff8080", marginTop: 10, padding: "8px 12px", background: "rgba(255,80,80,.08)", borderRadius: 8 }}>
+        <p style={{ ...DM, fontSize: 12, color: "#ff8080", marginTop: 10, padding: "8px 12px", background: "rgba(255,80,80,.08)", borderRadius: 0 }}>
           {err}
         </p>
       )}
@@ -444,7 +445,7 @@ function ToolForm({
       {/* Actions */}
       <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
         <button onClick={onCancel} style={{
-          ...DM, flex: 1, padding: "10px", borderRadius: 10,
+          ...DM, flex: 1, padding: "10px", borderRadius: 0,
           background: "rgba(255,255,255,.05)",
           border: "1px solid rgba(255,255,255,.1)",
           color: "rgba(255,255,255,.5)", fontSize: 13, cursor: "pointer",
@@ -452,9 +453,9 @@ function ToolForm({
           Cancel
         </button>
         <button onClick={submit} disabled={loading} style={{
-          ...DM, flex: 2, padding: "10px", borderRadius: 10,
-          background: loading ? "rgba(30,95,255,.4)" : BLUE,
-          border: "none", color: "#fff", fontSize: 13,
+          ...DM, flex: 2, padding: "10px", borderRadius: 0,
+          background: loading ? "rgba(201,168,76,.4)" : GOLD,
+          border: "none", color: "#111", fontSize: 13,
           fontWeight: 600, cursor: loading ? "not-allowed" : "pointer",
           display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
         }}>
@@ -505,7 +506,8 @@ export default function LegalChatbot() {
 
   // ── Background ─────────────────────────────────────────────
   useEffect(() => {
-    document.body.style.backgroundImage = "url('/images/bg-marble.png')";
+    document.body.style.backgroundImage =
+      'linear-gradient(rgba(10, 10, 10, 0.75), rgba(10, 10, 10, 0.75)), url("/ai.jpg")';
     document.body.style.backgroundSize = "cover";
     document.body.style.backgroundPosition = "center";
     document.body.style.backgroundRepeat = "no-repeat";
@@ -635,15 +637,15 @@ export default function LegalChatbot() {
             p.map((c) =>
               c._id === data.conversationId
                 ? {
-                    ...c,
-                    // Update title if it was "New Conversation"
-                    title: c.title === "New Conversation"
-                      ? (data.conversationTitle || userText.substring(0, 60) + (userText.length > 60 ? "..." : ""))
-                      : c.title,
-                    lastMessage: (data.reply || "").substring(0, 100),
-                    lastActivityAt: new Date().toISOString(),
-                    messageCount: c.messageCount + 2,
-                  }
+                  ...c,
+                  // Update title if it was "New Conversation"
+                  title: c.title === "New Conversation"
+                    ? (data.conversationTitle || userText.substring(0, 60) + (userText.length > 60 ? "..." : ""))
+                    : c.title,
+                  lastMessage: (data.reply || "").substring(0, 100),
+                  lastActivityAt: new Date().toISOString(),
+                  messageCount: c.messageCount + 2,
+                }
                 : c
             )
           );
@@ -697,7 +699,7 @@ export default function LegalChatbot() {
       setDeletingId(null);
     }
   }, [activeConvId, conversations]);
-  
+
   // ── Pin conversation ───────────────────────────────────────
   const pinConv = useCallback(async (conv: Conversation, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -761,34 +763,34 @@ export default function LegalChatbot() {
   // ── Render ─────────────────────────────────────────────────
   return (
     <div style={{ ...DM, height: "100vh", display: "flex", overflow: "hidden", color: "#fff", position: "relative" }}>
-      <div style={{ position: "fixed", inset: 0, zIndex: -1, background: "rgba(2,8,30,0.32)", pointerEvents: "none" }} />
+      <div style={{ position: "fixed", inset: 0, zIndex: -1, background: "rgba(15,15,20,0.4)", pointerEvents: "none" }} />
 
       <style>{`
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        @keyframes spin    { to { transform: rotate(360deg); } }
-        @keyframes fadeUp  { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes blink   { 0%,100% { opacity:.3; } 50% { opacity:1; } }
-        @keyframes pulse   { 0%,100% { transform:scale(1); } 50% { transform:scale(1.12); } }
-        ::-webkit-scrollbar       { width: 3px; }
-        ::-webkit-scrollbar-thumb { background: rgba(30,95,255,.25); border-radius: 3px; }
-        .conv-row:hover            { background: rgba(255,255,255,.05) !important; }
-        .conv-row:hover .conv-act  { opacity: 1 !important; }
-        .tool-item:hover           { background: rgba(30,95,255,.12) !important; }
-        .icon-btn:hover            { background: rgba(255,255,255,.1) !important; }
-        select option              { background: #0a0f2c; color: #fff; }
-        textarea                   { font-family: 'DM Sans', sans-serif; }
-      `}</style>
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          @keyframes spin    { to { transform: rotate(360deg); } }
+          @keyframes fadeUp  { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+          @keyframes blink   { 0%,100% { opacity:.3; } 50% { opacity:1; } }
+          @keyframes pulse   { 0%,100% { transform:scale(1); } 50% { transform:scale(1.12); } }
+          ::-webkit-scrollbar       { width: 3px; }
+          ::-webkit-scrollbar-thumb { background: rgba(201,168,76,.3); border-radius: 0; }
+          .conv-row:hover            { background: rgba(255,255,255,.05) !important; }
+          .conv-row:hover .conv-act  { opacity: 1 !important; }
+          .tool-item:hover           { background: rgba(201,168,76,.14) !important; }
+          .icon-btn:hover            { background: rgba(255,255,255,.1) !important; }
+          select option              { background: #1e1e23; color: #fff; }
+          textarea                   { font-family: 'DM Sans', sans-serif; }
+        `}</style>
 
       {/* ══════════════════════════════════════
-          SIDEBAR
-      ══════════════════════════════════════ */}
+            SIDEBAR
+        ══════════════════════════════════════ */}
       <aside style={{
         width: sidebarOpen ? 260 : 0,
         minWidth: sidebarOpen ? 260 : 0,
         height: "100vh",
-        background: "rgba(6,12,35,0.92)",
-        backdropFilter: "blur(24px)",
-        borderRight: "1px solid rgba(30,95,255,.15)",
+        background: "rgba(25, 25, 28, 0.6)",
+        backdropFilter: "blur(10px)",
+        borderRight: "1px solid rgba(201, 168, 76, 0.2)",
         display: "flex", flexDirection: "column",
         overflow: "hidden",
         transition: "width .25s ease, min-width .25s ease",
@@ -802,8 +804,9 @@ export default function LegalChatbot() {
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{
                   width: 32, height: 32, borderRadius: 10,
-                  background: "linear-gradient(135deg,#0a1840,#1e5fff)",
+                  background: GOLD,
                   display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16,
+                  color: "#111",
                 }}>⚖</div>
                 <div>
                   <p style={{ fontSize: 14, fontWeight: 700, letterSpacing: ".3px" }}>LegalMind AI</p>
@@ -817,21 +820,21 @@ export default function LegalChatbot() {
           <div style={{ padding: "12px 12px 8px", flexShrink: 0 }}>
             <button onClick={newChat} style={{
               ...DM, width: "100%", padding: "10px 14px",
-              borderRadius: 10, border: "1px dashed rgba(30,95,255,.35)",
-              background: "rgba(30,95,255,.06)", color: "rgba(255,255,255,.7)",
+              borderRadius: 0, border: "1px solid rgba(201, 168, 76, 0.4)",
+              background: "transparent", color: GOLD,
               fontSize: 13, fontWeight: 500, cursor: "pointer",
               display: "flex", alignItems: "center", gap: 8,
               transition: "all .2s",
             }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.background = "rgba(30,95,255,.14)";
-                (e.currentTarget as HTMLElement).style.borderColor = "rgba(30,95,255,.6)";
-                (e.currentTarget as HTMLElement).style.color = "#fff";
+                (e.currentTarget as HTMLElement).style.background = "rgba(201,168,76,.12)";
+                (e.currentTarget as HTMLElement).style.borderColor = "rgba(201,168,76,.7)";
+                (e.currentTarget as HTMLElement).style.color = GOLDB;
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.background = "rgba(30,95,255,.06)";
-                (e.currentTarget as HTMLElement).style.borderColor = "rgba(30,95,255,.35)";
-                (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,.7)";
+                (e.currentTarget as HTMLElement).style.background = "transparent";
+                (e.currentTarget as HTMLElement).style.borderColor = "rgba(201,168,76,.4)";
+                (e.currentTarget as HTMLElement).style.color = GOLD;
               }}
             >
               <span style={{ fontSize: 16, lineHeight: 1 }}>＋</span>
@@ -846,7 +849,7 @@ export default function LegalChatbot() {
               <button onClick={deleteAll} title="Clear all" style={{
                 background: "none", border: "none",
                 color: "rgba(255,80,80,.35)", fontSize: 12,
-                cursor: "pointer", padding: "2px 4px", borderRadius: 4,
+                cursor: "pointer", padding: "2px 4px", borderRadius: 0,
                 transition: "color .2s",
               }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,80,80,.8)")}
@@ -886,8 +889,8 @@ export default function LegalChatbot() {
                       borderRadius: 9,
                       marginBottom: 2,
                       cursor: isRenaming ? "default" : "pointer",
-                      background: isActive ? "rgba(30,95,255,.14)" : "transparent",
-                      border: `1px solid ${isActive ? "rgba(30,95,255,.3)" : "transparent"}`,
+                      background: isActive ? "rgba(201,168,76,.14)" : "transparent",
+                      border: `1px solid ${isActive ? "rgba(201,168,76,.35)" : "transparent"}`,
                       opacity: isDeleting ? 0.4 : 1,
                       transition: "all .15s ease",
                       position: "relative",
@@ -908,8 +911,8 @@ export default function LegalChatbot() {
                         style={{
                           ...DM, width: "100%",
                           background: "rgba(255,255,255,.08)",
-                          border: "1px solid rgba(30,95,255,.4)",
-                          borderRadius: 6, padding: "4px 8px",
+                          border: "1px solid rgba(201,168,76,.5)",
+                          borderRadius: 0, padding: "4px 8px",
                           color: "#fff", fontSize: 12, outline: "none",
                         }}
                       />
@@ -952,22 +955,22 @@ export default function LegalChatbot() {
                             className="icon-btn"
                             style={{
                               background: "rgba(0,0,0,.6)", border: "none",
-                              borderRadius: 5, padding: "3px 5px",
-                              color: conv.isPinned ? "#ffd700" : "rgba(255,255,255,.4)",
+                              borderRadius: 0, padding: "3px 5px",
+                              color: conv.isPinned ? GOLD : "rgba(255,255,255,.4)",
                               fontSize: 10, cursor: "pointer", transition: "background .2s",
                             }}>📌</button>
                           <button onClick={(e) => { e.stopPropagation(); setRenamingId(conv._id); setRenameVal(conv.title); }}
                             title="Rename" className="icon-btn"
                             style={{
                               background: "rgba(0,0,0,.6)", border: "none",
-                              borderRadius: 5, padding: "3px 5px",
+                              borderRadius: 0, padding: "3px 5px",
                               color: "rgba(255,255,255,.4)", fontSize: 10, cursor: "pointer",
                             }}>✏️</button>
                           <button onClick={(e) => deleteConv(conv._id, e)} title="Delete"
                             className="icon-btn"
                             style={{
                               background: "rgba(0,0,0,.6)", border: "none",
-                              borderRadius: 5, padding: "3px 5px",
+                              borderRadius: 0, padding: "3px 5px",
                               color: "rgba(255,80,80,.6)", fontSize: 10, cursor: "pointer",
                             }}>✕</button>
                         </div>
@@ -982,7 +985,7 @@ export default function LegalChatbot() {
           {/* Bottom — back link */}
           <div style={{ padding: "10px 12px 14px", borderTop: "1px solid rgba(255,255,255,.06)", flexShrink: 0 }}>
             <button onClick={() => window.location.href = "/citizen"} style={{
-              ...DM, width: "100%", padding: "9px 12px", borderRadius: 9,
+              ...DM, width: "100%", padding: "9px 12px", borderRadius: 0,
               background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.08)",
               color: "rgba(255,255,255,.35)", fontSize: 12, cursor: "pointer",
               textAlign: "left", transition: "all .2s",
@@ -1003,8 +1006,8 @@ export default function LegalChatbot() {
       </aside>
 
       {/* ══════════════════════════════════════
-          MAIN
-      ══════════════════════════════════════ */}
+            MAIN
+        ══════════════════════════════════════ */}
       <main style={{ flex: 1, display: "flex", flexDirection: "column", height: "100vh", minWidth: 0, position: "relative" }}>
 
         {/* Top bar */}
@@ -1013,13 +1016,13 @@ export default function LegalChatbot() {
           display: "flex", alignItems: "center",
           padding: "0 20px", gap: 12,
           borderBottom: "1px solid rgba(255,255,255,.06)",
-          background: "rgba(2,8,30,.4)", backdropFilter: "blur(16px)",
+          background: "rgba(15,15,20,.4)", backdropFilter: "blur(16px)",
         }}>
           {/* Sidebar toggle */}
           <button onClick={() => setSidebarOpen((v) => !v)} className="icon-btn" style={{
             background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.08)",
-            borderRadius: 8, width: 34, height: 34,
-            color: "rgba(255,255,255,.5)", fontSize: 15, cursor: "pointer",
+            borderRadius: 0, width: 34, height: 34,
+            color: GOLD, fontSize: 15, cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
             flexShrink: 0, transition: "background .2s",
           }}>
@@ -1037,13 +1040,13 @@ export default function LegalChatbot() {
 
           {/* New chat shortcut */}
           <button onClick={newChat} className="icon-btn" style={{
-            ...DM, background: "rgba(30,95,255,.12)", border: "1px solid rgba(30,95,255,.3)",
-            borderRadius: 8, padding: "6px 14px", color: BLUEB,
+            ...DM, background: "rgba(201,168,76,.12)", border: "1px solid rgba(201,168,76,.3)",
+            borderRadius: 8, padding: "6px 14px", color: GOLD,
             fontSize: 12, fontWeight: 600, cursor: "pointer", flexShrink: 0,
             transition: "background .2s",
           }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(30,95,255,.22)")}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(30,95,255,.12)")}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(201,168,76,.22)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(201,168,76,.12)")}
           >
             + New
           </button>
@@ -1065,8 +1068,9 @@ export default function LegalChatbot() {
               <div style={{ textAlign: "center", paddingTop: 60, animation: "fadeUp .4s ease" }}>
                 <div style={{
                   width: 64, height: 64, borderRadius: 20, margin: "0 auto 20px",
-                  background: "linear-gradient(135deg,#0a1840,#1e5fff)",
+                  background: GOLD,
                   display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28,
+                  color: "#111",
                 }}>⚖</div>
                 <p style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>How can I help you?</p>
                 <p style={{ fontSize: 13, color: "rgba(255,255,255,.35)", lineHeight: 1.8, maxWidth: 420, margin: "0 auto" }}>
@@ -1076,9 +1080,10 @@ export default function LegalChatbot() {
 
                 {/* Disclaimer */}
                 <div style={{
-                  background: "rgba(255,190,50,.07)", border: "1px solid rgba(255,190,50,.18)",
-                  borderRadius: 10, padding: "10px 16px", maxWidth: 480,
-                  margin: "18px auto 0", fontSize: 11, color: "rgba(255,210,100,.7)", lineHeight: 1.7,
+                  background: "rgba(50, 50, 55, 0.35)", border: "1px solid rgba(201, 168, 76, 0.3)",
+                  backdropFilter: "blur(4px)",
+                  borderRadius: 0, padding: "10px 16px", maxWidth: 480,
+                  margin: "18px auto 0", fontSize: 11, color: "rgba(240,240,240,.75)", lineHeight: 1.7,
                 }}>
                   ⚠️ General legal information only — not legal advice.
                   Consult a qualified lawyer for your specific situation.
@@ -1088,21 +1093,22 @@ export default function LegalChatbot() {
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 28 }}>
                   {SUGGESTED.map((q) => (
                     <button key={q} onClick={() => sendMessage(q)} style={{
-                      ...DM, background: "rgba(255,255,255,.04)",
-                      border: "1px solid rgba(255,255,255,.1)",
-                      borderRadius: 20, padding: "8px 18px",
-                      color: "rgba(255,255,255,.55)", fontSize: 12,
+                      ...DM, background: "rgba(50, 50, 55, 0.35)",
+                      border: "1px solid rgba(201, 168, 76, 0.3)",
+                      backdropFilter: "blur(4px)",
+                      borderRadius: 0, padding: "8px 18px",
+                      color: "#f0f0f0", fontSize: 12,
                       cursor: "pointer", transition: "all .2s",
                     }}
                       onMouseEnter={(e) => {
-                        (e.currentTarget as HTMLElement).style.background = "rgba(30,95,255,.12)";
-                        (e.currentTarget as HTMLElement).style.borderColor = "rgba(30,95,255,.4)";
+                        (e.currentTarget as HTMLElement).style.background = "rgba(201,168,76,.15)";
+                        (e.currentTarget as HTMLElement).style.borderColor = "rgba(201,168,76,.5)";
                         (e.currentTarget as HTMLElement).style.color = "#fff";
                       }}
                       onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,.04)";
-                        (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,.1)";
-                        (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,.55)";
+                        (e.currentTarget as HTMLElement).style.background = "rgba(50, 50, 55, 0.35)";
+                        (e.currentTarget as HTMLElement).style.borderColor = "rgba(201, 168, 76, 0.3)";
+                        (e.currentTarget as HTMLElement).style.color = "#f0f0f0";
                       }}
                     >
                       {q}
@@ -1120,8 +1126,8 @@ export default function LegalChatbot() {
                     <div style={{
                       maxWidth: "72%", padding: "11px 16px",
                       borderRadius: "18px 18px 4px 18px",
-                      background: BLUE,
-                      fontSize: 14, lineHeight: 1.8, color: "#fff",
+                      background: GOLD,
+                      fontSize: 14, lineHeight: 1.8, color: "#111", fontWeight: 500,
                     }}>
                       {msg.text}
                     </div>
@@ -1131,17 +1137,18 @@ export default function LegalChatbot() {
                 {msg.role === "assistant" && (
                   <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
                     <div style={{
-                      width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
-                      background: "linear-gradient(135deg,#0a1840,#1e5fff)",
+                      width: 32, height: 32, borderRadius: 0, flexShrink: 0,
+                      background: GOLD,
                       display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14,
+                      color: "#111",
                     }}>⚖</div>
                     <div style={{
                       flex: 1, padding: "11px 16px",
                       borderRadius: "4px 18px 18px 18px",
-                      background: "rgba(255,255,255,.05)",
-                      border: "1px solid rgba(255,255,255,.08)",
+                      background: "rgba(40,40,45,.7)",
+                      border: "1px solid rgba(201,168,76,.18)",
                       fontSize: 14, lineHeight: 1.9,
-                      color: "rgba(255,255,255,.82)", whiteSpace: "pre-wrap",
+                      color: "rgba(240,240,240,.85)", whiteSpace: "pre-wrap",
                     }}>
                       {msg.text}
                     </div>
@@ -1165,21 +1172,22 @@ export default function LegalChatbot() {
             {sending && (
               <div style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 20 }}>
                 <div style={{
-                  width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
-                  background: "linear-gradient(135deg,#0a1840,#1e5fff)",
+                  width: 32, height: 32, borderRadius: 0, flexShrink: 0,
+                  background: GOLD,
                   display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14,
+                  color: "#111",
                 }}>⚖</div>
                 <div style={{
                   padding: "14px 18px",
                   borderRadius: "4px 18px 18px 18px",
-                  background: "rgba(255,255,255,.05)",
-                  border: "1px solid rgba(255,255,255,.08)",
+                  background: "rgba(40,40,45,.7)",
+                  border: "1px solid rgba(201,168,76,.18)",
                   display: "flex", gap: 5, alignItems: "center",
                 }}>
                   {[0, 1, 2].map((i) => (
                     <div key={i} style={{
-                      width: 7, height: 7, borderRadius: "50%",
-                      background: BLUEB,
+                      width: 7, height: 7, borderRadius: 0,
+                      background: GOLD,
                       animation: `blink 1.2s ease ${i * 0.22}s infinite`,
                     }} />
                   ))}
@@ -1194,7 +1202,7 @@ export default function LegalChatbot() {
         {/* ── Input area ─────────────────────────────────────── */}
         <div style={{
           flexShrink: 0, padding: "12px 20px 18px",
-          background: "rgba(2,8,30,.5)", backdropFilter: "blur(16px)",
+          background: "rgba(15,15,20,.5)", backdropFilter: "blur(16px)",
           borderTop: "1px solid rgba(255,255,255,.06)",
         }}>
           <div style={{ maxWidth: 740, margin: "0 auto" }}>
@@ -1202,13 +1210,13 @@ export default function LegalChatbot() {
             {/* Input box */}
             <div style={{
               display: "flex", alignItems: "flex-end", gap: 8,
-              background: "rgba(255,255,255,.06)",
-              border: "1px solid rgba(30,95,255,.2)",
-              borderRadius: 14, padding: "8px 10px 8px 14px",
+              background: "rgba(30, 30, 35, 0.95)",
+              border: "1px solid rgba(201, 168, 76, 0.3)",
+              borderRadius: 0, padding: "8px 10px 8px 14px",
               transition: "border-color .2s",
             }}
-              onFocusCapture={(e) => (e.currentTarget.style.borderColor = "rgba(30,95,255,.5)")}
-              onBlurCapture={(e) => (e.currentTarget.style.borderColor = "rgba(30,95,255,.2)")}
+              onFocusCapture={(e) => (e.currentTarget.style.borderColor = "rgba(201,168,76,.6)")}
+              onBlurCapture={(e) => (e.currentTarget.style.borderColor = "rgba(201,168,76,.3)")}
             >
               {/* Tools button */}
               <div style={{ position: "relative" }} ref={toolsMenuRef}>
@@ -1217,10 +1225,10 @@ export default function LegalChatbot() {
                   title="Legal Tools"
                   className="icon-btn"
                   style={{
-                    background: toolsOpen ? "rgba(30,95,255,.2)" : "rgba(255,255,255,.07)",
-                    border: `1px solid ${toolsOpen ? "rgba(30,95,255,.5)" : "rgba(255,255,255,.1)"}`,
-                    borderRadius: 8, width: 34, height: 34,
-                    color: toolsOpen ? BLUEB : "rgba(255,255,255,.45)",
+                    background: toolsOpen ? "rgba(201,168,76,.2)" : "rgba(255,255,255,.07)",
+                    border: `1px solid ${toolsOpen ? "rgba(201,168,76,.5)" : "rgba(255,255,255,.1)"}`,
+                    borderRadius: 0, width: 34, height: 34,
+                    color: toolsOpen ? GOLD : "rgba(255,255,255,.45)",
                     fontSize: 16, cursor: "pointer",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     flexShrink: 0, transition: "all .2s",
@@ -1234,8 +1242,8 @@ export default function LegalChatbot() {
                   <div style={{
                     position: "absolute", bottom: "calc(100% + 10px)", left: 0,
                     width: 240,
-                    background: "rgba(8,15,45,.97)", backdropFilter: "blur(24px)",
-                    border: "1px solid rgba(30,95,255,.25)", borderRadius: 14,
+                    background: "rgba(30,30,35,.97)", backdropFilter: "blur(24px)",
+                    border: "1px solid rgba(201,168,76,.3)", borderRadius: 0,
                     padding: "8px 6px",
                     boxShadow: "0 12px 40px rgba(0,0,0,.7)",
                     zIndex: 100,
@@ -1252,8 +1260,8 @@ export default function LegalChatbot() {
                         }}
                         style={{
                           ...DM, width: "100%", display: "flex", alignItems: "center",
-                          gap: 10, padding: "9px 10px", borderRadius: 9, border: "none",
-                          background: activeToolId === tool.id ? "rgba(30,95,255,.15)" : "transparent",
+                          gap: 10, padding: "9px 10px", borderRadius: 0, border: "none",
+                          background: activeToolId === tool.id ? "rgba(201,168,76,.15)" : "transparent",
                           color: "#fff", fontSize: 13, cursor: "pointer",
                           textAlign: "left", transition: "background .15s",
                         }}
@@ -1295,7 +1303,7 @@ export default function LegalChatbot() {
                     ? "rgba(239,68,68,.2)"
                     : "rgba(255,255,255,.07)",
                   border: `1px solid ${isRecording ? "rgba(239,68,68,.5)" : "rgba(255,255,255,.1)"}`,
-                  borderRadius: 8, width: 34, height: 34,
+                  borderRadius: 0, width: 34, height: 34,
                   color: isRecording ? "#ef4444" : "rgba(255,255,255,.45)",
                   fontSize: 15, cursor: "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center",
@@ -1311,10 +1319,11 @@ export default function LegalChatbot() {
                 onClick={() => sendMessage(input)}
                 disabled={!input.trim() || sending}
                 style={{
-                  background: !input.trim() || sending ? "rgba(30,95,255,.3)" : BLUE,
-                  border: "none", borderRadius: 8,
+                  background: !input.trim() || sending ? "rgba(201,168,76,.4)" : GOLD,
+                  border: "none", borderRadius: 0,
                   width: 34, height: 34,
-                  color: "#fff", fontSize: 16, cursor: !input.trim() || sending ? "not-allowed" : "pointer",
+                  color: "#111", fontSize: 16, fontWeight: 700,
+                  cursor: !input.trim() || sending ? "not-allowed" : "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   flexShrink: 0, transition: "background .2s",
                 }}
