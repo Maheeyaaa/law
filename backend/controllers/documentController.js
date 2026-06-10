@@ -3,6 +3,14 @@ import Activity from "../models/Activity.js";
 import Notification from "../models/Notification.js";
 import path from "path";
 import fs from "fs";
+import { createRequire } from "module";
+import mammoth from "mammoth";
+
+const require = createRequire(import.meta.url);
+const MAX_PDF_PAGES = 25;
+const MAX_DOCX_PAGES = 25;
+const MAX_TXT_CHARS = 50000;
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
 // ======================
 // Helpers
@@ -40,6 +48,29 @@ const formatFileSize = (
     " KB"
   );
 };
+
+async function getPdfPageCount(buffer) {
+  try {
+    const pdfParse = require("pdf-parse/lib/pdf-parse.js");
+    const result = await pdfParse(buffer);
+    return result.numpages;
+  } catch {
+    return null;
+  }
+}
+
+async function getDocxPageCount(buffer) {
+  try {
+    const result = await mammoth.extractRawText({ buffer });
+    const text = result.value || "";
+    const wordCount = text.split(/\s+/).filter(Boolean).length;
+    // Estimate: roughly 300 words per page
+    const estimatedPages = Math.ceil(wordCount / 300);
+    return estimatedPages;
+  } catch {
+    return null;
+  }
+}
 
 const detectType =
 (
@@ -94,22 +125,58 @@ async (
   res
 ) => {
   try {
-    if (
-      !req.file
-    ) {
-      return res
-        .status(
-          400
-        )
-        .json({
-          message:
-            "No file uploaded",
-        });
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
     }
 
-    const doc =
-      await Document.create(
-        {
+    const filePath = path.join(process.cwd(), "uploads", req.file.filename);
+    const fileBuffer = fs.readFileSync(filePath);
+    const ext = path.extname(req.file.originalname).toLowerCase();
+
+    // PDF check
+    if (ext === ".pdf") {
+      const pageCount = await getPdfPageCount(fileBuffer);
+      if (pageCount !== null && pageCount > MAX_PDF_PAGES) {
+        fs.unlinkSync(filePath);
+        return res.status(400).json({
+          message: `PDF has ${pageCount} pages. Maximum allowed is ${MAX_PDF_PAGES} pages.`,
+        });
+      }
+    }
+
+    // DOC/DOCX check
+    if (ext === ".doc" || ext === ".docx") {
+      const pageCount = await getDocxPageCount(fileBuffer);
+      if (pageCount !== null && pageCount > MAX_DOCX_PAGES) {
+        fs.unlinkSync(filePath);
+        return res.status(400).json({
+          message: `Document has approximately ${pageCount} pages. Maximum allowed is ${MAX_DOCX_PAGES} pages.`,
+        });
+      }
+    }
+
+    // Image size check
+    if (ext === ".jpg" || ext === ".jpeg" || ext === ".png") {
+      if (req.file.size > MAX_IMAGE_SIZE) {
+        fs.unlinkSync(filePath);
+        return res.status(400).json({
+          message: `Image size is ${formatFileSize(req.file.size)}. Maximum allowed is 5MB.`,
+        });
+      }
+    }
+
+    // TXT character check
+    if (ext === ".txt") {
+      const text = fileBuffer.toString("utf-8");
+      if (text.length > MAX_TXT_CHARS) {
+        fs.unlinkSync(filePath);
+        return res.status(400).json({
+          message: `Text file is too long (${text.length.toLocaleString()} characters). Maximum allowed is ${MAX_TXT_CHARS.toLocaleString()} characters.`,
+        });
+      }
+    }
+
+    const doc = await Document.create({
           citizen:
             req.user.id,
 

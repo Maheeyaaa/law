@@ -31,6 +31,23 @@ function formatFileSize(bytes: number): string {
   return (bytes / 1024).toFixed(1) + " KB";
 }
 
+const MAX_PAGES = 25;
+
+async function getPdfPageCount(file: File): Promise<number | null> {
+  try {
+    if (!file.name.toLowerCase().endsWith(".pdf")) return null;
+    const arrayBuffer = await file.arrayBuffer();
+    const text = new TextDecoder("latin1").decode(arrayBuffer);
+    const matches = text.match(/\/Type\s*\/Page[^s]/g);
+    if (matches) return matches.length;
+    const countMatch = text.match(/\/Count\s+(\d+)/);
+    if (countMatch) return parseInt(countMatch[1]);
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export default function Documents() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -86,9 +103,25 @@ export default function Documents() {
     }
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setUploadFile(e.target.files[0]);
+      const file = e.target.files[0];
+
+      if (file.name.toLowerCase().endsWith(".pdf")) {
+        const pageCount = await getPdfPageCount(file);
+        if (pageCount !== null && pageCount > MAX_PAGES) {
+          setUploadMsg({
+            type: "error",
+            text: `Your PDF has ${pageCount} pages. Maximum allowed is ${MAX_PAGES} pages.`,
+          });
+          if (fileInputRef.current) fileInputRef.current.value = "";
+          setUploadFile(null);
+          return;
+        }
+      }
+
+      setUploadFile(file);
+      setUploadMsg(null);
     }
   };
 
@@ -259,7 +292,7 @@ export default function Documents() {
                   </p>
                 )}
                 <p style={{ ...DM, fontSize: 10, color: "rgba(255,255,255,.25)", marginTop: 4 }}>
-                  Accepted: PDF, DOC, DOCX, JPG, PNG, TXT — Max 10MB
+                  PDF/DOC/DOCX: max {MAX_PAGES} pages — JPG/PNG: max 5MB — TXT: max 50,000 characters
                 </p>
               </div>
 
