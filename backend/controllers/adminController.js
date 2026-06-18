@@ -4,6 +4,7 @@ import User from "../models/User.js";
 import Activity from "../models/Activity.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import ScrapedLawyer from "../models/ScrapedLawyer.js";
 
 // ======================
 // Admin Login
@@ -61,23 +62,26 @@ export const getDashboardStats = async (req, res) => {
       activeCitizens,
       bannedCitizens,
       totalLawyers,
-      pendingLawyers,
-      approvedLawyers,
-      rejectedLawyers,
+      adminLawyers,
+      freelawLawyers,
+      verifiedLawyers,
       recentUsers,
       recentActivity,
     ] = await Promise.all([
       User.countDocuments({ role: "citizen" }),
       User.countDocuments({ role: "citizen", isActive: true,  isBanned: false }),
       User.countDocuments({ role: "citizen", isBanned: true }),
-      User.countDocuments({ role: "lawyer" }),
-      User.countDocuments({ role: "lawyer", verificationStatus: "pending"  }),
-      User.countDocuments({ role: "lawyer", verificationStatus: "approved" }),
-      User.countDocuments({ role: "lawyer", verificationStatus: "rejected" }),
+
+      ScrapedLawyer.countDocuments({ isActive: true }),
+      ScrapedLawyer.countDocuments({ isActive: true, source: "admin" }),
+      ScrapedLawyer.countDocuments({ isActive: true, source: "freelaw" }),
+      ScrapedLawyer.countDocuments({ isActive: true, isVerified: true }),
+
       User.find({ role: "citizen" })
         .sort({ createdAt: -1 })
         .limit(5)
         .select("name email district createdAt isActive isBanned"),
+
       Activity.find()
         .sort({ createdAt: -1 })
         .limit(10)
@@ -93,9 +97,9 @@ export const getDashboardStats = async (req, res) => {
         },
         lawyers: {
           total:    totalLawyers,
-          pending:  pendingLawyers,
-          approved: approvedLawyers,
-          rejected: rejectedLawyers,
+          admin:    adminLawyers,
+          freelaw:  freelawLawyers,
+          verified: verifiedLawyers,
         },
       },
       recentUsers,
@@ -245,36 +249,39 @@ export const getAllLawyers = async (req, res) => {
   try {
     const {
       search         = "",
-      status         = "all",
+      source         = "all",
       district       = "",
       specialization = "",
       page           = 1,
       limit          = 20,
     } = req.query;
 
-    const query = { role: "lawyer" };
+    const query = { isActive: true };
 
     if (search) {
       query.$or = [
-        { name:             { $regex: search, $options: "i" } },
-        { email:            { $regex: search, $options: "i" } },
-        { barCouncilNumber: { $regex: search, $options: "i" } },
+        { name:  { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { phone: { $regex: search.replace(/\D/g, "") } },
       ];
     }
 
-    if (status !== "all")  query.verificationStatus = status;
+    if (source !== "all")  query.source         = source;
     if (district)          query.district       = { $regex: district,       $options: "i" };
-    if (specialization)    query.specialization = { $regex: specialization, $options: "i" };
+    if (specialization)    query.$or = [
+      { specialization:  { $regex: specialization, $options: "i" } },
+      { specializations: { $elemMatch: { $regex: specialization, $options: "i" } } },
+    ];
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const [lawyers, total] = await Promise.all([
-      User.find(query)
+      ScrapedLawyer.find(query)
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit))
-        .select("-password -pushSubscriptions"),
-      User.countDocuments(query),
+        .lean(),
+      ScrapedLawyer.countDocuments(query),
     ]);
 
     res.json({
@@ -294,8 +301,7 @@ export const getAllLawyers = async (req, res) => {
 
 export const getLawyerById = async (req, res) => {
   try {
-    const lawyer = await User.findOne({ _id: req.params.id, role: "lawyer" })
-      .select("-password -pushSubscriptions");
+    const lawyer = await ScrapedLawyer.findById(req.params.id).lean();
 
     if (!lawyer) {
       return res.status(404).json({ message: "Lawyer not found" });
@@ -311,10 +317,16 @@ export const getLawyerById = async (req, res) => {
 export const addLawyer = async (req, res) => {
   try {
     const {
-      name, email, phone, district, specialization,
-      experience, barCouncilNumber, languages,
-      consultationFee, availability, education,
-      courtsPracticing, bio, address,
+      name,
+      email,
+      phone,
+      district,
+      city,
+      specialization,
+      specializations,
+      bio,
+      education,
+      isVerified,
     } = req.body;
 
     if (!name || !district || !specialization) {
@@ -323,48 +335,56 @@ export const addLawyer = async (req, res) => {
       });
     }
 
-    // Generate email if not provided
-    const lawyerEmail = email ||
-      `${name.toLowerCase().replace(/\s+/g, ".")}@advocate.telangana.in`;
+    // Check for duplicates by phone or email
+    const dupQuery = [];
+    if (phone) dupQuery.push({ phone });
+    if (email) dupQuery.push({ email });
 
-    const existing = await User.findOne({ email: lawyerEmail });
-    if (existing) {
-      return res.status(400).json({ message: "Email already exists" });
+    if (dupQuery.length > 0) {
+      const existing = await ScrapedLawyer.findOne({ $or: dupQuery });
+      if (existing) {
+        return res.status(400).json({
+          message: `Lawyer already exists with this ${existing.phone === phone ? "phone" : "email"}`,
+        });
+      }
     }
 
-    // Default password for admin-added lawyers
-    const hashedPassword = await bcrypt.hash("Lawyer@123", 10);
+    // Normalize specializations array
+    const specsArray = Array.isArray(specializations)
+      ? specializations
+      : (specializations
+          ? specializations.split(",").map((s) => s.trim()).filter(Boolean)
+          : [specialization]);
 
-    const lawyer = await User.create({
+    // Normalize education array
+    const eduArray = Array.isArray(education)
+      ? education
+      : (education
+          ? education.split(",").map((e) => e.trim()).filter(Boolean)
+          : []);
+
+    const lawyer = await ScrapedLawyer.create({
       name,
-      email:              lawyerEmail,
-      password:           hashedPassword,
-      role:               "lawyer",
-      state:              "Telangana",
-      district:           district       || "Hyderabad",
-      phone:              phone          || "",
-      bio:                bio            || "",
-      address:            address        || "",
-      specialization:     specialization || "",
-      experience:         parseInt(experience) || 0,
-      barCouncilNumber:   barCouncilNumber || "",
-      languages:          Array.isArray(languages)
-                            ? languages
-                            : (languages?.split(",").map(l => l.trim()) || []),
-      consultationFee:    parseInt(consultationFee) || 0,
-      availability:       availability || "available",
-      education:          Array.isArray(education)       ? education       : [],
-      courtsPracticing:   Array.isArray(courtsPracticing)? courtsPracticing: [],
-      importedFrom:       "admin",
-      isVerified:         true,
-      verificationStatus: "approved",
-      isActive:           true,
+      email:           email || null,
+      phone:           phone || null,
+      district,
+      city:            city || district,
+      state:           "Telangana",
+      specialization:  specialization,
+      specializations: specsArray,
+      bio:             bio || "",
+      education:       eduArray,
+      isVerified:      !!isVerified,
+      isActive:        true,
+      source:          ["admin"],
+      lastScraped:     new Date(),
     });
 
-    const data = lawyer.toObject();
-    delete data.password;
+    res.status(201).json({
+      message: "Lawyer added successfully",
+      lawyer,
+    });
 
-    res.status(201).json({ message: "Lawyer added successfully", lawyer: data });
   } catch (error) {
     console.error("[addLawyer]", error);
     res.status(500).json({ message: "Failed to add lawyer" });
@@ -374,22 +394,34 @@ export const addLawyer = async (req, res) => {
 export const updateLawyer = async (req, res) => {
   try {
     const allowedFields = [
-      "name", "email", "phone", "district", "specialization",
-      "experience", "barCouncilNumber", "languages", "consultationFee",
-      "availability", "availableDays", "education", "courtsPracticing",
-      "bio", "address", "verificationStatus", "isVerified",
+      "name", "email", "phone", "district", "city",
+      "specialization", "specializations",
+      "bio", "education", "isVerified",
     ];
 
     const updates = {};
+
     allowedFields.forEach((field) => {
-      if (req.body[field] !== undefined) updates[field] = req.body[field];
+      if (req.body[field] === undefined) return;
+
+      // Handle array fields
+      if (field === "specializations" || field === "education") {
+        const value = req.body[field];
+        updates[field] = Array.isArray(value)
+          ? value
+          : (value
+              ? value.split(",").map((v) => v.trim()).filter(Boolean)
+              : []);
+      } else {
+        updates[field] = req.body[field];
+      }
     });
 
-    const lawyer = await User.findOneAndUpdate(
-      { _id: req.params.id, role: "lawyer" },
+    const lawyer = await ScrapedLawyer.findByIdAndUpdate(
+      req.params.id,
       updates,
       { new: true }
-    ).select("-password -pushSubscriptions");
+    ).lean();
 
     if (!lawyer) {
       return res.status(404).json({ message: "Lawyer not found" });
@@ -404,10 +436,7 @@ export const updateLawyer = async (req, res) => {
 
 export const deleteLawyer = async (req, res) => {
   try {
-    const lawyer = await User.findOneAndDelete({
-      _id:  req.params.id,
-      role: "lawyer",
-    });
+    const lawyer = await ScrapedLawyer.findByIdAndDelete(req.params.id);
 
     if (!lawyer) {
       return res.status(404).json({ message: "Lawyer not found" });
@@ -417,46 +446,6 @@ export const deleteLawyer = async (req, res) => {
   } catch (error) {
     console.error("[deleteLawyer]", error);
     res.status(500).json({ message: "Failed to delete lawyer" });
-  }
-};
-
-export const approveLawyer = async (req, res) => {
-  try {
-    const lawyer = await User.findOneAndUpdate(
-      { _id: req.params.id, role: "lawyer" },
-      { verificationStatus: "approved", isVerified: true },
-      { new: true }
-    ).select("-password");
-
-    if (!lawyer) {
-      return res.status(404).json({ message: "Lawyer not found" });
-    }
-
-    res.json({ message: "Lawyer approved successfully", lawyer });
-  } catch (error) {
-    console.error("[approveLawyer]", error);
-    res.status(500).json({ message: "Failed to approve lawyer" });
-  }
-};
-
-export const rejectLawyer = async (req, res) => {
-  try {
-    const { reason = "" } = req.body;
-
-    const lawyer = await User.findOneAndUpdate(
-      { _id: req.params.id, role: "lawyer" },
-      { verificationStatus: "rejected", isVerified: false, bannedReason: reason },
-      { new: true }
-    ).select("-password");
-
-    if (!lawyer) {
-      return res.status(404).json({ message: "Lawyer not found" });
-    }
-
-    res.json({ message: "Lawyer rejected", lawyer });
-  } catch (error) {
-    console.error("[rejectLawyer]", error);
-    res.status(500).json({ message: "Failed to reject lawyer" });
   }
 };
 

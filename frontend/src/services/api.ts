@@ -252,6 +252,15 @@ export const detectScam = (data: FormData | { notice: string }) => {
   return API.post("/ai/detect-scam", data);
 };
 
+export const classifyCaseType = (data: FormData | { notice: string }) => {
+  if (data instanceof FormData) {
+    return API.post("/ai/classify-case-type", data, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  }
+  return API.post("/ai/classify-case-type", data);
+};
+
 // ── AI Conversations ───────────────────────────────────────
 export const getConversations = (params?: { page?: number; limit?: number; type?: string }) =>
   API.get("/ai/conversations", { params });
@@ -340,5 +349,27 @@ export const unsubscribePush = (endpoint: string) =>
 export const testPush = () => API.post("/push/test");
 
 export const getPushSubscriptions = () => API.get("/push/subscriptions");
+
+// ── Recommend lawyers for a case type ────────────────────────────
+export const recommendLawyers = (params: {
+  caseType: string;
+  district?: string;
+  limit?: number;
+}) => {
+  return API.get("/lawyers/recommend", { params });
+};
+
+// ── Generate contact email ────────────────────────────────────────
+export const generateContactEmail = (
+  lawyerId: string,
+  body: {
+    caseType: string;
+    caseLocation: string;
+    aiSummary?: string;
+    documentAttached?: boolean;
+  }
+) => {
+  return API.post(`/lawyers/contact/${lawyerId}`, body);
+};
 
 export default API;

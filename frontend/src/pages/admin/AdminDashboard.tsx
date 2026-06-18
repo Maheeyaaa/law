@@ -367,12 +367,12 @@ export default function AdminDashboard() {
           </div>
 
           <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
-            <span style={badge("#fbbf24")}>
-              {stats?.lawyers?.pending ?? 0} pending
+            <span style={badge("#34d399")}>
+              {stats?.lawyers?.verified ?? 0} verified
             </span>
 
-            <span style={badge("#34d399")}>
-              {stats?.lawyers?.approved ?? 0} approved
+            <span style={badge("#C9A84C")}>
+              {stats?.lawyers?.admin ?? 0} admin-added
             </span>
           </div>
         </div>
@@ -438,11 +438,11 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Pending Lawyers */}
+        {/* FreeLaw Lawyers */}
 
         <div
           style={statCard("#C9A84C")}
-          onClick={() => navigate("/admin/lawyers?status=pending")}
+          onClick={() => navigate("/admin/lawyers?source=freelaw")}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = "translateY(-2px)";
             e.currentTarget.style.boxShadow = "0 12px 30px rgba(0,0,0,.22)";
@@ -472,7 +472,7 @@ export default function AdminDashboard() {
                   marginBottom: 10,
                 }}
               >
-                Pending Approvals
+                Scraped Lawyers
               </p>
 
               <p
@@ -483,13 +483,13 @@ export default function AdminDashboard() {
                   margin: 0,
                 }}
               >
-                {stats?.lawyers?.pending ?? 0}
+                {stats?.lawyers?.freelaw ?? 0}
               </p>
             </div>
           </div>
 
           <div style={{ marginTop: 16 }}>
-            <span style={badge("#fbbf24")}>Lawyers awaiting review</span>
+            <span style={badge("#C9A84C")}>FreeLaw source</span>
           </div>
         </div>
       </div>

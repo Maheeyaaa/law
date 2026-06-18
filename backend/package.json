@@ -6,7 +6,17 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "scrape:freelaw": "node scripts/scrapers/freelawScraper.js",
+    "scrape:ecourts": "node scripts/scrapers/ecourtsScraper.js",
+    "scrape:all": "npm run scrape:freelaw && npm run scrape:ecourts",
+    "scores:compute": "node scripts/computeScores.js",
+    "scrape:full": "npm run scrape:all && npm run scores:compute",
+    "seed:lawyers": "node scripts/seedLawyers.js",
+    "seed:clear": "node scripts/clearScraped.js",
+    "stats:scraped": "node scripts/scrapedStats.js",
+    "enrich:ecourts": "node scripts/enrichFromECourts.js",
+    "export:csv": "node scripts/exportLawyers.js"
   },
   "keywords": [],
   "author": "",
@@ -32,8 +42,9 @@
     "multer": "^2.1.1",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.10",
-    "pdf-parse": "^1.1.1",
+    "pdf-parse": "^1.1.4",
     "pdfjs-dist": "^5.5.207",
+    "puppeteer": "^25.1.0",
     "tesseract.js": "^7.0.0",
     "web-push": "^3.6.7"
   },

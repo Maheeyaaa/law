@@ -1073,6 +1073,133 @@ ${isOCR ? "\n📸 *Note: Scanned document processed via OCR*" : ""}
 };
 
 // ══════════════════════════════════════════
+// FEATURE: Classify Case + Detect District
+// Used by Find Lawyer page
+// ══════════════════════════════════════════
+export const classifyCaseType = async (req, res) => {
+  try {
+    let noticeText = req.body.notice || "";
+
+    if (req.file) {
+      const { text, error } = await extractTextFromFile(req.file);
+      if (error) return res.status(400).json({ message: error });
+      noticeText = text;
+    }
+
+    if (!noticeText || !noticeText.trim()) {
+      return res.status(400).json({
+        message: "Notice text or file is required.",
+      });
+    }
+
+    // ── Single AI call to extract BOTH case type AND district ──
+    const extractPrompt = `Analyze the following legal notice and extract:
+
+1. CASE TYPE — Choose ONE from this exact list:
+   Property Law, Criminal Law, Family Law, Civil Law, Labour Law,
+   Consumer Protection Law, Constitutional Law, Corporate Law,
+   Cyber Law, Banking Law, Taxation Law, Intellectual Property Law,
+   Negotiable Instruments Act, Motor Vehicles Act
+
+2. DISTRICT — Telangana district name if mentioned, else "None"
+   Valid districts: Hyderabad, Rangareddy, Medchal-Malkajgiri, Sangareddy,
+   Vikarabad, Hanumakonda, Khammam, Nalgonda, Karimnagar, Nizamabad,
+   Adilabad, Kumuram Bheem Asifabad, Mancherial, Peddapalli, Jagtial,
+   Rajanna Sircilla, Kamareddy, Medak, Siddipet, Jangaon, Mahabubabad,
+   Warangal, Suryapet, Yadadri Bhuvanagiri, Mahabubnagar, Nagarkurnool,
+   Wanaparthy, Jogulamba Gadwal, Narayanpet, Mulugu, Jayashankar Bhupalpally,
+   Bhadradri Kothagudem, Nirmal
+
+3. CITY — Any specific city/area mentioned, else "None"
+
+Respond in this EXACT format (no other text):
+CASE_TYPE: <type>
+DISTRICT: <district or None>
+CITY: <city or None>
+
+Notice:
+${noticeText.trim().substring(0, 2500)}`;
+
+    const aiResponse = await askGroq(
+      "You are a legal document analyzer. Extract case type, district, and city from notices. Reply only in the requested format.",
+      extractPrompt,
+      120
+    );
+
+    // ── Parse AI response ──
+    const lines = aiResponse.trim().split("\n");
+    let detectedCaseType = null;
+    let detectedDistrict = null;
+    let detectedCity = null;
+
+    lines.forEach((line) => {
+      const [key, ...rest] = line.split(":");
+      const value = rest.join(":").trim().replace(/[."']/g, "");
+
+      if (key.trim().toUpperCase() === "CASE_TYPE" && value && value.toLowerCase() !== "none") {
+        detectedCaseType = value;
+      }
+      if (key.trim().toUpperCase() === "DISTRICT" && value && value.toLowerCase() !== "none") {
+        detectedDistrict = value;
+      }
+      if (key.trim().toUpperCase() === "CITY" && value && value.toLowerCase() !== "none") {
+        detectedCity = value;
+      }
+    });
+
+    // ── Validate case type ──
+    const VALID_TYPES = [
+      "Property Law", "Criminal Law", "Family Law", "Civil Law",
+      "Labour Law", "Consumer Protection Law", "Constitutional Law",
+      "Corporate Law", "Cyber Law", "Banking Law", "Taxation Law",
+      "Intellectual Property Law", "Negotiable Instruments Act",
+      "Motor Vehicles Act",
+    ];
+
+    if (!VALID_TYPES.includes(detectedCaseType)) {
+      detectedCaseType = null;
+    }
+
+    // ── Validate district ──
+    const VALID_DISTRICTS = [
+      "Hyderabad", "Rangareddy", "Medchal-Malkajgiri", "Sangareddy",
+      "Vikarabad", "Hanumakonda", "Khammam", "Nalgonda", "Karimnagar",
+      "Nizamabad", "Adilabad", "Kumuram Bheem Asifabad", "Mancherial",
+      "Peddapalli", "Jagtial", "Rajanna Sircilla", "Kamareddy", "Medak",
+      "Siddipet", "Jangaon", "Mahabubabad", "Warangal", "Suryapet",
+      "Yadadri Bhuvanagiri", "Mahabubnagar", "Nagarkurnool", "Wanaparthy",
+      "Jogulamba Gadwal", "Narayanpet", "Mulugu", "Jayashankar Bhupalpally",
+      "Bhadradri Kothagudem", "Nirmal",
+    ];
+
+    if (!VALID_DISTRICTS.includes(detectedDistrict)) {
+      detectedDistrict = null;
+    }
+
+    if (!detectedCaseType) {
+      return res.status(200).json({
+        success: false,
+        message: "Could not determine the case type. Please try a clearer notice.",
+      });
+    }
+
+    res.json({
+      success: true,
+      detectedCaseType,
+      detectedDistrict,
+      detectedCity,
+    });
+
+  } catch (error) {
+    console.error("[classifyCaseType]", error);
+    res.status(500).json({
+      success: false,
+      message: "Could not analyze the notice. Please try again.",
+    });
+  }
+};
+
+// ══════════════════════════════════════════
 // LEGACY Chat History APIs (kept for backward compatibility)
 // ══════════════════════════════════════════
 

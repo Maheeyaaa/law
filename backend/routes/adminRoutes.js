@@ -16,8 +16,6 @@ import {
   addLawyer,
   updateLawyer,
   deleteLawyer,
-  approveLawyer,
-  rejectLawyer,
   getSystemActivity,
   changeAdminPassword,
 } from "../controllers/adminController.js";
@@ -53,8 +51,6 @@ router.get   ("/lawyers/:id",            getLawyerById);
 router.post  ("/lawyers",                addLawyer);
 router.patch ("/lawyers/:id",            updateLawyer);
 router.delete("/lawyers/:id",            deleteLawyer);
-router.patch ("/lawyers/:id/approve",    approveLawyer);
-router.patch ("/lawyers/:id/reject",     rejectLawyer);
 
 // ── Activity ───────────────────────────────────────
 router.get("/activity", getSystemActivity);

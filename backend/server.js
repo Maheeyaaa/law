@@ -24,7 +24,6 @@ import userRoutes from "./routes/userRoutes.js";
 import trackRoutes from "./routes/trackRoutes.js";
 import pushRoutes from "./routes/pushRoutes.js";
 import { seedScamPatterns } from "./utils/scamDetector.js";
-import SavedCase from "./models/SavedCase.js";
 import { initCronJobs } from "./jobs/cronManager.js";
 
 dns.setServers(["1.1.1.1", "8.8.8.8"]);
@@ -93,42 +92,19 @@ mongoose
     // Seed scam patterns
     seedScamPatterns();
 
-    // Show lawyer stats on startup
+    // Show scraped lawyer stats on startup
     try {
-      const User = (await import("./models/User.js")).default;
-      const totalLawyers = await User.countDocuments({ role: "lawyer" });
-      const proBonoLawyers = await User.countDocuments({
-        role: "lawyer",
-        importedFrom: "DoJ Pro Bono",
-      });
-      const csvLawyers = await User.countDocuments({
-        role: "lawyer",
-        importedFrom: "CSV",
-      });
-      const seedLawyers = await User.countDocuments({
-        role: "lawyer",
-        importedFrom: { $nin: ["DoJ Pro Bono", "CSV"] },
+      const ScrapedLawyer = (await import("./models/ScrapedLawyer.js")).default;
+      const total    = await ScrapedLawyer.countDocuments({ isActive: true });
+      const verified = await ScrapedLawyer.countDocuments({
+        isActive: true,
+        isVerified: true,
       });
 
       console.log(`\n📊 Lawyer Database Status:`);
-      console.log(`   Total: ${totalLawyers}`);
-      console.log(`   ✅ DoJ Pro Bono: ${proBonoLawyers}`);
-      console.log(`   📄 CSV Imported: ${csvLawyers}`);
-      console.log(`   🌱 Seed/Registered: ${seedLawyers}`);
-
-      // Only scrape if NO lawyers exist at all
-      if (totalLawyers === 0) {
-        console.log("\n🔄 No lawyers found. Starting one-time import...");
-        const { scrapeProBono } = await import("./utils/scrapeProbono.js");
-        const result = await scrapeProBono();
-        if (result.success) {
-          console.log(`✅ Imported ${result.count} Pro Bono lawyers`);
-        } else {
-          console.log(`⚠️ Import failed: ${result.error}`);
-        }
-      } else {
-        console.log(`\n✅ Database ready with ${totalLawyers} lawyers\n`);
-      }
+      console.log(`   Total:    ${total}`);
+      console.log(`   Verified: ${verified}`);
+      console.log(`   Source:   FreeLaw\n`);
     } catch (error) {
       console.error("⚠️ Startup check error:", error.message);
     }

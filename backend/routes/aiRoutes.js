@@ -12,6 +12,7 @@ import {
   generateChecklist,
   checkLegalAid,
   detectScam,
+  classifyCaseType,
   // Conversation CRUD
   getConversations,
   createConversation,
@@ -42,6 +43,7 @@ router.post("/legal-aid", checkLegalAid);
 router.post("/detect-scam", upload.single("noticeFile"), detectScam);
 router.post("/deadline", calculateDeadline);
 router.post("/filing-guide", filingGuidance);
+router.post("/classify-case-type", upload.single("noticeFile"), classifyCaseType);
 
 // ══════════════════════════════════════════
 // Conversation CRUD Routes (New)
